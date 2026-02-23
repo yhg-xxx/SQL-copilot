@@ -1,0 +1,899 @@
+<template>
+  <el-dialog
+    v-model="dialogVisible"
+    :title="isEdit ? '编辑数据源' : '新建数据源'"
+    width="700px"
+    :close-on-click-modal="false"
+    class="datasource-form-dialog"
+    @close="handleClose"
+  >
+    <el-steps :active="currentStep - 1" finish-status="success" class="steps-wrapper">
+      <el-step title="连接配置" description="配置数据库连接信息" />
+      <el-step title="选择表" description="选择需要管理的表" />
+    </el-steps>
+
+    <el-form
+      ref="formRef"
+      :model="formData"
+      :rules="rules"
+      label-width="100px"
+      class="form-content"
+    >
+      <div v-show="currentStep === 1" class="step-content">
+        <el-form-item label="数据源名称" prop="name">
+          <el-input v-model="formData.name" placeholder="例如：主业务库" clearable />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input
+            v-model="formData.description"
+            type="textarea"
+            placeholder="请输入描述（可选）"
+            :rows="2"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="数据源类型" prop="type">
+          <el-select v-model="formData.type" placeholder="请选择数据源类型" style="width: 100%">
+            <el-option
+              v-for="item in datasourceTypes"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            >
+              <div class="option-content">
+                <img :src="getDatasourceIcon(item.value)" :alt="item.label" class="option-icon" />
+                <span>{{ item.label }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-divider>连接信息</el-divider>
+
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item label="主机地址" prop="host">
+              <el-input v-model="formData.host" placeholder="127.0.0.1" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="端口" prop="port">
+              <el-input-number
+                v-model="formData.port"
+                :min="1"
+                :max="65535"
+                placeholder="3306"
+                :controls="false"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item label="用户名">
+              <el-input v-model="formData.username" placeholder="root" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="密码">
+              <el-input
+                v-model="formData.password"
+                type="password"
+                placeholder="请输入密码"
+                show-password
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item label="数据库名" prop="database">
+              <el-input v-model="formData.database" placeholder="请输入数据库名" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-if="showSchema">
+            <el-form-item label="Schema" prop="dbSchema">
+              <el-input v-model="formData.dbSchema" placeholder="public" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div v-if="showOracleMode || formData.extraJdbc || formData.timeout !== 30">
+          <el-divider>高级设置</el-divider>
+          <el-form-item v-if="showOracleMode" label="连接模式" prop="mode">
+            <el-radio-group v-model="formData.mode">
+              <el-radio value="service_name">Service Name</el-radio>
+              <el-radio value="sid">SID</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="额外参数">
+            <el-input
+              v-model="formData.extraJdbc"
+              placeholder="例如: useSSL=false&serverTimezone=UTC"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="超时时间">
+            <el-input-number
+              v-model="formData.timeout"
+              :min="1"
+              :max="300"
+              placeholder="默认30秒"
+              style="width: 200px"
+            >
+              <template #suffix>秒</template>
+            </el-input-number>
+          </el-form-item>
+        </div>
+      </div>
+
+      <div v-show="currentStep === 2" class="step-content">
+        <div class="table-selection-header">
+          <div class="selection-info">
+            <div>
+              已选择 <span class="highlight">{{ selectedTables.length }}</span> / {{ tableList.length }} 个表
+              <span v-if="searchKeyword.trim()">（筛选后: {{ filteredTableList.length }} 个）</span>
+              <span v-if="isSelectAll" class="select-all-badge">（全选模式）</span>
+            </div>
+            <div v-if="selectedTables.length > 0" class="estimated-time">
+              预计处理时间：{{ formatEstimatedTime(calculateEstimatedTime(selectedTables.length)) }}
+            </div>
+          </div>
+          <div class="header-actions">
+            <el-button
+              v-if="displayedTableList.length < filteredTableList.length"
+              size="small"
+              @click="handleSelectDisplayed"
+            >
+              {{ isDisplayedAllSelected ? '取消当前显示' : '全选当前显示' }}
+            </el-button>
+            <el-button size="small" @click="handleSelectAll">
+              {{ isAllSelected ? '取消全选' : '全选筛选' }}
+            </el-button>
+          </div>
+        </div>
+
+        <div class="table-search-wrapper">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索表名或注释..."
+            clearable
+            size="small"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+
+        <div v-loading="tableListLoading" class="table-list-wrapper">
+          <el-checkbox-group v-model="selectedTables">
+            <el-row :gutter="12">
+              <el-col :span="12" v-for="table in displayedTableList" :key="table.tableName">
+                <div class="table-item">
+                  <el-checkbox :value="table.tableName" style="width: 100%">
+                    <div class="checkbox-content">
+                      <span class="table-name">{{ table.tableName }}</span>
+                      <span v-if="table.tableComment" class="table-comment">{{ table.tableComment }}</span>
+                    </div>
+                  </el-checkbox>
+                </div>
+              </el-col>
+            </el-row>
+          </el-checkbox-group>
+          <el-empty v-if="tableList.length === 0" description="未找到数据表" />
+          <el-empty v-else-if="filteredTableList.length === 0" description="未找到匹配的表" />
+
+          <div v-if="canLoadMore && !isLoadingMore" class="load-more-tip">
+            <span class="tip-text">滚动到底部加载更多（已显示 {{ displayedTableList.length }} / {{ filteredTableList.length }}）</span>
+          </div>
+
+          <div v-if="isLoadingMore" class="loading-more">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span>加载更多表中...</span>
+          </div>
+
+          <div v-if="!canLoadMore && filteredTableList.length > 0" class="load-complete">
+            <span class="tip-text">已显示全部 {{ filteredTableList.length }} 张表</span>
+          </div>
+        </div>
+      </div>
+    </el-form>
+
+    <template #footer>
+      <div class="modal-actions">
+        <div class="left">
+          <el-button v-if="currentStep === 1" :loading="testing" @click="testConnection">
+            测试连接
+          </el-button>
+        </div>
+        <div class="right">
+          <el-button @click="handleClose">取消</el-button>
+          <el-button v-if="currentStep === 2" @click="handlePrev">上一步</el-button>
+          <el-button v-if="currentStep === 1" type="primary" @click="handleNext">下一步</el-button>
+          <el-button v-if="currentStep === 2" type="primary" :loading="loading" :disabled="loading" @click="handleSave">
+            保存
+          </el-button>
+        </div>
+      </div>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup>
+import { ref, reactive, computed, watch } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Search, Loading } from '@element-plus/icons-vue';
+import axios from 'axios';
+
+const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
+
+const iconMap = {
+  mysql: 'icon_mysql.svg',
+  pg: 'icon_pg.svg',
+  oracle: 'icon_oracle.svg',
+  sqlServer: 'icon_sqlserver.svg',
+  ck: 'icon_ck.svg',
+  dm: 'icon_dm.png',
+  doris: 'icon_doris.png',
+  starrocks: 'icon_starrocks.png'
+};
+
+const getDatasourceIcon = (type) => {
+  const iconName = iconMap[type] || 'icon_mysql.svg';
+  for (const [path, url] of Object.entries(iconModules)) {
+    if (path.endsWith(iconName)) {
+      return url;
+    }
+  }
+  return '';
+};
+
+const props = defineProps({
+  show: {
+    type: Boolean,
+    default: false
+  },
+  datasource: {
+    type: Object,
+    default: null
+  }
+});
+
+const emit = defineEmits(['update:show', 'success']);
+
+const datasourceTypes = [
+  { label: 'MySQL', value: 'mysql' },
+  { label: 'PostgreSQL', value: 'pg' },
+  { label: 'Oracle', value: 'oracle' },
+  { label: 'SQL Server', value: 'sqlServer' },
+  { label: 'ClickHouse', value: 'ck' },
+  { label: '达梦', value: 'dm' },
+  { label: 'Apache Doris', value: 'doris' },
+  { label: 'StarRocks', value: 'starrocks' }
+];
+
+const needSchemaTypes = ['sqlServer', 'pg', 'oracle', 'dm'];
+
+const formRef = ref(null);
+const dialogVisible = computed({
+  get: () => props.show,
+  set: (val) => emit('update:show', val)
+});
+
+const isEdit = computed(() => !!props.datasource?.id);
+
+const formData = reactive({
+  name: '',
+  description: '',
+  type: 'mysql',
+  host: '',
+  port: 3306,
+  username: '',
+  password: '',
+  database: '',
+  dbSchema: '',
+  extraJdbc: '',
+  timeout: 30,
+  mode: 'service_name'
+});
+
+const rules = {
+  name: [
+    { required: true, message: '请输入数据源名称', trigger: 'blur' },
+    { min: 1, max: 50, message: '名称长度在1-50个字符', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择数据源类型', trigger: 'change' }
+  ],
+  host: [
+    { required: true, message: '请输入主机地址', trigger: 'blur' }
+  ],
+  port: [
+    { required: true, message: '请输入端口号', trigger: 'blur' },
+    { type: 'number', min: 1, max: 65535, message: '端口号范围1-65535', trigger: 'blur' }
+  ],
+  database: [
+    { required: true, message: '请输入数据库名', trigger: 'blur' }
+  ],
+  dbSchema: [
+    { required: true, message: '请输入Schema', trigger: 'blur' }
+  ]
+};
+
+const showSchema = computed(() => needSchemaTypes.includes(formData.type));
+const showOracleMode = computed(() => formData.type === 'oracle');
+
+watch(() => formData.type, (newType) => {
+  const defaultPorts = {
+    mysql: 3306,
+    pg: 5432,
+    oracle: 1521,
+    sqlServer: 1433,
+    ck: 8123,
+    dm: 5236,
+    doris: 9030,
+    starrocks: 9030
+  };
+  if (defaultPorts[newType]) {
+    formData.port = defaultPorts[newType];
+  }
+});
+
+const loading = ref(false);
+const testing = ref(false);
+const currentStep = ref(1);
+const tableList = ref([]);
+const selectedTables = ref([]);
+const tableListLoading = ref(false);
+const searchKeyword = ref('');
+const displayedTableCount = ref(50);
+const pageSize = ref(50);
+const isLoadingMore = ref(false);
+const hasMoreTables = ref(true);
+const isSelectAll = ref(false);
+
+const initForm = async () => {
+  if (props.datasource) {
+    formData.name = props.datasource.name || '';
+    formData.description = props.datasource.description || '';
+    formData.type = props.datasource.type || 'mysql';
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`http://localhost:8000/datasource/${props.datasource.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = response.data;
+      formData.name = data.name;
+      formData.description = data.description;
+      formData.type = data.type;
+      if (data.configuration) {
+        try {
+          const config = JSON.parse(data.configuration);
+          Object.assign(formData, config);
+          if (config.port) {
+            formData.port = Number(config.port);
+          }
+        } catch (e) {
+          console.error('解析配置信息失败:', e);
+        }
+      }
+      
+      await fetchTableList();
+    } catch (error) {
+      console.error('获取数据源详情失败:', error);
+    }
+  } else {
+    Object.assign(formData, {
+      name: '',
+      description: '',
+      type: 'mysql',
+      host: '',
+      port: 3306,
+      username: '',
+      password: '',
+      database: '',
+      dbSchema: '',
+      extraJdbc: '',
+      timeout: 30,
+      mode: 'service_name'
+    });
+  }
+  currentStep.value = 1;
+  selectedTables.value = [];
+  tableList.value = [];
+  searchKeyword.value = '';
+  displayedTableCount.value = pageSize.value;
+  hasMoreTables.value = true;
+  isLoadingMore.value = false;
+  isSelectAll.value = false;
+};
+
+const testConnection = async () => {
+  if (!formRef.value) return;
+  
+  await formRef.value.validate((valid) => {
+    if (!valid) {
+      ElMessage.error('请检查表单信息');
+      return false;
+    }
+  });
+
+  testing.value = true;
+  try {
+    const config = buildConfiguration();
+    const token = localStorage.getItem('token');
+    const response = await axios.post('http://localhost:8000/datasource/test-connection', {
+      name: formData.name,
+      description: formData.description,
+      type: formData.type,
+      type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+      host: config.host,
+      port: String(config.port),
+      database: config.database,
+      username: config.username,
+      password: config.password
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.data.status === 'Success') {
+      ElMessage.success('连接成功');
+      await fetchTableList();
+    } else {
+      ElMessage.error(response.data.message || '连接失败');
+    }
+  } catch (error) {
+    console.error('测试连接失败:', error);
+    ElMessage.error('测试连接失败');
+  } finally {
+    testing.value = false;
+  }
+};
+
+const fetchTableList = async () => {
+  tableListLoading.value = true;
+  try {
+    const config = buildConfiguration();
+    const token = localStorage.getItem('token');
+    const response = await axios.post('http://localhost:8000/datasource/fetch-tables', {
+      type: formData.type,
+      configuration: JSON.stringify(config)
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    tableList.value = response.data || [];
+    displayedTableCount.value = Math.min(pageSize.value, tableList.value.length);
+    hasMoreTables.value = tableList.value.length > displayedTableCount.value;
+
+    if (props.datasource?.id) {
+      try {
+        const tablesResponse = await axios.get(`http://localhost:8000/datasource/${props.datasource.id}/tables`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        selectedTables.value = tablesResponse.data
+          .map(t => t.table_name);
+      } catch (error) {
+        console.error('获取已选择的表列表失败:', error);
+        selectedTables.value = [];
+      }
+    }
+  } catch (error) {
+    console.error('获取表列表失败:', error);
+    ElMessage.error('获取表列表失败');
+  } finally {
+    tableListLoading.value = false;
+  }
+};
+
+const buildConfiguration = () => {
+  return {
+    host: formData.host,
+    port: formData.port,
+    username: formData.username,
+    password: formData.password,
+    database: formData.database,
+    dbSchema: formData.dbSchema || formData.database,
+    extraJdbc: formData.extraJdbc,
+    timeout: formData.timeout,
+    mode: formData.mode
+  };
+};
+
+const handleNext = async () => {
+  if (!formRef.value) return;
+  
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return;
+    await testConnection();
+    if (tableList.value.length > 0) {
+      currentStep.value = 2;
+    }
+  });
+};
+
+const handlePrev = () => {
+  currentStep.value = 1;
+};
+
+
+const handleSelectDisplayed = () => {
+  if (isDisplayedAllSelected.value) {
+    const displayedTableNames = displayedTableList.value.map(t => t.tableName);
+    selectedTables.value = selectedTables.value.filter(name => !displayedTableNames.includes(name));
+    isSelectAll.value = false;
+  } else {
+    const displayedTableNames = displayedTableList.value.map(t => t.tableName);
+    const newSelected = new Set([...selectedTables.value, ...displayedTableNames]);
+    selectedTables.value = Array.from(newSelected);
+    isSelectAll.value = selectedTables.value.length >= filteredTableList.value.length;
+  }
+};
+
+const calculateEstimatedTime = (tableCount) => {
+  return Math.max(1, Math.ceil(tableCount / 100));
+};
+
+const formatEstimatedTime = (minutes) => {
+  if (minutes < 60) {
+    return `约 ${minutes} 分钟`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `约 ${hours} 小时`;
+  }
+  return `约 ${hours} 小时 ${mins} 分钟`;
+};
+
+const handleSelectAll = async () => {
+  if (isAllSelected.value) {
+    const filteredTableNames = filteredTableList.value.map(t => t.tableName);
+    selectedTables.value = selectedTables.value.filter(name => !filteredTableNames.includes(name));
+    isSelectAll.value = false;
+    return;
+  }
+
+  const filteredCount = filteredTableList.value.length;
+  const totalCount = tableList.value.length;
+  const displayedCount = displayedTableList.value.length;
+  const hasSearch = searchKeyword.value.trim().length > 0;
+  const notAllDisplayed = displayedCount < filteredCount;
+
+  const estimatedMinutes = calculateEstimatedTime(filteredCount);
+  const estimatedTimeText = formatEstimatedTime(estimatedMinutes);
+
+  let content = `您将选择 ${filteredCount} 张表进行同步。`;
+  if (notAllDisplayed) {
+    content += `\n（当前仅显示 ${displayedCount} 张，将自动选择全部 ${filteredCount} 张表）`;
+  }
+  if (hasSearch && filteredCount < totalCount) {
+    content += `\n（当前筛选条件：共 ${totalCount} 张表，筛选后 ${filteredCount} 张）`;
+  }
+  content += `\n预计处理时间：${estimatedTimeText}\n\n是否继续？`;
+
+  if (filteredCount > displayedCount || filteredCount > 100) {
+    await ElMessageBox.confirm(
+      content,
+      hasSearch ? '确认全选（筛选结果）' : '确认全选',
+      {
+        confirmButtonText: '确认全选',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      const filteredTableNames = filteredTableList.value.map(t => t.tableName);
+      const newSelected = new Set([...selectedTables.value, ...filteredTableNames]);
+      selectedTables.value = Array.from(newSelected);
+      isSelectAll.value = true;
+      ElMessage.success(`已选择 ${filteredCount} 张表，预计处理时间：${estimatedTimeText}`);
+    }).catch(() => {});
+  } else {
+    const filteredTableNames = filteredTableList.value.map(t => t.tableName);
+    const newSelected = new Set([...selectedTables.value, ...filteredTableNames]);
+    selectedTables.value = Array.from(newSelected);
+    isSelectAll.value = true;
+    if (filteredCount > 0) {
+      ElMessage.success(`已选择 ${filteredCount} 张表，预计处理时间：${estimatedTimeText}`);
+    }
+  }
+};
+
+watch(searchKeyword, () => {
+  displayedTableCount.value = pageSize.value;
+  hasMoreTables.value = true;
+});
+
+const filteredTableList = computed(() => {
+  if (!searchKeyword.value.trim()) {
+    return tableList.value;
+  }
+  const keyword = searchKeyword.value.toLowerCase().trim();
+  return tableList.value.filter(table => {
+    const name = (table.tableName || '').toLowerCase();
+    const comment = (table.tableComment || '').toLowerCase();
+    return name.includes(keyword) || comment.includes(keyword);
+  });
+});
+
+const displayedTableList = computed(() => {
+  return filteredTableList.value.slice(0, displayedTableCount.value);
+});
+
+const canLoadMore = computed(() => {
+  return displayedTableCount.value < filteredTableList.value.length;
+});
+
+const isDisplayedAllSelected = computed(() => {
+  if (displayedTableList.value.length === 0) return false;
+  return displayedTableList.value.every(table => selectedTables.value.includes(table.tableName));
+});
+
+const isAllSelected = computed(() => {
+  if (filteredTableList.value.length === 0) return false;
+  return filteredTableList.value.every(table => selectedTables.value.includes(table.tableName));
+});
+
+watch(selectedTables, (newSelected) => {
+  isSelectAll.value = newSelected.length === filteredTableList.value.length && filteredTableList.value.length === tableList.value.length;
+}, { deep: true });
+
+const handleSave = async () => {
+  if (loading.value) return;
+
+  if (selectedTables.value.length === 0) {
+    ElMessage.warning('请至少选择一个表');
+    return;
+  }
+
+  const selectedCount = selectedTables.value.length;
+  const estimatedMinutes = calculateEstimatedTime(selectedCount);
+  const estimatedTimeText = formatEstimatedTime(estimatedMinutes);
+
+  if (selectedCount > 100) {
+    ElMessage.info(
+      `正在保存 ${selectedCount} 张表，预计处理时间：${estimatedTimeText}，请耐心等待...`,
+      { duration: 5000 }
+    );
+  }
+
+  loading.value = true;
+  try {
+    const config = buildConfiguration();
+
+    const tables = selectedTables.value.map(tableName => {
+      const table = tableList.value.find(t => t.tableName === tableName);
+      return {
+        table_name: tableName,
+        table_comment: table?.tableComment || ''
+      };
+    });
+
+    const requestData = {
+      name: formData.name,
+      description: formData.description,
+      type: formData.type,
+      type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+      host: config.host,
+      port: String(config.port),
+      database: config.database,
+      username: config.username,
+      password: config.password,
+      tables
+    };
+
+    const token = localStorage.getItem('token');
+    let response;
+    let dsId = props.datasource?.id;
+
+    if (props.datasource?.id) {
+      response = await axios.put(`http://localhost:8000/datasource/update/${props.datasource.id}`, requestData, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } else {
+      response = await axios.post('http://localhost:8000/datasource/create', requestData, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    }
+
+    dsId = response.data?.id || dsId;
+
+    try {
+      await axios.post(`http://localhost:8000/datasource/${dsId}/sync-tables`, {
+        tables,
+        selectAll: isSelectAll.value
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (syncErr) {
+      console.error('同步表列表失败:', syncErr);
+      ElMessage.warning('数据源已保存，但同步表列表时出现错误，请稍后手动同步');
+    }
+
+    ElMessage.success(props.datasource?.id ? '更新成功' : '创建成功');
+    emit('success');
+    handleClose();
+  } catch (error) {
+    console.error('保存数据源失败:', error);
+    ElMessage.error('保存数据源失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleClose = () => {
+  emit('update:show', false);
+  initForm();
+};
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    initForm();
+  }
+});
+</script>
+
+<style scoped>
+.datasource-form-dialog :deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+.datasource-form-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.datasource-form-dialog :deep(.el-dialog__title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.datasource-form-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.steps-wrapper {
+  margin-bottom: 24px;
+  padding: 0 12px;
+}
+
+.form-content {
+  padding: 0 12px;
+}
+
+.step-content {
+  min-height: 300px;
+}
+
+.option-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.table-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.selection-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.estimated-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.highlight {
+  color: #18a058;
+  font-weight: 600;
+}
+
+.select-all-badge {
+  color: #2080f0;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-search-wrapper {
+  margin-bottom: 16px;
+}
+
+.table-list-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+  min-height: 200px;
+}
+
+.table-item {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  transition: all 0.2s;
+}
+
+.table-item:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.checkbox-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+.table-name {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.table-comment {
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.load-more-tip,
+.loading-more,
+.load-complete {
+  text-align: center;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.tip-text {
+  color: #909399;
+  font-size: 12px;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #909399;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.right {
+  display: flex;
+  gap: 12px;
+}
+</style>
