@@ -10,10 +10,10 @@
       </div>
       
       <div class="brand-content">
-        <h1 class="brand-title">企业AI，就用扣子</h1>
+        <h1 class="brand-title">多智能体协作，让数据查询更智能</h1>
         <div class="brand-badge">
           <el-icon><Star /></el-icon>
-          <span>用扣子重塑生产力</span>
+          <span>自然语言对话，复杂SQL一键生成</span>
         </div>
         
         <!-- 产品展示卡片 -->
@@ -396,6 +396,7 @@ const handleRegister = async () => {
   width: 40px;
   height: 40px;
   object-fit: contain;
+  border-radius: 8px;
 }
 
 .logo-text {

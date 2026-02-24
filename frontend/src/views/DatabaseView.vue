@@ -94,19 +94,14 @@
             <div class="tab-content" v-show="activeTab === 'schema'">
               <div class="table-wrapper">
                 <el-table :data="fields" stripe style="width: 100%" v-loading="fieldsLoading">
-                  <el-table-column prop="field_name" label="字段名" width="180" />
-                  <el-table-column prop="field_type" label="字段类型" width="120" />
-                  <el-table-column prop="field_comment" label="字段注释" width="150">
+                  <el-table-column prop="field_name" label="字段名" min-width="150" />
+                  <el-table-column prop="field_type" label="字段类型" min-width="120" />
+                  <el-table-column prop="field_comment" label="字段注释" min-width="150">
                     <template #default="{ row }">
-                      <div class="comment-cell">
-                        <span>{{ row.field_comment || '-' }}</span>
-                        <el-button @click="editFieldComment(row)" type="text" class="edit-icon">
-                          <el-icon><Edit /></el-icon>
-                        </el-button>
-                      </div>
+                      <span>{{ row.field_comment || '-' }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="custom_comment" label="自定义注释" width="150">
+                  <el-table-column prop="custom_comment" label="自定义注释" min-width="150">
                     <template #default="{ row }">
                       <div class="comment-cell">
                         <span>{{ row.custom_comment || '-' }}</span>
@@ -116,17 +111,7 @@
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="data_mapping" label="数据映射" min-width="150">
-                    <template #default="{ row }">
-                      <div class="comment-cell">
-                        <span>{{ row.data_mapping || '-' }}</span>
-                        <el-button @click="editFieldMapping(row)" type="text" class="edit-icon">
-                          <el-icon><Edit /></el-icon>
-                        </el-button>
-                      </div>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="checked" label="是否选中" width="100">
+                  <el-table-column prop="checked" label="是否选中" min-width="100">
                     <template #default="{ row }">
                       <el-switch
                         v-model="row.checked"
@@ -185,21 +170,6 @@
       <template #footer>
         <el-button @click="fieldCommentDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveFieldComment">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 编辑数据映射对话框 -->
-    <el-dialog v-model="mappingDialogVisible" title="编辑数据映射" width="500px">
-      <el-input
-        v-model="mappingInput"
-        type="textarea"
-        :rows="4"
-        placeholder="请输入数据映射规则，例如：0=未知,1=男,2=女"
-      />
-      <div class="mapping-hint">格式参考：原始值=映射值，多个映射用逗号分隔</div>
-      <template #footer>
-        <el-button @click="mappingDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveMapping">保存</el-button>
       </template>
     </el-dialog>
 
@@ -263,8 +233,6 @@ const tableCommentDialogVisible = ref(false)
 const tableCommentInput = ref('')
 const fieldCommentDialogVisible = ref(false)
 const fieldCommentInput = ref('')
-const mappingDialogVisible = ref(false)
-const mappingInput = ref('')
 const editingField = ref(null)
 
 const loadDatasource = async () => {
@@ -409,30 +377,6 @@ const saveFieldComment = async () => {
   }
 }
 
-const editFieldMapping = (field) => {
-  editingField.value = field
-  mappingInput.value = field.data_mapping || ''
-  mappingDialogVisible.value = true
-}
-
-const saveMapping = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/datasource-table/field/${editingField.value.id}/mapping`, mappingInput.value, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'text/plain'
-      }
-    })
-    editingField.value.data_mapping = mappingInput.value
-    ElMessage.success('数据映射保存成功')
-    mappingDialogVisible.value = false
-  } catch (error) {
-    ElMessage.error('保存数据映射失败')
-    console.error(error)
-  }
-}
-
 const toggleFieldChecked = async (field) => {
   try {
     const token = localStorage.getItem('token')
@@ -499,6 +443,7 @@ onMounted(() => {
 .header-top {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
 .back-btn {
@@ -520,6 +465,7 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
+  margin-left: 0;
 }
 
 .search-area {
@@ -749,12 +695,6 @@ onMounted(() => {
 
 .edit-icon:hover {
   background-color: #eff6ff;
-}
-
-.mapping-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #6b7280;
 }
 
 .empty-state {

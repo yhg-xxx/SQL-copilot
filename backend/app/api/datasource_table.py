@@ -34,22 +34,6 @@ async def update_field_comment(field_id: int, comment: str = Body(...), db: Sess
     db.commit()
     return {"message": "Field comment updated successfully"}
 
-# 更新字段数据映射
-@router.put("/field/{field_id}/mapping")
-async def update_field_mapping(field_id: int, mapping: str = Body(...), db: Session = Depends(get_db)):
-    field = db.query(DatasourceField).filter(DatasourceField.id == field_id).first()
-    if not field:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Field not found"
-        )
-    
-    # 这里需要添加一个字段来存储数据映射，暂时使用custom_comment字段
-    # 实际项目中应该添加专门的data_mapping字段
-    field.custom_comment = mapping
-    db.commit()
-    return {"message": "Field mapping updated successfully"}
-
 # 切换字段选中状态
 @router.put("/field/{field_id}/checked")
 async def toggle_field_checked(field_id: int, checked: bool = Body(...), db: Session = Depends(get_db)):
