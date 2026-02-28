@@ -40,6 +40,36 @@ def get_table_fields(cursor, database, table_name):
     
     return field_list
 
+# 获取表的索引信息
+def get_table_indexes(cursor, database, table_name):
+    """获取表的索引信息"""
+    cursor.execute(f"""
+        SELECT 
+            INDEX_NAME,
+            COLUMN_NAME,
+            NON_UNIQUE,
+            SEQ_IN_INDEX,
+            INDEX_TYPE
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = '{database}' 
+        AND TABLE_NAME = '{table_name}'
+        ORDER BY INDEX_NAME, SEQ_IN_INDEX
+    """)
+    indexes = cursor.fetchall()
+    
+    index_list = []
+    for index in indexes:
+        index_type = "PRIMARY" if index[0] == "PRIMARY" else "UNIQUE" if index[2] == 0 else "INDEX"
+        index_list.append({
+            'index_name': index[0],
+            'column_name': index[1],
+            'non_unique': index[2],
+            'seq_in_index': index[3],
+            'index_type': index_type
+        })
+    
+    return index_list
+
 
 
 # 获取数据源列表
@@ -178,8 +208,23 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
                 # 获取字段信息
                 fields = get_table_fields(cursor, datasource.database, table_name)
                 
+                # 获取索引信息
+                indexes = get_table_indexes(cursor, datasource.database, table_name)
+                
                 # 创建字段信息
                 for field in fields:
+                    # 检查字段是否在索引中
+                    is_indexed = False
+                    index_name = None
+                    index_type = None
+                    
+                    for index in indexes:
+                        if index['column_name'] == field['field_name']:
+                            is_indexed = True
+                            index_name = index['index_name']
+                            index_type = index['index_type']
+                            break
+                    
                     new_field = DatasourceField(
                         ds_id=new_datasource.id,
                         table_id=new_table.id,
@@ -188,7 +233,10 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
                         field_type=field['field_type'],
                         field_comment=field['field_comment'],
                         custom_comment=None,
-                        field_index=field['field_index']
+                        field_index=field['field_index'],
+                        is_indexed=is_indexed,
+                        index_name=index_name,
+                        index_type=index_type
                     )
                     db.add(new_field)
             
@@ -373,8 +421,23 @@ async def update_datasource(datasource_id: int, datasource: DatasourceUpdate, db
                 # 获取字段信息
                 fields = get_table_fields(cursor, current_config['database'], table_name)
                 
+                # 获取索引信息
+                indexes = get_table_indexes(cursor, current_config['database'], table_name)
+                
                 # 处理每个字段
                 for field in fields:
+                    # 检查字段是否在索引中
+                    is_indexed = False
+                    index_name = None
+                    index_type = None
+                    
+                    for index in indexes:
+                        if index['column_name'] == field['field_name']:
+                            is_indexed = True
+                            index_name = index['index_name']
+                            index_type = index['index_type']
+                            break
+                    
                     field_key = (table_id, field['field_name'])
                     if field_key in existing_field_map:
                         # 更新已存在的字段
@@ -383,6 +446,9 @@ async def update_datasource(datasource_id: int, datasource: DatasourceUpdate, db
                         existing_field.field_comment = field['field_comment']
                         existing_field.field_index = field['field_index']
                         existing_field.checked = True
+                        existing_field.is_indexed = is_indexed
+                        existing_field.index_name = index_name
+                        existing_field.index_type = index_type
                     else:
                         # 创建新字段
                         new_field = DatasourceField(
@@ -393,7 +459,10 @@ async def update_datasource(datasource_id: int, datasource: DatasourceUpdate, db
                             field_type=field['field_type'],
                             field_comment=field['field_comment'],
                             custom_comment=None,
-                            field_index=field['field_index']
+                            field_index=field['field_index'],
+                            is_indexed=is_indexed,
+                            index_name=index_name,
+                            index_type=index_type
                         )
                         db.add(new_field)
             
@@ -716,22 +785,25 @@ async def get_datasource_table_info(datasource_id: int, db: Session = Depends(ge
             field_list = []
             for field in fields:
                 field_list.append({
-                    'id': field.id,
-                    'field_name': field.field_name,
-                    'field_type': field.field_type,
-                    'field_comment': field.field_comment,
-                    'custom_comment': field.custom_comment,
-                    'data_mapping': field.custom_comment,
-                    'checked': field.checked
-                })
+                'id': field.id,
+                'field_name': field.field_name,
+                'field_type': field.field_type,
+                'field_comment': field.field_comment,
+                'custom_comment': field.custom_comment,
+                'data_mapping': field.custom_comment,
+                'checked': field.checked,
+                'is_indexed': field.is_indexed,
+                'index_name': field.index_name,
+                'index_type': field.index_type
+            })
             
             table_info_list.append({
-                'id': table.id,
-                'table_name': table.table_name,
-                'table_comment': table.table_comment,
-                'custom_comment': table.custom_comment,
-                'fields': field_list
-            })
+            'id': table.id,
+            'table_name': table.table_name,
+            'table_comment': table.table_comment,
+            'custom_comment': table.custom_comment,
+            'fields': field_list
+        })
         
         return table_info_list
     except Exception as e:

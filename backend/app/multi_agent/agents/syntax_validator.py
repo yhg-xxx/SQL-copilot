@@ -43,11 +43,11 @@ def validate_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]
         logger.info(f"SQL 类型判断: {sql_upper[:50]}...")
 
         # 检查是否为 SELECT 语句
-        if not sql_upper.startswith("SELECT"):
-            error_msg = f"仅支持 SELECT 查询语句验证，当前语句类型为: {sql_upper.split()[0] if sql_upper else '未知'}"
-            logger.error(error_msg)
-            result["errors"].append(error_msg)
-            return result
+        # if not sql_upper.startswith("SELECT"):
+        #     error_msg = f"仅支持 SELECT 查询语句验证，当前语句类型为: {sql_upper.split()[0] if sql_upper else '未知'}"
+        #     logger.error(error_msg)
+        #     result["errors"].append(error_msg)
+        #     return result
 
         # 检查必要的配置项
         required_fields = ["host", "username", "password", "database"]

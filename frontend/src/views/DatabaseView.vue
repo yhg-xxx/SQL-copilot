@@ -111,6 +111,17 @@
                       </div>
                     </template>
                   </el-table-column>
+                  <el-table-column label="索引信息" min-width="150">
+                    <template #default="{ row }">
+                      <div v-if="row.is_indexed" class="index-info">
+                        <el-tag :type="row.index_type === 'PRIMARY' ? 'success' : row.index_type === 'UNIQUE' ? 'warning' : 'info'" size="small">
+                          {{ row.index_type }}
+                        </el-tag>
+                        <span class="index-name">{{ row.index_name }}</span>
+                      </div>
+                      <span v-else class="no-index">-</span>
+                    </template>
+                  </el-table-column>
                   <el-table-column prop="checked" label="是否选中" min-width="100">
                     <template #default="{ row }">
                       <el-switch
@@ -695,6 +706,21 @@ onMounted(() => {
 
 .edit-icon:hover {
   background-color: #eff6ff;
+}
+
+.index-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.index-name {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.no-index {
+  color: #909399;
 }
 
 .empty-state {

@@ -46,3 +46,6 @@ class DatasourceField(Base):
     field_comment = Column(Text, nullable=True, comment="字段注释")
     custom_comment = Column(Text, nullable=True, comment="自定义注释")
     field_index = Column(Integer, nullable=True, comment="字段顺序")
+    is_indexed = Column(Boolean, default=False, comment="是否为索引字段")
+    index_name = Column(Text, nullable=True, comment="索引名称")
+    index_type = Column(Text, nullable=True, comment="索引类型: PRIMARY, UNIQUE, FULLTEXT, INDEX")
