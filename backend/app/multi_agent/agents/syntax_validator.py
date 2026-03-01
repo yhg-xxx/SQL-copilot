@@ -456,16 +456,20 @@ def syntax_validator(state: AgentState) -> AgentState:
             state["error_message"] = "没有可验证的 SQL"
             return state
 
-        # 获取数据库表结构信息
-        datasource_schema = {}
-        if datasource_id:
+        # 获取数据库表结构信息 - 优先使用 state 中的 db_info，避免重复获取
+        datasource_schema = state.get("db_info", {})
+        
+        # 如果 state 中没有 db_info，再从数据库获取（备用方案）
+        if not datasource_schema and datasource_id:
             try:
                 from .sql_generator import get_datasource_schema
                 datasource_schema = get_datasource_schema(datasource_id)
-                logger.info(f"获取到数据源表结构，表数量: {len(datasource_schema)}")
+                logger.info(f"从数据库获取到数据源表结构，表数量: {len(datasource_schema)}")
             except ImportError as e:
                 logger.warning(f"无法导入 get_datasource_schema: {e}")
                 datasource_schema = {}
+        elif datasource_schema:
+            logger.info(f"使用 state 中的数据源表结构，表数量: {len(datasource_schema)}")
 
         # 验证循环（最多尝试修复 max_fix_attempts 次）
         for attempt in range(fix_attempts, max_fix_attempts + 1):

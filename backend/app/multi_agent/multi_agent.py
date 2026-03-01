@@ -90,6 +90,12 @@ class MultiAgent:
                     if final_state.get("optimization_result")
                     else None
                 ),
+                "execution_result": (
+                    final_state.get("execution_result").model_dump()
+                    if final_state.get("execution_result")
+                    else None
+                ),
+                "sql_execution_result": final_state.get("sql_execution_result"),
                 "error_message": final_state.get("error_message"),
             }
             

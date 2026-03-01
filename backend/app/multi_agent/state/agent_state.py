@@ -10,6 +10,10 @@ class ValidationResult(BaseModel):
     valid: bool
     errors: Optional[List[str]] = None
     warnings: Optional[List[str]] = None
+    mysql_validation_passed: Optional[bool] = None
+    llm_validation_passed: Optional[bool] = None
+    mysql_explain_result: Optional[str] = None
+    llm_feedback: Optional[str] = None
 
 
 class OptimizationResult(BaseModel):
@@ -22,19 +26,31 @@ class OptimizationResult(BaseModel):
     execution_notes: Optional[str] = None
 
 
+class ExecutionResult(BaseModel):
+    """
+    SQL 执行结果
+    """
+    success: bool
+    data: Optional[List[Dict[str, Any]]] = None
+    columns: Optional[List[str]] = None
+    row_count: Optional[int] = None
+    error: Optional[str] = None
+
+
 class AgentState(TypedDict):
     """
     多智能体系统状态定义
     """
-    user_query: str
-    db_info: Optional[Dict]
-    generated_sql: Optional[str]
-    validation_result: Optional[ValidationResult]
-    optimized_sql: Optional[str]
-    optimization_result: Optional[OptimizationResult]
-    final_sql: Optional[str]
-    execution_result: Optional[Any]
-    attempts: int
-    datasource_id: Optional[int]
-    user_id: Optional[int]
-    error_message: Optional[str]
+    user_query: str  # 用户输入的自然语言查询
+    db_info: Optional[Dict]  # 数据库表结构信息
+    generated_sql: Optional[str]  # 初始生成的 SQL 语句
+    validation_result: Optional[ValidationResult]  # SQL 语法验证结果
+    optimized_sql: Optional[str]  # 优化后的 SQL 语句
+    optimization_result: Optional[OptimizationResult]  # SQL 优化结果
+    final_sql: Optional[str]  # 最终可执行的 SQL 语句
+    execution_result: Optional[ExecutionResult]  # SQL 执行结果
+    sql_execution_result: Optional[Dict[str, Any]]  # SQL 语句执行后返回的数据结果（包含列和数据）
+    attempts: int  # 修复尝试次数
+    datasource_id: Optional[int]  # 数据源 ID
+    user_id: Optional[int]  # 用户 ID
+    error_message: Optional[str]  # 错误信息

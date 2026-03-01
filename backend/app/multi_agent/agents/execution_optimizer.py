@@ -1,6 +1,6 @@
 import logging
 import sqlparse
-from typing import Dict, List, Any, Optional
+import re
 
 from app.multi_agent.state.agent_state import AgentState, OptimizationResult
 
@@ -55,7 +55,6 @@ def analyze_sql_structure(sql):
             order_by.append(str(token))
     
     # 使用正则表达式从 SQL 语句中提取表名
-    import re
     from_match = re.search(r'FROM\s+([\w`]+)', sql, re.IGNORECASE)
     if from_match:
         table_name = from_match.group(1).strip('`')
@@ -103,121 +102,6 @@ def analyze_index_usage(sql_structure, indexes):
         'missing_indexes': missing_indexes
     }
 
-
-def generate_natural_language_comment(sql_structure, index_usage, performance_analysis):
-    """生成自然语言注释"""
-    comments = []
-    comments.append("/*")
-    comments.append("===================================================================")
-    comments.append("                        SQL 查询分析报告                         ")
-    comments.append("===================================================================")
-    
-    # 分析 SQL 功能
-    comments.append("\n【SQL 查询功能说明】")
-    if sql_structure['tables']:
-        tables_str = ', '.join(sql_structure['tables'])
-        comments.append(f"- 查询涉及的表：{tables_str}")
-    else:
-        comments.append("- 查询涉及的表：无")
-    
-    if sql_structure['where_conditions']:
-        comments.append("- 过滤条件：存在 WHERE 子句，对数据进行筛选")
-    else:
-        comments.append("- 过滤条件：无")
-    
-    if sql_structure['join_conditions']:
-        comments.append("- 连接操作：存在 JOIN 子句，关联多个表的数据")
-    else:
-        comments.append("- 连接操作：无")
-    
-    if sql_structure['group_by']:
-        comments.append("- 分组操作：存在 GROUP BY 子句，对数据进行分组统计")
-    else:
-        comments.append("- 分组操作：无")
-    
-    if sql_structure['order_by']:
-        comments.append("- 排序操作：存在 ORDER BY 子句，对结果进行排序")
-    else:
-        comments.append("- 排序操作：无")
-    
-    # 索引使用情况
-    comments.append("\n【索引使用情况】")
-    if index_usage['used_indexes']:
-        index_notes = []
-        for idx in index_usage['used_indexes']:
-            index_notes.append(f"{idx['table']}表的{idx['index_name']}索引")
-        comments.append(f"- 使用了以下索引：{', '.join(index_notes)}")
-    else:
-        comments.append("- 未使用任何索引，可能影响查询性能")
-    
-    # 性能分析
-    comments.append("\n【性能分析】")
-    if performance_analysis:
-        comments.append(f"- 性能瓶颈：{performance_analysis.get('bottleneck', '无明显瓶颈')}")
-        comments.append(f"- 预计执行时间：{performance_analysis.get('estimated_time', '< 0.1秒')}")
-    else:
-        comments.append("- 性能瓶颈：无明显瓶颈")
-        comments.append("- 预计执行时间：< 0.1秒")
-    
-    # 优化建议
-    comments.append("\n【优化建议】")
-    if index_usage['missing_indexes']:
-        suggestions = []
-        for idx in index_usage['missing_indexes']:
-            suggestions.append(f"为{idx['table']}表的{idx['column']}字段添加索引")
-        comments.append(f"- {'; '.join(suggestions)}")
-    else:
-        comments.append("- 暂无优化建议")
-    
-    comments.append("\n===================================================================")
-    comments.append("*/")
-    
-    return '\n'.join(comments)
-
-
-def generate_execution_notes(sql_structure, index_usage, performance_analysis):
-    """生成执行注释"""
-    notes = []
-    notes.append("-- ===================================================================")
-    notes.append("--                        执行优化注释                              ")
-    notes.append("-- ===================================================================")
-    
-    # 索引使用情况
-    notes.append("-- ")
-    notes.append("-- 【索引使用情况】")
-    if index_usage['used_indexes']:
-        index_notes = []
-        for idx in index_usage['used_indexes']:
-            index_notes.append(f"{idx['table']}表的{idx['index_name']}索引")
-        notes.append(f"-- 使用了以下索引：{', '.join(index_notes)}")
-    else:
-        notes.append("-- 未使用任何索引，可能影响查询性能")
-    
-    # 性能瓶颈分析
-    notes.append("-- ")
-    notes.append("-- 【性能分析】")
-    if performance_analysis:
-        notes.append(f"-- 性能瓶颈：{performance_analysis.get('bottleneck', '无明显瓶颈')}")
-        notes.append(f"-- 预计执行时间：{performance_analysis.get('estimated_time', '< 0.1秒')}")
-    else:
-        notes.append("-- 性能瓶颈：无明显瓶颈")
-        notes.append("-- 预计执行时间：< 0.1秒")
-    
-    # 优化建议
-    notes.append("-- ")
-    notes.append("-- 【优化建议】")
-    if index_usage['missing_indexes']:
-        suggestions = []
-        for idx in index_usage['missing_indexes']:
-            suggestions.append(f"为{idx['table']}表的{idx['column']}字段添加索引")
-        notes.append(f"-- {'; '.join(suggestions)}")
-    else:
-        notes.append("-- 暂无优化建议")
-    
-    notes.append("-- ")
-    notes.append("-- ===================================================================")
-    
-    return '\n'.join(notes)
 
 
 def execution_optimizer(state: AgentState) -> AgentState:
@@ -268,16 +152,10 @@ def execution_optimizer(state: AgentState) -> AgentState:
         index_usage = analyze_index_usage(sql_structure, mock_indexes)
         logger.info(f"索引使用分析结果: {index_usage}")
         
-        # 3. 执行计划分析（模拟）
-        performance_analysis = {
-            'bottleneck': '无明显瓶颈',
-            'estimated_time': '< 0.1秒'
-        }
-        
-        # 5. 生成自然语言注释（只保留对 SQL 语言的解释，只显示有数据的说明）
-        comments = []
-        comments.append("-- SQL 语句功能说明：")
-        
+
+        # 3. 生成自然语言注释（只保留对 SQL 语言的解释，只显示有数据的说明）
+        comments = ["-- SQL 语句功能说明："]
+
         # 分析数据来源
         if sql_structure['tables']:
             tables_str = ', '.join(sql_structure['tables'])
@@ -310,10 +188,10 @@ def execution_optimizer(state: AgentState) -> AgentState:
         
         natural_language_comment = '\n'.join(comments) + '\n'
         
-        # 6. 生成优化后的SQL（当前版本不做实际优化，仅添加注释）
+        # 4. 生成优化后的SQL（当前版本不做实际优化，仅添加注释）
         optimized_sql = f"{generated_sql}\n{natural_language_comment}"
         
-        # 6. 构建优化结果
+        # 5. 构建优化结果
         optimization_result = OptimizationResult(
             optimized=True,
             optimized_sql=optimized_sql,

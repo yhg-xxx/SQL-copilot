@@ -150,6 +150,9 @@ def sql_generator(state: AgentState) -> AgentState:
         if datasource_id:
             schema = get_datasource_schema(datasource_id)
         
+        # 将表结构存入 state，供后续智能体使用
+        state["db_info"] = schema
+        
         # 格式化表结构信息
         schema_text = format_schema_for_prompt(schema)
         
