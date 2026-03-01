@@ -35,7 +35,7 @@ class DatasourceResponse(BaseModel):
     type: str
     type_name: Optional[str] = None
     configuration: str
-    create_time: Optional[datetime] = None
+    created_at: Optional[datetime] = None
     create_by: Optional[int] = None
     status: Optional[str] = None
     num: Optional[str] = None

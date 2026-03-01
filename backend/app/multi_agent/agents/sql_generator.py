@@ -49,11 +49,14 @@ def get_datasource_schema(datasource_id: int) -> dict[Any, Any] | None:
                 field_list = []
                 for field in fields:
                     field_info = {
-                        'name': field.field_name,
-                        'type': field.field_type,
-                        'comment': field.field_comment or field.custom_comment or ''
-                    }
-                    field_list.append(field_info)
+                    'name': field.field_name,
+                    'type': field.field_type,
+                    'comment': field.field_comment or field.custom_comment or '',
+                    'is_indexed': field.is_indexed,
+                    'index_name': field.index_name,
+                    'index_type': field.index_type
+                }
+                field_list.append(field_info)
                 
                 schema[table.table_name] = {
                     'comment': table.table_comment or table.custom_comment or '',
@@ -110,6 +113,13 @@ def format_schema_for_prompt(schema: Dict[str, List[Dict]]) -> str:
             field_desc = f"    - {field['name']} ({field['type']})"
             if field['comment']:
                 field_desc += f": {field['comment']}"
+            
+            # 添加索引信息
+            if field.get('is_indexed'):
+                index_type = field.get('index_type') or 'INDEX'
+                index_name = field.get('index_name') or 'unknown'
+                field_desc += f" [{index_type} 索引: {index_name}]"
+            
             lines.append(field_desc)
     
     return '\n'.join(lines)
@@ -161,7 +171,10 @@ JSON 格式：
 2. 使用正确的表名和字段名
 3. 考虑字段类型，避免类型错误
 4. 如果查询条件需要，使用适当的 WHERE 子句
-5. 如果需要连接多个表，使用适当的 JOIN 语句"""
+5. 如果需要连接多个表，使用适当的 JOIN 语句
+6. 优先使用索引字段作为过滤条件、JOIN 条件和排序字段
+7. 避免在非索引字段上进行大范围过滤或排序
+8. 对于复杂查询，选择最优的执行计划"""
         
         user_prompt = f"用户查询: {user_query}"
         

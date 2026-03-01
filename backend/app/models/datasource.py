@@ -13,7 +13,7 @@ class Datasource(Base):
     type = Column(Text, nullable=False, comment="数据源类型: mysql, postgresql, oracle, sqlserver等")
     type_name = Column(Text, nullable=True, comment="类型名称")
     configuration = Column(Text, nullable=False, comment="配置信息")
-    create_time = Column(DateTime, nullable=True, server_default=func.now(), comment="创建时间")
+    created_at = Column(DateTime, nullable=True, server_default=func.now(), comment="创建时间")
     create_by = Column(Integer, nullable=True, comment="创建人ID")
     status = Column(Text, nullable=True, comment="状态: Success, Failed")
     num = Column(Text, nullable=True, comment="表数量统计: selected/total")

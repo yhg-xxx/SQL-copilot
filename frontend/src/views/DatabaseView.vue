@@ -659,39 +659,11 @@ onMounted(() => {
   overflow: auto;
 }
 
-.preview-wrapper {
-  height: 100%;
-  overflow: auto;
-  padding: 20px;
-}
-
-.preview-header {
-  background-color: #eff6ff;
-  color: #1e40af;
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
 .empty-content {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.editable-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cell-value {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .edit-icon {

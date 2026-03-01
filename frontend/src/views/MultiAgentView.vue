@@ -140,8 +140,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElNotification } from 'element-plus'
 import { 
-  Delete, 
-  Loading, 
+  Delete,
   DocumentCopy, 
   ChatDotRound,
   DataAnalysis,
