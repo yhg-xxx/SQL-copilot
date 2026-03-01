@@ -49,14 +49,14 @@ def get_datasource_schema(datasource_id: int) -> dict[Any, Any] | None:
                 field_list = []
                 for field in fields:
                     field_info = {
-                    'name': field.field_name,
-                    'type': field.field_type,
-                    'comment': field.field_comment or field.custom_comment or '',
-                    'is_indexed': field.is_indexed,
-                    'index_name': field.index_name,
-                    'index_type': field.index_type
-                }
-                field_list.append(field_info)
+                        'name': field.field_name,
+                        'type': field.field_type,
+                        'comment': field.field_comment or field.custom_comment or '',
+                        'is_indexed': field.is_indexed,
+                        'index_name': field.index_name,
+                        'index_type': field.index_type
+                    }
+                    field_list.append(field_info)
                 
                 schema[table.table_name] = {
                     'comment': table.table_comment or table.custom_comment or '',
