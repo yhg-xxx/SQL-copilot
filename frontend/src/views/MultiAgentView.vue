@@ -1,131 +1,139 @@
 <template>
   <div class="multi-agent-view">
-    <div class="chat-container">
-      <!-- 聊天头部 -->
-      <div class="chat-header">
-        <div class="header-left">
-          <div class="header-icon">
-            <el-icon><ChatDotRound /></el-icon>
-          </div>
-          <div class="header-text">
-            <h2>多智能体 SQL 助手</h2>
-            <p class="subtitle">使用自然语言与数据库对话</p>
-          </div>
-        </div>
-        <div class="header-right">
-          <el-button @click="clearChat" type="text" class="clear-btn">
-            <el-icon><Delete /></el-icon>
-            清空聊天
-          </el-button>
-        </div>
-      </div>
-
-      <!-- 聊天消息区域 -->
-      <div class="chat-messages" ref="messagesContainer">
-        <ChatMessage
-          v-for="(message, index) in messages"
-          :key="index"
-          :message="message"
-          :is-user="message.role === 'user'"
-        />
-        <div v-if="loading" class="loading-message">
-          <div class="loading-avatar">
-            <el-icon><ChatDotRound /></el-icon>
-          </div>
-          <div class="loading-content">
-            <div class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
+    <div class="content-container">
+      <!-- 左侧聊天区域 -->
+      <div class="chat-container">
+        <!-- 聊天头部 -->
+        <div class="chat-header">
+          <div class="header-left">
+            <div class="header-icon">
+              <el-icon><ChatDotRound /></el-icon>
             </div>
-            <span class="loading-text">正在生成 SQL...</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 输入区域 -->
-      <div class="chat-input-area">
-        <div class="input-wrapper">
-          <el-input
-            v-model="inputMessage"
-            type="textarea"
-            placeholder="输入您的查询，例如：查询所有用户信息"
-            :rows="2"
-            resize="none"
-            @keyup.enter.exact="sendMessage"
-            :disabled="loading"
-            class="chat-input"
-          ></el-input>
-          <div class="input-actions">
-            <div class="datasource-selector">
-              <el-icon><DataAnalysis /></el-icon>
-              <el-select 
-                v-model="selectedDatasource" 
-                placeholder="选择数据源" 
-                size="small"
-                class="datasource-select"
-              >
-                <el-option
-                  v-for="datasource in datasources"
-                  :key="datasource.id"
-                  :label="datasource.name"
-                  :value="datasource.id"
-                >
-                  <div class="datasource-option">
-                    <span class="datasource-name">{{ datasource.name }}</span>
-                    <span class="datasource-type">{{ datasource.type }}</span>
-                  </div>
-                </el-option>
-              </el-select>
+            <div class="header-text">
+              <h2>多智能体 SQL 助手</h2>
+              <p class="subtitle">使用自然语言与数据库对话</p>
             </div>
-            <el-button
-              @click="sendMessage"
-              type="primary"
-              :loading="loading"
-              class="send-btn"
-              :disabled="!inputMessage.trim() || !selectedDatasource"
-            >
-              <el-icon v-if="!loading"><ArrowUp /></el-icon>
-              发送
+          </div>
+          <div class="header-right">
+            <el-button @click="clearChat" type="text" class="clear-btn">
+              <el-icon><Delete /></el-icon>
+              清空聊天
             </el-button>
           </div>
         </div>
+
+        <!-- 聊天消息区域（仅内部滚动） -->
+        <div class="chat-messages" ref="messagesContainer">
+          <ChatMessage
+            v-for="(message, index) in messages"
+            :key="index"
+            :message="message"
+            :is-user="message.role === 'user'"
+          />
+          <div v-if="loading" class="loading-message">
+            <div class="loading-avatar">
+              <el-icon><ChatDotRound /></el-icon>
+            </div>
+            <div class="loading-content">
+              <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="loading-text">正在生成 SQL...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 输入区域（紧凑布局） -->
+        <div class="chat-input-area">
+          <div class="input-wrapper">
+            <!-- 输入框：占满剩余空间，减少内边距 -->
+            <el-input
+              v-model="inputMessage"
+              type="textarea"
+              placeholder="输入您的查询，例如：查询所有用户信息"
+              :rows="2"
+              resize="none"
+              @keyup.enter.exact="sendMessage"
+              :disabled="loading"
+              class="chat-input"
+            ></el-input>
+
+            <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
+            <div class="input-actions">
+              <div class="datasource-selector">
+                <el-icon class="selector-icon"><DataAnalysis /></el-icon>
+                <el-select
+                  v-model="selectedDatasource"
+                  placeholder="选择数据源"
+                  size="small"
+                  class="datasource-select"
+                >
+                  <el-option
+                    v-for="datasource in datasources"
+                    :key="datasource.id"
+                    :label="datasource.name"
+                    :value="datasource.id"
+                  >
+                    <div class="datasource-option">
+                      <span class="datasource-name">{{ datasource.name }}</span>
+                      <span class="datasource-type">{{ datasource.type }}</span>
+                    </div>
+                  </el-option>
+                </el-select>
+              </div>
+              <el-button
+                @click="sendMessage"
+                type="primary"
+                :loading="loading"
+                class="send-btn"
+                :disabled="!inputMessage.trim() || !selectedDatasource"
+              >
+                <el-icon v-if="!loading"><ArrowUp /></el-icon>
+                发送
+              </el-button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- SQL 预览面板 -->
-      <div v-if="currentResult" class="sql-preview">
-        <div class="preview-header">
-          <div class="header-left">
-            <el-icon class="preview-icon"><Document /></el-icon>
-            <h3>SQL 预览</h3>
+      <!-- 右侧 SQL 预览（独立区域） -->
+      <div v-if="currentResult" class="preview-container">
+        <div class="sql-preview">
+          <div class="preview-header">
+            <div class="header-left">
+              <el-icon class="preview-icon"><Document /></el-icon>
+              <h3>SQL 预览</h3>
+            </div>
+            <el-button @click="copySql" type="text" size="small" class="copy-btn">
+              <el-icon><DocumentCopy /></el-icon>
+              复制
+            </el-button>
           </div>
-          <el-button @click="copySql" type="text" size="small" class="copy-btn">
-            <el-icon><DocumentCopy /></el-icon>
-            复制
-          </el-button>
-        </div>
-        <div class="sql-content">
-          <pre class="sql-code">{{ currentResult.final_sql }}</pre>
-        </div>
-        <div class="preview-footer">
-          <div class="result-card validation-result">
-            <div class="result-icon" :class="{ valid: currentResult.validation_result?.valid }">
-              <el-icon><CircleCheck v-if="currentResult.validation_result?.valid" /><CircleClose v-else /></el-icon>
-            </div>
-            <div class="result-content">
-              <span class="label">验证结果</span>
-              <span :class="['status', { valid: currentResult.validation_result?.valid }]">
-                {{ currentResult.validation_result?.valid ? '验证通过' : '验证失败' }}
-              </span>
-            </div>
+          <div class="sql-content">
+            <pre class="sql-code">{{ currentResult.final_sql }}</pre>
           </div>
-          <div class="result-card optimization-result">
-            <div class="result-icon">
-              <el-icon><InfoFilled /></el-icon>
+          <div class="preview-footer">
+            <div class="result-card validation-result">
+              <div class="result-icon" :class="{ valid: currentResult.validation_result?.valid }">
+                <el-icon><CircleCheck v-if="currentResult.validation_result?.valid" /><CircleClose v-else /></el-icon>
+              </div>
+              <div class="result-content">
+                <span class="label">验证结果</span>
+                <span :class="['status', { valid: currentResult.validation_result?.valid }]">
+                  {{ currentResult.validation_result?.valid ? '验证通过' : '验证失败' }}
+                </span>
+              </div>
             </div>
-            <div class="result-content">
-              <span class="label">优化建议</span>
-              <span class="suggestions">{{ currentResult.optimization_result?.suggestions?.[0] || '无' }}</span>
+            <div class="result-card optimization-result">
+              <div class="result-icon">
+                <el-icon><InfoFilled /></el-icon>
+              </div>
+              <div class="result-content">
+                <span class="label">优化建议</span>
+                <span class="suggestions">{{ currentResult.optimization_result?.suggestions?.[0] || '无' }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -139,9 +147,9 @@ import { ref, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElNotification } from 'element-plus'
-import { 
+import {
   Delete,
-  DocumentCopy, 
+  DocumentCopy,
   ChatDotRound,
   DataAnalysis,
   ArrowUp,
@@ -174,7 +182,6 @@ const sendMessage = async () => {
     ElMessage.warning('请输入查询内容')
     return
   }
-
   if (!selectedDatasource.value) {
     ElMessage.warning('请先选择数据源')
     return
@@ -187,7 +194,6 @@ const sendMessage = async () => {
   })
   inputMessage.value = ''
   loading.value = true
-  
   await scrollToBottom()
 
   try {
@@ -197,35 +203,25 @@ const sendMessage = async () => {
       datasource_id: selectedDatasource.value,
       chat_id: 'chat_' + Date.now()
     }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     })
 
     const result = response.data
-    
     messages.value.push({
       role: 'assistant',
-      content: result.success ? `生成成功！\n\n最终 SQL:\n${result.final_sql}` : `生成失败: ${result.error_message}`,
+      content: result.success
+        ? `生成成功！\n\n最终 SQL:\n${result.final_sql}`
+        : `生成失败: ${result.error_message}`,
       timestamp: new Date().toLocaleTimeString(),
       sql: result.final_sql,
       success: result.success
     })
-
     currentResult.value = result
 
     if (result.success) {
-      ElNotification.success({
-        title: '成功',
-        message: 'SQL 生成成功',
-        duration: 2000
-      })
+      ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
     } else {
-      ElNotification.error({
-        title: '失败',
-        message: result.error_message,
-        duration: 3000
-      })
+      ElNotification.error({ title: '失败', message: result.error_message, duration: 3000 })
     }
   } catch (error) {
     console.error('发送消息失败:', error)
@@ -259,12 +255,9 @@ const loadDatasources = async () => {
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get('http://localhost:8000/datasource/list', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     })
     datasources.value = response.data
-    
     if (datasources.value.length > 0 && !selectedDatasource.value) {
       selectedDatasource.value = datasources.value[0].id
     }
@@ -286,86 +279,104 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.multi-agent-view {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40px 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+/* 重置页面边距，确保全屏显示 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.chat-container {
+/* 全局容器：固定全屏，无滚动 */
+.multi-agent-view {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* 关键：完全禁止外部滚动 */
+  position: fixed; /* 固定定位，避免页面滚动 */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* 内容容器：限制最大宽度，内部 flex 布局 */
+.content-container {
   width: 100%;
-  max-width: 1000px;
-  margin: 0 20px;
+  max-width: 1400px;
+  height: calc(100vh - 40px); /* 减去上下内边距 */
+  max-height: calc(100vh - 40px);
+  display: flex;
+  gap: 20px;
+  align-items: stretch; /* 子项等高 */
+  padding: 0 20px;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 左侧聊天容器：占满剩余空间，内部滚动 */
+.chat-container {
+  flex: 1;
+  min-width: 0;
   background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border-radius: 16px; /* 减小圆角，更紧凑 */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* 减弱阴影 */
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 85vh;
-  animation: slideUp 0.5s ease-out;
+  height: 100%; /* 占满父容器高度 */
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* 聊天头部：固定高度，减少内边距 */
 .chat-header {
   background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
-  padding: 24px 32px;
+  padding: 16px 24px; /* 减小内边距 */
   border-bottom: 1px solid #e8ecf4;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+  height: 80px; /* 固定高度 */
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px; /* 减小间距 */
 }
 
 .header-icon {
-  width: 48px;
-  height: 48px;
+  width: 40px; /* 减小图标尺寸 */
+  height: 40px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 24px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  font-size: 20px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .header-text h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px; /* 减小字体 */
+  font-weight: 600; /* 调整字重 */
   color: #1a1a2a;
 }
 
 .subtitle {
-  margin: 4px 0 0 0;
-  font-size: 14px;
+  margin: 2px 0 0 0;
+  font-size: 12px; /* 减小字体 */
   color: #6b7280;
 }
 
 .clear-btn {
   color: #6b7280;
   font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 6px 12px; /* 减小内边距 */
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 
@@ -374,136 +385,134 @@ onMounted(() => {
   background: #fee2e2;
 }
 
+/* 聊天消息区域：仅内部滚动，占满剩余高度 */
 .chat-messages {
   flex: 1;
-  padding: 32px;
-  overflow-y: auto;
+  padding: 20px 24px; /* 减小内边距 */
+  overflow-y: auto; /* 仅内部滚动 */
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px; /* 减小消息间距 */
   background: #fafbfc;
+  min-height: 0;
+  max-height: calc(100vh - 240px); /* 动态计算最大高度 */
 }
 
+/* 加载消息：紧凑样式 */
 .loading-message {
   display: flex;
-  gap: 16px;
+  gap: 12px; /* 减小间距 */
   align-self: flex-start;
   animation: fadeIn 0.3s ease-in;
 }
 
 .loading-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px; /* 减小尺寸 */
+  height: 36px;
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .loading-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px; /* 减小间距 */
+  padding: 12px 16px; /* 减小内边距 */
   background: #f7f8ff;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.loading-dots {
-  display: flex;
-  gap: 4px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .loading-dots span {
-  width: 8px;
-  height: 8px;
+  width: 6px; /* 减小点尺寸 */
+  height: 6px;
   background: #667eea;
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
-.loading-dots span:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.loading-dots span:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-@keyframes bounce {
-  0%, 80%, 100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
-
 .loading-text {
-  font-size: 13px;
+  font-size: 12px; /* 减小字体 */
   color: #6b7280;
 }
 
+/* 输入区域：紧凑布局，固定高度 */
 .chat-input-area {
-  padding: 24px 32px;
+  padding: 16px 24px; /* 减小内边距 */
   border-top: 1px solid #e8ecf4;
   background: #fff;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 减小间距 */
+  height: 160px; /* 固定高度 */
 }
 
+/* 输入框容器：横向布局，输入框占满剩余空间 */
 .input-wrapper {
   background: #f8f9ff;
-  border-radius: 16px;
-  padding: 20px;
-  border: 2px solid #e8ecf4;
+  border-radius: 12px; /* 减小圆角 */
+  padding: 16px; /* 减小内边距 */
+  border: 1px solid #e8ecf4; /* 减弱边框 */
   transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 输入框与操作栏的间距 */
+  height: 100%; /* 占满父容器高度 */
 }
 
 .input-wrapper:focus-within {
   border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* 输入框：占满宽度，减少内边距 */
 .chat-input {
   background: transparent;
+  flex: 1; /* 占满剩余高度 */
 }
 
 .chat-input :deep(.el-textarea__inner) {
   background: transparent;
   border: none;
   padding: 0;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px; /* 减小字体 */
+  line-height: 1.5; /* 调整行高 */
   resize: none;
+  height: 100% !important; /* 强制占满高度 */
 }
 
 .chat-input :deep(.el-textarea__inner):focus {
   box-shadow: none;
 }
 
+/* 操作栏：数据库选择器 + 发送按钮 横向排列，紧凑布局 */
 .input-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
-  gap: 16px;
+  gap: 12px; /* 减小间距 */
+  margin-top: auto; /* 推到容器底部 */
 }
 
+/* 数据源选择器：紧凑样式 */
 .datasource-selector {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1;
-  max-width: 400px;
+  gap: 6px; /* 减小间距 */
+  flex: 1; /* 占满剩余空间 */
+  max-width: 300px; /* 限制最大宽度 */
 }
 
-.datasource-selector .el-icon {
+.selector-icon {
   color: #667eea;
-  font-size: 18px;
+  font-size: 16px; /* 减小图标尺寸 */
 }
 
 .datasource-select {
@@ -511,16 +520,17 @@ onMounted(() => {
 }
 
 .datasource-select :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  border: 2px solid #e8ecf4;
+  border-radius: 8px; /* 减小圆角 */
+  border: 1px solid #e8ecf4;
   background: #fff;
   transition: all 0.2s ease;
+  padding: 4px 8px; /* 减小内边距 */
 }
 
 .datasource-select :deep(.el-input__wrapper):hover,
 .datasource-select :deep(.el-input__wrapper.is-focus) {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 .datasource-option {
@@ -533,30 +543,33 @@ onMounted(() => {
 .datasource-name {
   font-weight: 500;
   color: #1a1a2a;
+  font-size: 13px; /* 减小字体 */
 }
 
 .datasource-type {
-  font-size: 12px;
+  font-size: 11px; /* 减小字体 */
   color: #6b7280;
   background: #f3f4f6;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 1px 6px; /* 减小内边距 */
+  border-radius: 4px;
 }
 
+/* 发送按钮：紧凑样式 */
 .send-btn {
-  min-width: 100px;
-  height: 40px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 15px;
+  min-width: 80px; /* 减小最小宽度 */
+  height: 36px; /* 减小高度 */
+  border-radius: 8px; /* 减小圆角 */
+  font-weight: 500; /* 调整字重 */
+  font-size: 14px; /* 减小字体 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   transition: all 0.2s ease;
+  flex-shrink: 0; /* 防止按钮被压缩 */
 }
 
 .send-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px); /* 减小 hover 位移 */
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .send-btn:disabled {
@@ -564,56 +577,72 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.sql-preview {
-  border-top: 1px solid #e8ecf4;
-  padding: 24px 32px;
-  background: #fafbfc;
-  max-height: 350px;
-  overflow-y: auto;
-  animation: slideDown 0.3s ease-out;
+/* 右侧 SQL 预览面板：紧凑样式，占满剩余高度 */
+.preview-container {
+  width: 380px; /* 减小宽度 */
+  flex-shrink: 0;
+  animation: slideInRight 0.5s ease-out;
+  height: 100%; /* 占满父容器高度 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 禁止外部滚动 */
 }
 
-@keyframes slideDown {
+@keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateX(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
+.sql-preview {
+  background: #fff;
+  border-radius: 16px; /* 减小圆角 */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* 减弱阴影 */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 占满父容器高度 */
+}
+
 .preview-header {
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+  padding: 16px 24px; /* 减小内边距 */
+  border-bottom: 1px solid #e8ecf4;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  flex-shrink: 0;
+  height: 80px; /* 固定高度 */
 }
 
 .preview-header .header-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px; /* 减小间距 */
 }
 
 .preview-icon {
   color: #667eea;
-  font-size: 20px;
+  font-size: 18px; /* 减小图标尺寸 */
 }
 
 .preview-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px; /* 减小字体 */
+  font-weight: 600;
   color: #1a1a2a;
 }
 
 .copy-btn {
   color: #6b7280;
   font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 4px 8px; /* 减小内边距 */
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 
@@ -622,13 +651,17 @@ onMounted(() => {
   background: #f0f2ff;
 }
 
+/* 修正SQL内容区域：允许滚动，计算正确高度 */
 .sql-content {
+  flex: 1;
   background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 20px; /* 减小内边距 */
+  overflow-y: auto; /* SQL 内容可滚动 */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* 动态计算高度：100% - 头部高度(80px) - 底部高度(120px) */
+  max-height: calc(100% - 200px);
 }
 
 .sql-code {
@@ -637,43 +670,52 @@ onMounted(() => {
   padding: 0;
   margin: 0;
   font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 13px; /* 减小字体 */
   white-space: pre-wrap;
   word-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.5; /* 调整行高 */
+  flex: 1;
+  min-height: 0;
+  overflow: auto; /* 确保代码可以滚动 */
 }
 
 .preview-footer {
+  padding: 16px 24px; /* 减小内边距 */
+  border-top: 1px solid #e8ecf4;
+  background: #fafbfc;
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px; /* 减小间距 */
+  flex-shrink: 0;
+  height: 120px; /* 固定高度 */
 }
 
 .result-card {
-  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px; /* 减小间距 */
+  padding: 12px 16px; /* 减小内边距 */
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 10px; /* 减小圆角 */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); /* 减弱阴影 */
   border: 1px solid #e8ecf4;
   transition: all 0.2s ease;
+  flex: 1; /* 占满可用空间 */
 }
 
 .result-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px); /* 减小 hover 位移 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .result-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 32px; /* 减小尺寸 */
+  height: 32px;
+  border-radius: 8px; /* 减小圆角 */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 16px; /* 减小图标尺寸 */
   background: #f3f4f6;
   color: #6b7280;
   flex-shrink: 0;
@@ -688,18 +730,18 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px; /* 减小间距 */
 }
 
 .result-content .label {
-  font-size: 12px;
+  font-size: 11px; /* 减小字体 */
   color: #6b7280;
   font-weight: 500;
 }
 
 .result-content .status,
 .result-content .suggestions {
-  font-size: 14px;
+  font-size: 13px; /* 减小字体 */
   color: #1a1a2a;
   font-weight: 600;
 }
@@ -708,80 +750,125 @@ onMounted(() => {
   color: #16a34a;
 }
 
-/* 滚动条样式 */
+/* 滚动条样式：更细、更柔和 */
 .chat-messages::-webkit-scrollbar,
-.sql-preview::-webkit-scrollbar {
-  width: 8px;
+.sql-content::-webkit-scrollbar {
+  width: 6px;
 }
 
 .chat-messages::-webkit-scrollbar-track,
-.sql-preview::-webkit-scrollbar-track {
+.sql-content::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb,
-.sql-preview::-webkit-scrollbar-thumb {
+.sql-content::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover,
-.sql-preview::-webkit-scrollbar-thumb:hover {
+.sql-content::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
 
-/* 响应式设计 */
+/* 响应式设计：小屏幕下堆叠布局 */
+@media (max-width: 1024px) {
+  .content-container {
+    flex-direction: column;
+    max-width: 800px;
+    height: calc(100vh - 20px);
+    padding: 0 10px;
+  }
+
+  .preview-container {
+    width: 100%;
+    margin-top: 20px;
+    height: 40vh; /* 固定高度 */
+  }
+
+  .chat-container {
+    height: 60vh; /* 固定高度 */
+  }
+
+  .chat-messages {
+    max-height: calc(60vh - 240px);
+  }
+
+  .sql-content {
+    /* 移动端重新计算高度：100% - 头部(80px) - 底部(120px) */
+    max-height: calc(100% - 200px);
+  }
+}
+
 @media (max-width: 768px) {
   .multi-agent-view {
-    padding: 20px 0;
+    position: fixed;
   }
-  
+
+  .content-container {
+    height: calc(100vh - 10px);
+    padding: 0 8px;
+  }
+
   .chat-container {
-    height: 90vh;
-    margin: 0 10px;
-    border-radius: 16px;
+    height: 60vh;
   }
-  
+
+  .preview-container {
+    height: 40vh;
+  }
+
+  .chat-container,
+  .sql-preview {
+    border-radius: 12px; /* 减小圆角 */
+  }
+
   .chat-header,
   .chat-input-area,
-  .sql-preview {
-    padding: 20px 24px;
+  .preview-header,
+  .preview-footer {
+    padding: 12px 16px; /* 减小内边距 */
   }
-  
+
   .chat-messages {
-    padding: 24px 20px;
+    padding: 12px 16px;
   }
-  
+
+  .sql-content {
+    padding: 12px 16px;
+  }
+
+  .input-wrapper {
+    padding: 12px 16px;
+  }
+
   .header-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-  
-  .header-text h2 {
+    width: 36px;
+    height: 36px;
     font-size: 18px;
   }
-  
-  .subtitle {
-    font-size: 13px;
+
+  .header-text h2 {
+    font-size: 16px;
   }
-  
+
+  .subtitle {
+    font-size: 11px;
+  }
+
   .input-actions {
-    flex-direction: column;
+    flex-direction: column; /* 小屏幕下垂直排列 */
     align-items: stretch;
   }
-  
+
   .datasource-selector {
     max-width: 100%;
   }
-  
+
   .send-btn {
-    width: 100%;
-  }
-  
-  .preview-footer {
-    flex-direction: column;
+    width: 100%; /* 小屏幕下占满宽度 */
   }
 }
 </style>
