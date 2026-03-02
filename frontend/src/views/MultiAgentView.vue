@@ -1,7 +1,37 @@
 <template>
   <div class="multi-agent-view">
     <div class="content-container">
-      <!-- 左侧聊天区域 -->
+      <!-- 左侧对话列表 -->
+      <div class="conversation-list">
+        <div class="conversation-header">
+          <h2>对话</h2>
+          <el-button @click="createNewConversation" type="primary" size="small" class="new-conversation-btn">
+            <el-icon><Plus /></el-icon>
+            新对话
+          </el-button>
+        </div>
+        <div class="conversation-items">
+          <div 
+            v-for="conversation in conversations" 
+            :key="conversation.conversation_id"
+            class="conversation-item"
+            :class="{ active: selectedConversationId === conversation.conversation_id }"
+            @click="selectConversation(conversation)"
+          >
+            <div class="conversation-title">{{ conversation.title }}</div>
+            <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
+            <div v-else class="conversation-last-message empty">暂无消息</div>
+            <div class="conversation-time">{{ formatTime(conversation.updated_at) }}</div>
+          </div>
+          <div v-if="conversations.length === 0" class="empty-conversations">
+            <el-icon class="empty-icon"><ChatLineSquare /></el-icon>
+            <p>暂无对话</p>
+            <p class="empty-hint">点击上方按钮创建新对话</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间聊天区域 -->
       <div class="chat-container">
         <!-- 聊天头部 -->
         <div class="chat-header">
@@ -146,7 +176,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage, ElNotification, ElInput } from 'element-plus'
 import {
   Delete,
   DocumentCopy,
@@ -156,7 +186,9 @@ import {
   Document,
   CircleCheck,
   CircleClose,
-  InfoFilled
+  InfoFilled,
+  Plus,
+  ChatLineSquare
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 
@@ -168,6 +200,12 @@ const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
+
+// 对话相关状态
+const conversations = ref([])
+const selectedConversationId = ref(null)
+const creatingConversation = ref(false)
+const newConversationTitle = ref('')
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -186,6 +224,10 @@ const sendMessage = async () => {
     ElMessage.warning('请先选择数据源')
     return
   }
+  if (!selectedConversationId.value) {
+    ElMessage.warning('请先创建或选择一个对话')
+    return
+  }
 
   messages.value.push({
     role: 'user',
@@ -201,7 +243,7 @@ const sendMessage = async () => {
     const response = await axios.post('http://localhost:8000/multi-agent/query', {
       query: message,
       datasource_id: selectedDatasource.value,
-      chat_id: 'chat_' + Date.now()
+      chat_id: selectedConversationId.value
     }, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -220,6 +262,8 @@ const sendMessage = async () => {
 
     if (result.success) {
       ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
+      // 更新对话的最后一条消息
+      updateConversationLastMessage(selectedConversationId.value, message)
     } else {
       ElNotification.error({ title: '失败', message: result.error_message, duration: 3000 })
     }
@@ -267,8 +311,142 @@ const loadDatasources = async () => {
   }
 }
 
+// 加载对话列表
+const loadConversations = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('http://localhost:8000/conversations', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    conversations.value = response.data.conversations
+    if (conversations.value.length > 0 && !selectedConversationId.value) {
+      selectConversation(conversations.value[0])
+    }
+  } catch (error) {
+    console.error('获取对话列表失败:', error)
+    ElMessage.error('获取对话列表失败')
+  }
+}
+
+// 创建新对话
+const createNewConversation = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post('http://localhost:8000/conversations', {
+      title: '新对话'
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    const newConversation = response.data
+    conversations.value.unshift(newConversation)
+    selectConversation(newConversation)
+    ElMessage.success('新对话创建成功')
+  } catch (error) {
+    console.error('创建对话失败:', error)
+    ElMessage.error('创建对话失败')
+  }
+}
+
+// 加载对话历史记录
+const loadConversationHistory = async (conversationId) => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`http://localhost:8000/conversations/${conversationId}/history`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    const history = response.data.history
+    messages.value = []
+    
+    if (history.length > 0) {
+      // 加载历史记录
+      history.forEach(item => {
+        messages.value.push({
+          role: item.role,
+          content: item.content,
+          timestamp: new Date(item.timestamp).toLocaleTimeString(),
+          sql: item.sql
+        })
+      })
+    } else {
+      // 显示欢迎消息
+      messages.value.push({
+        role: 'assistant',
+        content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
+        timestamp: new Date().toLocaleTimeString(),
+        isWelcome: true
+      })
+    }
+    
+    currentResult.value = null
+    await scrollToBottom()
+  } catch (error) {
+    console.error('加载对话历史失败:', error)
+    ElMessage.error('加载对话历史失败')
+    // 显示欢迎消息
+    messages.value = []
+    messages.value.push({
+      role: 'assistant',
+      content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
+      timestamp: new Date().toLocaleTimeString(),
+      isWelcome: true
+    })
+  }
+}
+
+// 更新对话的最后一条消息
+const updateConversationLastMessage = async (conversationId, lastMessage) => {
+  try {
+    const token = localStorage.getItem('token')
+    await axios.put(`http://localhost:8000/conversations/${conversationId}`, {
+      last_message: lastMessage,
+      last_message_time: new Date().toISOString()
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    // 重新加载对话列表
+    await loadConversations()
+  } catch (error) {
+    console.error('更新对话最后一条消息失败:', error)
+  }
+}
+
+// 选择对话
+const selectConversation = async (conversation) => {
+  selectedConversationId.value = conversation.conversation_id
+  // 加载对话历史记录
+  await loadConversationHistory(conversation.conversation_id)
+}
+
+// 辅助方法：截断消息
+const truncateMessage = (message, maxLength = 30) => {
+  if (message.length <= maxLength) return message
+  return message.substring(0, maxLength) + '...'
+}
+
+// 辅助方法：格式化时间
+const formatTime = (timeString) => {
+  const date = new Date(timeString)
+  const now = new Date()
+  const diffTime = now - date
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  } else if (diffDays === 1) {
+    return '昨天'
+  } else if (diffDays < 7) {
+    return `${diffDays}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+  }
+}
+
 onMounted(() => {
   loadDatasources()
+  loadConversations()
   messages.value.push({
     role: 'assistant',
     content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
@@ -305,7 +483,7 @@ onMounted(() => {
 /* 内容容器：限制最大宽度，内部 flex 布局 */
 .content-container {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   height: calc(100vh - 40px); /* 减去上下内边距 */
   max-height: calc(100vh - 40px);
   display: flex;
@@ -315,7 +493,127 @@ onMounted(() => {
   overflow: hidden; /* 防止内容溢出 */
 }
 
-/* 左侧聊天容器：占满剩余空间，内部滚动 */
+/* 左侧对话列表 */
+.conversation-list {
+  width: 300px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conversation-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e8ecf4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+}
+
+.conversation-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2a;
+}
+
+.new-conversation-btn {
+  min-width: 80px;
+  height: 32px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.new-conversation-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.conversation-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.conversation-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.conversation-item:hover {
+  background: #f0f2ff;
+}
+
+.conversation-item.active {
+  background: #e0e7ff;
+  border-left: 3px solid #667eea;
+}
+
+.conversation-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: #1a1a2a;
+  margin-bottom: 4px;
+}
+
+.conversation-last-message {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.conversation-last-message.empty {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.conversation-time {
+  font-size: 11px;
+  color: #9ca3af;
+  position: absolute;
+  top: 12px;
+  right: 16px;
+}
+
+.empty-conversations {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #d1d5db;
+}
+
+.empty-conversations p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 中间聊天容器：占满剩余空间，内部滚动 */
 .chat-container {
   flex: 1;
   min-width: 0;
@@ -327,6 +625,8 @@ onMounted(() => {
   flex-direction: column;
   height: 100%; /* 占满父容器高度 */
 }
+
+
 
 /* 聊天头部：固定高度，减少内边距 */
 .chat-header {
@@ -782,18 +1082,25 @@ onMounted(() => {
     padding: 0 10px;
   }
 
+  .conversation-list {
+    width: 100%;
+    height: 30vh;
+    margin-bottom: 20px;
+  }
+
   .preview-container {
     width: 100%;
     margin-top: 20px;
-    height: 40vh; /* 固定高度 */
+    height: 30vh; /* 固定高度 */
   }
 
   .chat-container {
-    height: 60vh; /* 固定高度 */
+    flex: 1;
+    min-height: 30vh;
   }
 
   .chat-messages {
-    max-height: calc(60vh - 240px);
+    max-height: calc(50vh - 240px);
   }
 
   .sql-content {

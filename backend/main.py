@@ -15,6 +15,7 @@ from app.api.user import router as user_router
 from app.api.datasource import router as datasource_router
 from app.api.datasource_table import router as datasource_table_router
 from app.api.multi_agent import router as multi_agent_router
+from app.api.conversation import router as conversation_router
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -35,6 +36,7 @@ app.include_router(user_router)
 app.include_router(datasource_router)
 app.include_router(datasource_table_router)
 app.include_router(multi_agent_router)
+app.include_router(conversation_router)
 
 # 根路径
 @app.get("/")

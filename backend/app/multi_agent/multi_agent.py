@@ -33,12 +33,47 @@ async def run_agent(
     try:
         logger.info(f"当前用户ID: {user_id}")
 
+        # 获取对话历史
+        chat_history = []
+        if chat_id:
+            try:
+                from app.database.db import SessionLocal
+                from app.models.user_qa_record import UserQARecord
+                db = SessionLocal()
+                try:
+                    # 查询对话历史记录
+                    history = db.query(UserQARecord).filter(
+                        UserQARecord.conversation_id == chat_id
+                    ).order_by(UserQARecord.create_time.asc()).all()
+                    
+                    # 格式化历史记录
+                    for record in history:
+                        if record.question:
+                            chat_history.append({
+                                "role": "user",
+                                "content": record.question,
+                                "timestamp": record.create_time
+                            })
+                        if record.to2_answer:
+                            chat_history.append({
+                                "role": "assistant",
+                                "content": record.to2_answer,
+                                "timestamp": record.create_time,
+                                "sql": record.sql_statement
+                            })
+                    logger.info(f"获取到 {len(chat_history)} 条对话历史记录")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"获取对话历史失败: {e}")
+
         # 初始化状态
         initial_state = AgentState(
             user_query=query,
             attempts=0,
             datasource_id=datasource_id,
             user_id=user_id,
+            chat_history=chat_history
         )
 
         # 创建图
