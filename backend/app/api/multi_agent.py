@@ -28,7 +28,7 @@ async def multi_agent_query(
     try:
         user_id = int(current_user.get("sub"))
         
-        result = await run_agent(
+        result = await multi_agent_instance.run_agent(
             query=request.query,
             datasource_id=request.datasource_id,
             chat_id=request.chat_id,
