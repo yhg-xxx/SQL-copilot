@@ -77,6 +77,11 @@ def get_datasource_schema(datasource_id: int) -> dict[Any, Any] | None:
                     field_desc = f"    - {field['name']} ({field['type']})"
                     if field['comment']:
                         field_desc += f": {field['comment']}"
+                    # 添加索引信息
+                    if field.get('is_indexed'):
+                        index_type = field.get('index_type') or 'INDEX'
+                        index_name = field.get('index_name') or 'unknown'
+                        field_desc += f" [{index_type} 索引: {index_name}]"
                     logger.info(field_desc)
             logger.info("=" * 80)
             
