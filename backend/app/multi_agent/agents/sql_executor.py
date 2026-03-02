@@ -1,96 +1,12 @@
 import logging
-import json
 from typing import Dict, Any
 import mysql.connector
 from mysql.connector import Error as MySQLError
 
 from app.multi_agent.state.agent_state import AgentState, ExecutionResult
+from app.multi_agent.agents.datasource_utils import get_datasource_config
 
 logger = logging.getLogger(__name__)
-
-
-def get_datasource_config(datasource_id: int) -> Dict[str, Any]:
-    """
-    获取数据源的连接配置
-
-    Args:
-        datasource_id: 数据源ID
-
-    Returns:
-        连接配置字典
-    """
-    try:
-        from app.database.db import SessionLocal
-        db = SessionLocal()
-
-        try:
-            from app.models.datasource import Datasource
-            datasource = db.query(Datasource).filter(Datasource.id == datasource_id).first()
-
-            if not datasource:
-                logger.warning(f"未找到数据源: {datasource_id}")
-                return {}
-
-            # 尝试从不同的属性获取配置信息
-            config = {}
-
-            # 首先检查是否有 configuration 属性
-            if hasattr(datasource, 'configuration') and datasource.configuration:
-                try:
-                    config_str = str(datasource.configuration)
-                    logger.info(f"configuration 字段原始值: {config_str[:200]}")
-                    if config_str:
-                        config = json.loads(config_str)
-                except json.JSONDecodeError as e:
-                    logger.warning(f"解析 configuration 失败: {e}")
-                except Exception as e:
-                    logger.warning(f"处理 configuration 异常: {e}")
-
-            # 如果没有从 configuration 获取到，尝试其他可能的位置
-            if not config and hasattr(datasource, 'config') and datasource.config:
-                try:
-                    config_str = str(datasource.config)
-                    logger.info(f"config 字段原始值: {config_str[:200]}")
-                    if config_str:
-                        config = json.loads(config_str)
-                except (json.JSONDecodeError, AttributeError) as e:
-                    logger.warning(f"解析 config 失败: {e}")
-
-            # 如果都没有，尝试获取单独的字段
-            if not config:
-                for field in ['host', 'port', 'username', 'password', 'database']:
-                    if hasattr(datasource, field):
-                        value = getattr(datasource, field)
-                        if value:
-                            config[field] = value
-
-            logger.info(f"解析后的配置字典: {config}")
-
-            # 构建连接配置
-            connection_config = {
-                "host": config.get("host"),
-                "port": config.get("port", 3306),
-                "username": config.get("username"),
-                "password": config.get("password"),
-                "database": config.get("database")
-            }
-
-            # 检查必要字段
-            required_fields = ["host", "username", "password", "database"]
-            missing_fields = [field for field in required_fields if not connection_config.get(field)]
-
-            if missing_fields:
-                logger.warning(f"数据源 {datasource_id} 缺少必要字段: {missing_fields}")
-                logger.warning(f"当前配置: {connection_config}")
-
-            return connection_config
-
-        finally:
-            db.close()
-
-    except Exception as e:
-        logger.error(f"获取数据源配置失败: {e}", exc_info=True)
-        return {}
 
 
 def execute_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]) -> Dict[str, Any]:
