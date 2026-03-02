@@ -7,7 +7,11 @@ from app.database.db import get_db
 from app.models.user_qa_record import UserQARecord
 import uuid
 
+from backend.app.multi_agent.multi_agent import MultiAgent
+
 router = APIRouter(prefix="/multi-agent", tags=["multi-agent"])
+
+multi_agent_instance = MultiAgent()
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -29,8 +33,8 @@ async def multi_agent_query(
     """
     try:
         user_id = int(current_user.get("sub"))
-
-        result = await run_agent(
+        
+        result = await multi_agent_instance.run_agent(
             query=request.query,
             datasource_id=request.datasource_id,
             chat_id=request.chat_id,
@@ -58,7 +62,7 @@ async def multi_agent_query(
             db.commit()
 
         return QueryResponse(**result)
-
+        
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
