@@ -44,6 +44,8 @@ class MultiAgent:
 
         try:
             logger.info(f"当前用户ID: {user_id}")
+        except Exception as e:
+            logger.error(f"记录用户ID时出错: {e}")
 
             # 获取对话历史
             chat_history = []
@@ -88,46 +90,38 @@ class MultiAgent:
                 chat_history=chat_history
             )
 
-            graph: CompiledStateGraph = create_multi_agent_graph()
+        graph: CompiledStateGraph = create_multi_agent_graph()
 
-            try:
-                final_state = graph.invoke(initial_state)
-            except Exception as e:
-                logger.error(f"图执行失败: {e}", exc_info=True)
-                initial_state["error_message"] = f"执行失败: {str(e)}"
-                final_state = initial_state
-
-            result = {
-                "success": final_state.get("error_message") is None,
-                "user_query": query,
-                "generated_sql": final_state.get("generated_sql"),
-                "final_sql": final_state.get("final_sql"),
-                "validation_result": (
-                    final_state.get("validation_result").model_dump()
-                    if final_state.get("validation_result")
-                    else None
-                ),
-                "optimization_result": (
-                    final_state.get("optimization_result").model_dump()
-                    if final_state.get("optimization_result")
-                    else None
-                ),
-                "execution_result": (
-                    final_state.get("execution_result").model_dump()
-                    if final_state.get("execution_result")
-                    else None
-                ),
-                "sql_execution_result": final_state.get("sql_execution_result"),
-                "error_message": final_state.get("error_message"),
-            }
-
-            logger.info(f"多智能体系统执行完成: {result}")
-            return result
-
+        try:
+            final_state = graph.invoke(initial_state)
         except Exception as e:
-            logger.error(f"多智能体系统运行出错: {e}", exc_info=True)
-            return {
-                "success": False,
-                "user_query": query,
-                "error_message": str(e)
-            }
+            logger.error(f"图执行失败: {e}", exc_info=True)
+            initial_state["error_message"] = f"执行失败: {str(e)}"
+            final_state = initial_state
+
+        result = {
+            "success": final_state.get("error_message") is None,
+            "user_query": query,
+            "generated_sql": final_state.get("generated_sql"),
+            "final_sql": final_state.get("final_sql"),
+            "validation_result": (
+                final_state.get("validation_result").model_dump()
+                if final_state.get("validation_result")
+                else None
+            ),
+            "optimization_result": (
+                final_state.get("optimization_result").model_dump()
+                if final_state.get("optimization_result")
+                else None
+            ),
+            "execution_result": (
+                final_state.get("execution_result").model_dump()
+                if final_state.get("execution_result")
+                else None
+            ),
+            "sql_execution_result": final_state.get("sql_execution_result"),
+            "error_message": final_state.get("error_message"),
+        }
+
+        logger.info(f"多智能体系统执行完成: {result}")
+        return result

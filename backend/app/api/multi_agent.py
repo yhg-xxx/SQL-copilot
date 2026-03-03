@@ -1,12 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
+from backend.app.multi_agent.multi_agent import MultiAgent
 from app.schemas.multi_agent import QueryRequest, QueryResponse
 from app.utils.dependencies import get_current_user
 from app.database.db import get_db
 from app.models.user_qa_record import UserQARecord
 import uuid
-
-from backend.app.multi_agent.multi_agent import MultiAgent
 
 router = APIRouter(prefix="/multi-agent", tags=["multi-agent"])
 
@@ -62,12 +61,9 @@ async def multi_agent_query(
             db.commit()
 
         return QueryResponse(**result)
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Multi-agent query failed: {str(e)}"
         )
-
-
-
