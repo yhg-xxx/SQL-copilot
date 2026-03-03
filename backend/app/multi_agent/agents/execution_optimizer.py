@@ -1,90 +1,19 @@
 import logging
-import sqlparse
-import re
 import json
-
 from langchain_core.messages import SystemMessage, HumanMessage
-
 from app.multi_agent.state.agent_state import AgentState, OptimizationResult
+from app.multi_agent.agents.schema_utils import format_schema_for_prompt
 from app.utils.llm_util import get_llm
 
 logger = logging.getLogger(__name__)
-
-
-def analyze_sql_structure(sql):
-    """分析SQL语句结构"""
-    parsed = sqlparse.parse(sql)[0]
-    tables = []
-    where_conditions = []
-    join_conditions = []
-    group_by = []
-    order_by = []
-    
-    # 简单解析，实际项目中可能需要更复杂的解析
-    for token in parsed.tokens:
-        if isinstance(token, sqlparse.sql.IdentifierList):
-            for identifier in token.get_identifiers():
-                if '.' in str(identifier):
-                    tables.append(str(identifier).split('.')[-1].strip('`'))
-                else:
-                    tables.append(str(identifier).strip('`'))
-        elif isinstance(token, sqlparse.sql.Where):
-            where_conditions.append(str(token))
-        # 检查是否包含 JOIN 关键字
-        elif 'JOIN' in str(token).upper():
-            join_conditions.append(str(token))
-        # 检查是否包含 GROUP BY 关键字
-        elif 'GROUP BY' in str(token).upper():
-            group_by.append(str(token))
-        # 检查是否包含 ORDER BY 关键字
-        elif 'ORDER BY' in str(token).upper():
-            order_by.append(str(token))
-    
-    # 使用正则表达式从 SQL 语句中提取表名
-    from_match = re.search(r'FROM\s+([\w`]+)', sql, re.IGNORECASE)
-    if from_match:
-        table_name = from_match.group(1).strip('`')
-        if table_name and table_name not in tables:
-            tables.append(table_name)
-    
-    # 检查 JOIN 语句中的表名
-    join_matches = re.findall(r'\b(?:LEFT|RIGHT|INNER|OUTER|CROSS)\s+JOIN\s+([\w`]+)', sql, re.IGNORECASE)
-    for table_name in join_matches:
-        table_name = table_name.strip('`')
-        if table_name and table_name not in tables:
-            tables.append(table_name)
-    
-    return {
-        'tables': tables,
-        'where_conditions': where_conditions,
-        'join_conditions': join_conditions,
-        'group_by': group_by,
-        'order_by': order_by
-    }
 
 
 def generate_optimization_suggestions(sql, db_info, user_query):
     """使用大模型生成SQL优化建议"""
     try:
         # 准备表结构信息
-        schema_text = ""
-        if db_info:
-            schema_text = "数据库表结构信息:\n"
-            for table_name, table_info in db_info.items():
-                schema_text += f"\n表: {table_name}"
-                if table_info.get('comment'):
-                    schema_text += f" ({table_info['comment']})"
-                schema_text += "\n字段:"
-                for field in table_info.get('fields', []):
-                    field_desc = f"  - {field['name']} ({field['type']})"
-                    if field.get('comment'):
-                        field_desc += f": {field['comment']}"
-                    if field.get('is_indexed'):
-                        index_type = field.get('index_type') or 'INDEX'
-                        index_name = field.get('index_name') or 'unknown'
-                        field_desc += f" [{index_type} 索引: {index_name}]"
-                    schema_text += f"\n{field_desc}"
-        
+        schema_text = format_schema_for_prompt(db_info) if db_info else ""
+
         system_prompt = f"""你是一个专业的 SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
 {schema_text}
@@ -162,30 +91,10 @@ def generate_sql_comment(sql, db_info, user_query):
         logger.info("开始生成 SQL 语句功能说明")
         logger.info(f"分析的 SQL 语句: {sql}")
         logger.info(f"用户原始查询: {user_query}")
-        
+
         # 准备表结构信息
-        schema_text = ""
-        if db_info:
-            schema_text = "数据库表结构信息:\n"
-            table_count = len(db_info)
-            logger.info(f"数据库表结构信息包含 {table_count} 个表")
-            
-            for table_name, table_info in db_info.items():
-                schema_text += f"\n表: {table_name}"
-                if table_info.get('comment'):
-                    schema_text += f" ({table_info['comment']})"
-                schema_text += "\n字段:"
-                field_count = len(table_info.get('fields', []))
-                logger.info(f"表 {table_name} 包含 {field_count} 个字段")
-                
-                for field in table_info.get('fields', []):
-                    field_desc = f"  - {field['name']} ({field['type']})"
-                    if field.get('comment'):
-                        field_desc += f": {field['comment']}"
-                    schema_text += f"\n{field_desc}"
-        else:
-            logger.info("未提供数据库表结构信息")
-        
+        schema_text = format_schema_for_prompt(db_info) if db_info else ""
+
         system_prompt = f"""你是一个专业的 SQL 语句分析专家。请根据以下信息对给定的 SQL 语句生成详细的功能说明：
 
 {schema_text}
@@ -311,19 +220,16 @@ def execution_optimizer(state: AgentState) -> AgentState:
             state["optimization_result"] = optimization_result
             state["final_sql"] = generated_sql
             return state
-        
-        # 1. 解析SQL语句结构
-        sql_structure = analyze_sql_structure(generated_sql)
-        logger.info(f"SQL结构分析结果: {sql_structure}")
 
-        # 2. 使用大模型生成优化建议
+
+        # 1. 使用大模型生成优化建议
         llm_result = generate_optimization_suggestions(generated_sql, db_info, user_query)
         logger.info(f"LLM 优化分析结果: {llm_result}")
         
-        # 3. 生成SQL语句功能说明（使用智能体）
+        # 2. 生成SQL语句功能说明（使用智能体）
         natural_language_comment = generate_sql_comment(generated_sql, db_info, user_query)
         
-        # 4. 生成最终优化后的SQL
+        # 3. 生成最终优化后的SQL
         if llm_result.get("optimized") and llm_result.get("optimized_sql"):
             optimized_sql = llm_result.get("optimized_sql")
             # 添加注释
@@ -332,7 +238,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
             # 如果LLM没有返回优化后的SQL，使用原始SQL并添加注释
             optimized_sql = f"{generated_sql}\n{natural_language_comment}"
         
-        # 5. 构建优化结果
+        # 4. 构建优化结果
         suggestions = llm_result.get("suggestions", [])
         if not suggestions:
             suggestions = ["已添加 SQL 语句功能说明"]

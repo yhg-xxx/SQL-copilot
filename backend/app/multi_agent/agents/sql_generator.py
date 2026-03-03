@@ -7,6 +7,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.multi_agent.state.agent_state import AgentState
 from app.utils.llm_util import get_llm
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
+from app.multi_agent.agents.schema_utils import format_schema_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -93,41 +94,6 @@ def get_datasource_schema(datasource_id: int) -> dict[Any, Any] | None:
     except Exception as e:
         logger.error(f"获取数据源表结构失败: {e}", exc_info=True)
         return {}
-
-
-def format_schema_for_prompt(schema: Dict[str, List[Dict]]) -> str:
-    """
-    将表结构格式化为适合 LLM 提示的文本
-
-    Args:
-        schema: 表结构字典
-
-    Returns:
-        格式化后的文本
-    """
-    if not schema:
-        return "无可用表结构信息"
-
-    lines = ["数据库表结构:"]
-    for table_name, table_info in schema.items():
-        lines.append(f"\n表名: {table_name}")
-        if table_info.get('comment'):
-            lines.append(f"  注释: {table_info['comment']}")
-        lines.append("  字段:")
-        for field in table_info.get('fields', []):
-            field_desc = f"    - {field['name']} ({field['type']})"
-            if field['comment']:
-                field_desc += f": {field['comment']}"
-
-            # 添加索引信息
-            if field.get('is_indexed'):
-                index_type = field.get('index_type') or 'INDEX'
-                index_name = field.get('index_name') or 'unknown'
-                field_desc += f" [{index_type} 索引: {index_name}]"
-
-            lines.append(field_desc)
-
-    return '\n'.join(lines)
 
 
 def sql_generator(state: AgentState) -> AgentState:

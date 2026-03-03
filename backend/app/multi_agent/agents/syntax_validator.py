@@ -8,6 +8,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.multi_agent.state.agent_state import AgentState, ValidationResult
 from app.multi_agent.agents.datasource_utils import get_datasource_config
+from app.multi_agent.agents.schema_utils import format_schema_for_prompt
 from app.utils.llm_util import get_llm
 
 logger = logging.getLogger(__name__)
@@ -237,19 +238,7 @@ def validate_sql_with_llm(state: AgentState, datasource_schema: Dict[str, Any]) 
             return result
 
         # 准备提示词
-        schema_text = ""
-        if datasource_schema:
-            schema_text = "数据库表结构信息:\n"
-            for table_name, table_info in datasource_schema.items():
-                schema_text += f"\n表: {table_name}"
-                if table_info.get('comment'):
-                    schema_text += f" ({table_info['comment']})"
-                schema_text += "\n字段:"
-                for field in table_info.get('fields', []):
-                    field_desc = f"  - {field['name']} ({field['type']})"
-                    if field.get('comment'):
-                        field_desc += f": {field['comment']}"
-                    schema_text += f"\n{field_desc}"
+        schema_text = format_schema_for_prompt(datasource_schema) if datasource_schema else ""
 
         system_prompt = f"""你是一个专业的 SQL 验证专家。请验证给定的 SQL 语句是否符合以下标准：
 
@@ -564,19 +553,7 @@ def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schem
         logger.info("使用 LLM 进行智能修复")
 
         # 准备表结构信息
-        schema_text = ""
-        if datasource_schema:
-            schema_text = "数据库表结构信息:\n"
-            for table_name, table_info in datasource_schema.items():
-                schema_text += f"\n表: {table_name}"
-                if table_info.get('comment'):
-                    schema_text += f" ({table_info['comment']})"
-                schema_text += "\n字段:"
-                for field in table_info.get('fields', []):
-                    field_desc = f"  - {field['name']} ({field['type']})"
-                    if field.get('comment'):
-                        field_desc += f": {field['comment']}"
-                    schema_text += f"\n{field_desc}"
+        schema_text = format_schema_for_prompt(datasource_schema) if datasource_schema else ""
 
         system_prompt = f"""你是一个专业的 SQL 修复专家。请根据以下信息修复有问题的 SQL 语句：
 
