@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from app.multi_agent.multi_agent import run_agent
 from app.schemas.multi_agent import QueryRequest, QueryResponse
 from app.utils.dependencies import get_current_user
 from app.database.db import get_db
@@ -28,6 +27,7 @@ async def multi_agent_query(
 
     Returns:
         查询结果
+        :param db:
         :param request:
         :param current_user:
     """

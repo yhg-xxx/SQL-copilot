@@ -63,57 +63,6 @@ def analyze_sql_structure(sql):
     }
 
 
-def extract_index_info_from_db_info(db_info):
-    """从 db_info 中提取索引信息"""
-    indexes = []
-    
-    if not db_info:
-        return indexes
-    
-    for table_name, table_info in db_info.items():
-        fields = table_info.get('fields', [])
-        for field in fields:
-            if field.get('is_indexed'):
-                indexes.append({
-                    'table_name': table_name,
-                    'column_name': field.get('name'),
-                    'index_name': field.get('index_name', 'unknown'),
-                    'index_type': field.get('index_type', 'INDEX'),
-                    'non_unique': 1 if field.get('index_type') != 'PRIMARY' else 0
-                })
-    
-    return indexes
-
-
-def analyze_index_usage(sql_structure, indexes):
-    """分析索引使用情况"""
-    used_indexes = []
-    missing_indexes = []
-    
-    # 检查WHERE条件中的索引使用
-    for condition in sql_structure['where_conditions']:
-        for table in sql_structure['tables']:
-            table_indexes = [idx for idx in indexes if idx['table_name'] == table]
-            table_columns = [idx['column_name'] for idx in table_indexes]
-            
-            for column in table_columns:
-                if column in condition:
-                    used_indexes.append({'table': table, 'column': column, 'index_name': [idx['index_name'] for idx in table_indexes if idx['column_name'] == column][0]})
-    
-    # 检查ORDER BY中的索引使用
-    for order in sql_structure['order_by']:
-        for table in sql_structure['tables']:
-            table_indexes = [idx for idx in indexes if idx['table_name'] == table]
-            for column in [idx['column_name'] for idx in table_indexes]:
-                if column in order:
-                    used_indexes.append({'table': table, 'column': column, 'index_name': [idx['index_name'] for idx in table_indexes if idx['column_name'] == column][0]})
-    
-    return {
-        'used_indexes': used_indexes,
-        'missing_indexes': missing_indexes
-    }
-
-
 def generate_optimization_suggestions(sql, db_info, user_query):
     """使用大模型生成SQL优化建议"""
     try:
@@ -283,23 +232,15 @@ def execution_optimizer(state: AgentState) -> AgentState:
         # 1. 解析SQL语句结构
         sql_structure = analyze_sql_structure(generated_sql)
         logger.info(f"SQL结构分析结果: {sql_structure}")
-        
-        # 2. 从 db_info 中提取索引信息
-        indexes = extract_index_info_from_db_info(db_info)
-        logger.info(f"从 db_info 中提取的索引信息: {indexes}")
-        
-        # 3. 分析索引使用情况
-        index_usage = analyze_index_usage(sql_structure, indexes)
-        logger.info(f"索引使用分析结果: {index_usage}")
-        
-        # 4. 使用大模型生成优化建议
+
+        # 2. 使用大模型生成优化建议
         llm_result = generate_optimization_suggestions(generated_sql, db_info, user_query)
         logger.info(f"LLM 优化分析结果: {llm_result}")
         
-        # 5. 生成自然语言注释
+        # 3. 生成自然语言注释
         natural_language_comment = generate_natural_language_comment(generated_sql, sql_structure, user_query)
         
-        # 6. 生成最终优化后的SQL
+        # 4. 生成最终优化后的SQL
         if llm_result.get("optimized") and llm_result.get("optimized_sql"):
             optimized_sql = llm_result.get("optimized_sql")
             # 添加注释
@@ -308,7 +249,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
             # 如果LLM没有返回优化后的SQL，使用原始SQL并添加注释
             optimized_sql = f"{generated_sql}\n{natural_language_comment}"
         
-        # 7. 构建优化结果
+        # 5. 构建优化结果
         suggestions = llm_result.get("suggestions", [])
         if not suggestions:
             suggestions = ["已添加 SQL 语句功能说明"]

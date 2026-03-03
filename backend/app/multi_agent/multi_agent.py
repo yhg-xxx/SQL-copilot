@@ -3,7 +3,9 @@ from typing import Any, Dict
 from langgraph.graph.state import CompiledStateGraph
 from app.multi_agent.analysis.graph import create_multi_agent_graph
 from app.multi_agent.state.agent_state import AgentState
+
 logger = logging.getLogger(__name__)
+
 
 class MultiAgent:
     """
@@ -43,48 +45,48 @@ class MultiAgent:
         try:
             logger.info(f"当前用户ID: {user_id}")
 
-        # 获取对话历史
-        chat_history = []
-        if chat_id:
-            try:
-                from app.database.db import SessionLocal
-                from app.models.user_qa_record import UserQARecord
-                db = SessionLocal()
+            # 获取对话历史
+            chat_history = []
+            if chat_id:
                 try:
-                    # 查询对话历史记录
-                    history = db.query(UserQARecord).filter(
-                        UserQARecord.conversation_id == chat_id
-                    ).order_by(UserQARecord.create_time.asc()).all()
+                    from app.database.db import SessionLocal
+                    from app.models.user_qa_record import UserQARecord
+                    db = SessionLocal()
+                    try:
+                        # 查询对话历史记录
+                        history = db.query(UserQARecord).filter(
+                            UserQARecord.conversation_id == chat_id
+                        ).order_by(UserQARecord.create_time.asc()).all()
 
-                    # 格式化历史记录
-                    for record in history:
-                        if record.question:
-                            chat_history.append({
-                                "role": "user",
-                                "content": record.question,
-                                "timestamp": record.create_time
-                            })
-                        if record.to2_answer:
-                            chat_history.append({
-                                "role": "assistant",
-                                "content": record.to2_answer,
-                                "timestamp": record.create_time,
-                                "sql": record.sql_statement
-                            })
-                    logger.info(f"获取到 {len(chat_history)} 条对话历史记录")
-                finally:
-                    db.close()
-            except Exception as e:
-                logger.error(f"获取对话历史失败: {e}")
+                        # 格式化历史记录
+                        for record in history:
+                            if record.question:
+                                chat_history.append({
+                                    "role": "user",
+                                    "content": record.question,
+                                    "timestamp": record.create_time
+                                })
+                            if record.to2_answer:
+                                chat_history.append({
+                                    "role": "assistant",
+                                    "content": record.to2_answer,
+                                    "timestamp": record.create_time,
+                                    "sql": record.sql_statement
+                                })
+                        logger.info(f"获取到 {len(chat_history)} 条对话历史记录")
+                    finally:
+                        db.close()
+                except Exception as e:
+                    logger.error(f"获取对话历史失败: {e}")
 
-        # 初始化状态
-        initial_state = AgentState(
-            user_query=query,
-            attempts=0,
-            datasource_id=datasource_id,
-            user_id=user_id,
-            chat_history=chat_history
-        )
+            # 初始化状态
+            initial_state = AgentState(
+                user_query=query,
+                attempts=0,
+                datasource_id=datasource_id,
+                user_id=user_id,
+                chat_history=chat_history
+            )
 
             graph: CompiledStateGraph = create_multi_agent_graph()
 
