@@ -97,6 +97,12 @@ def generate_optimization_suggestions(sql, db_info, user_query):
 3. 可能的性能瓶颈
 4. 优化后的 SQL 语句
 
+重要约束：
+- 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
+- 不要在优化后的 SQL 语句中使用 FORCE INDEX 或类似的索引强制提示
+- 只基于现有的表结构和索引信息进行优化
+- 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
+
 请只返回 JSON 格式的结果，不要包含其他文字。
 
 JSON 格式：
@@ -150,46 +156,123 @@ JSON 格式：
         }
 
 
-def generate_natural_language_comment(sql, sql_structure, user_query):
-    """生成自然语言注释"""
-    comments = ["-- SQL 语句功能说明："]
+def generate_sql_comment(sql, db_info, user_query):
+    """使用大模型生成SQL语句功能说明"""
+    try:
+        logger.info("开始生成 SQL 语句功能说明")
+        logger.info(f"分析的 SQL 语句: {sql}")
+        logger.info(f"用户原始查询: {user_query}")
+        
+        # 准备表结构信息
+        schema_text = ""
+        if db_info:
+            schema_text = "数据库表结构信息:\n"
+            table_count = len(db_info)
+            logger.info(f"数据库表结构信息包含 {table_count} 个表")
+            
+            for table_name, table_info in db_info.items():
+                schema_text += f"\n表: {table_name}"
+                if table_info.get('comment'):
+                    schema_text += f" ({table_info['comment']})"
+                schema_text += "\n字段:"
+                field_count = len(table_info.get('fields', []))
+                logger.info(f"表 {table_name} 包含 {field_count} 个字段")
+                
+                for field in table_info.get('fields', []):
+                    field_desc = f"  - {field['name']} ({field['type']})"
+                    if field.get('comment'):
+                        field_desc += f": {field['comment']}"
+                    schema_text += f"\n{field_desc}"
+        else:
+            logger.info("未提供数据库表结构信息")
+        
+        system_prompt = f"""你是一个专业的 SQL 语句分析专家。请根据以下信息对给定的 SQL 语句生成详细的功能说明：
 
-    # 分析数据来源
-    if sql_structure['tables']:
-        tables_str = ', '.join(sql_structure['tables'])
-        comments.append(f"-- 数据来源：{tables_str} 表")
-    else:
-        comments.append("-- 数据来源：未知")
-    
-    # 分析数据类型
-    if 'COUNT(' in sql.upper():
-        comments.append("-- 数据类型：统计数据")
-    elif 'SELECT *' in sql.upper():
-        comments.append("-- 数据类型：完整数据")
-    elif 'SELECT ' in sql.upper():
-        comments.append("-- 数据类型：部分字段数据")
-    else:
-        comments.append("-- 数据类型：未知")
-    
-    # 分析查询目的
-    if user_query:
-        # 确保用户查询不包含换行符
-        user_query_clean = user_query.replace('\n', ' ').strip()
-        comments.append(f"-- 查询目的：{user_query_clean}")
-    else:
-        comments.append(f"-- 查询目的：{sql_structure['tables'][0] if sql_structure['tables'] else '数据'} 相关信息")
-    
-    # 其他条件
-    if sql_structure['group_by']:
-        # 清理GROUP BY条件，确保不包含换行符
-        group_by = sql_structure['group_by'][0].replace('\n', ' ').strip()
-        # 只保留GROUP BY关键字后的内容
-        if 'GROUP BY' in group_by.upper():
-            group_by = group_by.split('GROUP BY', 1)[1].strip()
-        comments.append(f"-- 分组方式：{group_by}")
-    
-    natural_language_comment = '\n'.join(comments) + '\n'
-    return natural_language_comment
+{schema_text}
+
+用户原始查询需求：{user_query}
+
+请分析以下 SQL 语句的功能，并生成详细的功能说明，包括：
+1. 数据来源：列出 SQL 语句中涉及的所有表
+2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
+3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
+4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
+
+重要要求：
+- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
+- 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
+- 用简洁明了的自然语言表达，避免技术术语过多
+
+请只返回注释格式的结果，不要包含其他文字。
+
+示例：
+用户问题：我想知道每个用户的总购买金额
+SQL：SELECT user_id, SUM(amount) FROM orders GROUP BY user_id;
+
+正确的功能说明：
+-- SQL 语句功能说明：
+-- 数据来源：orders 表
+-- 数据类型：统计数据
+-- 查询目的：计算每个用户的总购买金额
+-- 核心逻辑：根据用户ID分组，对每个用户的购买金额进行求和
+
+请按照上述示例格式生成功能说明。
+"""
+        
+        user_prompt = f"请分析以下 SQL 语句并生成功能说明：\n```sql\n{sql}\n```"
+        
+        # 调用 LLM
+        logger.info("调用大模型生成 SQL 语句功能说明")
+        llm = get_llm(temperature=0.1)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ]
+        
+        response = llm.invoke(messages)
+        response_content = response.content.strip()
+        logger.info(f"大模型返回的原始响应: {response_content[:200]}...")
+        
+        # 清理响应
+        if "```sql" in response_content:
+            response_content = response_content.split("```sql")[1]
+            logger.info("清理 SQL 代码块标记")
+        if "```" in response_content:
+            response_content = response_content.split("```")[0]
+            logger.info("清理代码块标记")
+        response_content = response_content.strip()
+        logger.info(f"清理后的响应: {response_content[:200]}...")
+        
+        # 确保响应以注释格式开头
+        if not response_content.startswith("--"):
+            # 如果LLM没有返回注释格式，使用默认格式
+            logger.warning("LLM 返回的响应不是注释格式，使用默认格式")
+            default_comment = "-- SQL 语句功能说明：\n"
+            default_comment += "-- 数据来源：未知\n"
+            default_comment += "-- 数据类型：未知\n"
+            default_comment += "-- 查询目的：未知\n"
+            default_comment += "-- 核心逻辑：未知\n"
+            logger.info("使用默认功能说明")
+            return default_comment
+        
+        # 确保注释以换行符结尾
+        if not response_content.endswith('\n'):
+            response_content += '\n'
+        
+        logger.info("SQL 语句功能说明生成完成")
+        logger.info(f"生成的功能说明: {response_content[:200]}...")
+        return response_content
+        
+    except Exception as e:
+        logger.error(f"生成 SQL 语句功能说明时发生错误: {e}", exc_info=True)
+        # 出错时返回默认注释
+        default_comment = "-- SQL 语句功能说明：\n"
+        default_comment += "-- 数据来源：未知\n"
+        default_comment += "-- 数据类型：未知\n"
+        default_comment += "-- 查询目的：未知\n"
+        default_comment += "-- 核心逻辑：未知\n"
+        logger.info("发生错误，使用默认功能说明")
+        return default_comment
 
 
 def execution_optimizer(state: AgentState) -> AgentState:
@@ -237,8 +320,8 @@ def execution_optimizer(state: AgentState) -> AgentState:
         llm_result = generate_optimization_suggestions(generated_sql, db_info, user_query)
         logger.info(f"LLM 优化分析结果: {llm_result}")
         
-        # 3. 生成自然语言注释
-        natural_language_comment = generate_natural_language_comment(generated_sql, sql_structure, user_query)
+        # 3. 生成SQL语句功能说明（使用智能体）
+        natural_language_comment = generate_sql_comment(generated_sql, db_info, user_query)
         
         # 4. 生成最终优化后的SQL
         if llm_result.get("optimized") and llm_result.get("optimized_sql"):
