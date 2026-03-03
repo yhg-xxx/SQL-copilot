@@ -329,9 +329,19 @@ const handleLogin = async () => {
       : { username: loginForm.username, password: loginForm.password };
     
     const response = await axios.post('http://localhost:8000/user/login', loginData);
-    const { access_token } = response.data;
+    const { access_token, user } = response.data;
     
     localStorage.setItem('token', access_token);
+    // 存储用户信息到本地存储
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      // 如果响应中没有用户信息，使用登录表单中的用户名
+      const userInfo = {
+        username: loginType.value === 'phone' ? loginForm.phone : loginForm.username
+      };
+      localStorage.setItem('user', JSON.stringify(userInfo));
+    }
     ElMessage.success('登录成功');
     router.push('/');
   } catch (error) {

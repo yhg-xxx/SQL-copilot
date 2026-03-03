@@ -25,3 +25,7 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str
+
+# 修改密码请求模型
+class ChangePasswordRequest(BaseModel):
+    new_password: str
