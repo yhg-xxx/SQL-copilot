@@ -1,5 +1,13 @@
 <template>
   <div class="datasource-container">
+    <!-- 返回按钮（固定在左上角） -->
+    <el-button
+      class="back-home-btn glass-btn"
+      @click="goToHome"
+    >
+      <el-icon><ArrowLeft /></el-icon>
+      返回主界面
+    </el-button>
 
     <!-- 主内容区域 -->
     <div class="main-content">
@@ -28,7 +36,7 @@
           </el-button>
         </div>
       </div>
-      
+
       <!-- 数据源网格 -->
       <div class="datasource-grid">
         <el-card
@@ -50,13 +58,13 @@
             </div>
             <div class="status-dot" :class="{ success: datasource.status === 'Success', failed: datasource.status === 'Failed' }"></div>
           </div>
-          
+
           <!-- 卡片内容 -->
           <div class="card-content">
             <div class="datasource-desc">
               {{ datasource.description || '暂无描述' }}
             </div>
-            
+
             <div class="datasource-details">
               <div class="detail-row">
                 <span class="detail-label">主机</span>
@@ -68,7 +76,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 卡片底部 -->
           <div class="card-footer">
             <div class="table-count">{{ datasource.num || '0/0' }}表</div>
@@ -102,10 +110,15 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Search, Refresh, Plus } from '@element-plus/icons-vue';
+import { ArrowLeft, Search, Refresh, Plus } from '@element-plus/icons-vue';
 import DatasourceForm from '@/views/DatasourceForm.vue';
 
 const router = useRouter();
+
+// 返回主页函数
+const goToHome = () => {
+  router.push('/');
+};
 
 // 使用 Vite 的 glob import 来导入所有图标
 const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
@@ -139,7 +152,7 @@ const filteredDatasources = computed(() => {
   if (!searchQuery.value) {
     return datasources.value;
   }
-  return datasources.value.filter(item => 
+  return datasources.value.filter(item =>
     item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
@@ -234,12 +247,53 @@ const viewDatabase = (datasource) => {
   background: #f7f8fa;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* 返回按钮样式 - 固定在左上角，悬浮在内容之上 */
+.back-home-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(74, 137, 220, 0.3) !important;
+  color: #4a89dc !important;
+  padding: 10px 20px !important;
+  border-radius: 25px !important;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 20px rgba(74, 137, 220, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.back-home-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #4a89dc !important;
+  color: #4a89dc !important;
+  transform: translateX(-3px) translateY(-2px);
+  box-shadow:
+    0 8px 30px rgba(74, 137, 220, 0.25),
+    0 0 20px rgba(74, 137, 220, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+}
+
+.back-home-btn:active {
+  transform: translateX(-1px) translateY(0);
+  transition: all 0.1s ease;
 }
 
 /* 主内容区域 */
 .main-content {
   flex: 1;
   padding: 24px;
+  padding-top: 80px; /* 为返回按钮预留空间 */
 }
 
 /* 页面头部 */
@@ -314,10 +368,13 @@ const viewDatabase = (datasource) => {
   overflow: hidden;
   cursor: pointer;
   background: #ffffff;
+  transition: all 0.3s ease;
 }
 
 .datasource-card:hover {
-  border-color: #c9cdd4;
+  border-color: #4a89dc;
+  box-shadow: 0 8px 25px rgba(74, 137, 220, 0.15);
+  transform: translateY(-4px);
 }
 
 /* 卡片头部 */
@@ -326,6 +383,7 @@ const viewDatabase = (datasource) => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
+  border-bottom: 1px solid #f2f3f5;
 }
 
 .datasource-info {
@@ -338,17 +396,19 @@ const viewDatabase = (datasource) => {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: #f2f3f5;
+  background: linear-gradient(135deg, rgba(74, 137, 220, 0.1), rgba(74, 137, 220, 0.05));
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 6px;
+  border: 1px solid rgba(74, 137, 220, 0.1);
 }
 
 .datasource-icon img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(74, 137, 220, 0.2));
 }
 
 .datasource-text {
@@ -358,14 +418,19 @@ const viewDatabase = (datasource) => {
 
 .datasource-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: #1d2129;
   margin-bottom: 2px;
 }
 
 .datasource-type {
   font-size: 12px;
-  color: #86909c;
+  color: #4a89dc;
+  background: rgba(74, 137, 220, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  width: fit-content;
 }
 
 /* 状态点 */
@@ -375,46 +440,77 @@ const viewDatabase = (datasource) => {
   border-radius: 50%;
   background: #e5e6eb;
   flex-shrink: 0;
+  position: relative;
 }
 
 .status-dot.success {
   background: #00b42a;
+  box-shadow: 0 0 8px rgba(0, 180, 42, 0.4);
 }
 
 .status-dot.failed {
   background: #f53f3f;
+  box-shadow: 0 0 8px rgba(245, 63, 63, 0.4);
 }
 
 /* 卡片内容 */
 .card-content {
-  padding: 0 16px 16px;
+  padding: 16px;
 }
 
 .datasource-desc {
   font-size: 12px;
   color: #86909c;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .datasource-details {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid #4a89dc;
 }
 
 .detail-row {
   display: flex;
   font-size: 12px;
+  align-items: center;
 }
 
 .detail-label {
-  color: #86909c;
+  color: #4a89dc;
   min-width: 48px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-label::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: #4a89dc;
+  border-radius: 50%;
+  opacity: 0.6;
 }
 
 .detail-value {
-  color: #4e5969;
+  color: #1d2129;
   flex: 1;
+  font-weight: 500;
+  font-family: 'Consolas', 'Monaco', monospace;
+  word-break: break-all;
 }
 
 /* 卡片底部 */
@@ -424,11 +520,20 @@ const viewDatabase = (datasource) => {
   align-items: center;
   padding: 12px 16px;
   border-top: 1px solid #f2f3f5;
+  background: #fafbfc;
 }
 
 .table-count {
   font-size: 12px;
   color: #86909c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-count::before {
+  content: '📊';
+  font-size: 10px;
 }
 
 /* 卡片操作 */
@@ -441,31 +546,54 @@ const viewDatabase = (datasource) => {
 
 .action-btn {
   flex: none;
-  padding: 0;
+  padding: 6px 12px;
   background: none;
-  border: none;
+  border: 1px solid #e5e6eb;
   font-size: 12px;
   cursor: pointer;
   color: #4e5969;
   border-radius: 4px;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
 .action-btn:hover {
-  background: none;
-  text-decoration: underline;
+  border-color: #4a89dc;
+  background: rgba(74, 137, 220, 0.05);
+  text-decoration: none;
+}
+
+.edit-btn {
+  color: #4a89dc;
+  border-color: rgba(74, 137, 220, 0.3);
 }
 
 .edit-btn:hover {
-  color: #165dff;
+  background: rgba(74, 137, 220, 0.1);
+  color: #4a89dc;
+  box-shadow: 0 2px 8px rgba(74, 137, 220, 0.2);
+}
+
+.view-btn {
+  color: #ff7d00;
+  border-color: rgba(255, 125, 0, 0.3);
 }
 
 .view-btn:hover {
+  background: rgba(255, 125, 0, 0.1);
   color: #ff7d00;
+  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
+}
+
+.delete-btn {
+  color: #f53f3f;
+  border-color: rgba(245, 63, 63, 0.3);
 }
 
 .delete-btn:hover {
+  background: rgba(245, 63, 63, 0.1);
   color: #f53f3f;
+  box-shadow: 0 2px 8px rgba(245, 63, 63, 0.2);
 }
 
 /* 下拉选项样式 */
@@ -479,5 +607,44 @@ const viewDatabase = (datasource) => {
   width: 24px;
   height: 24px;
   object-fit: contain;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 16px;
+    padding-top: 70px;
+  }
+
+  .back-home-btn {
+    top: 10px;
+    left: 10px;
+    padding: 8px 16px !important;
+    font-size: 14px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .datasource-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-actions {
+    flex-wrap: wrap;
+  }
 }
 </style>

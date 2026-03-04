@@ -128,15 +128,22 @@ def sql_generator(state: AgentState) -> AgentState:
         # 格式化表结构信息
         schema_text = format_schema_for_prompt(schema)
 
-        # 格式化对话历史
+        # ========== 优化后的对话历史处理 ==========
+        # 格式化对话历史 - 使用更清晰的时序标记
         history_text = ""
         if chat_history:
-            history_text = "\n\n对话历史：\n"
-            for item in chat_history:
-                if item.get("role") == "user":
-                    history_text += f"用户: {item.get('content')}\n"
-                elif item.get("role") == "assistant":
-                    history_text += f"助手: {item.get('content')}\n"
+            history_lines = []
+            for i, item in enumerate(chat_history, 1):
+                role = "用户" if item.get("role") == "user" else "助手"
+                content = item.get("content", "").strip()
+                history_lines.append(f"【第{i}轮】{role}: {content}")
+
+            history_text = "\n".join(history_lines)
+            history_text = f"""
+===== 对话历史（共{len(chat_history)}轮） =====
+{history_text}
+====================================
+"""
 
         # 打印历史记录到日志
         logger.info("=" * 80)
@@ -144,6 +151,18 @@ def sql_generator(state: AgentState) -> AgentState:
         logger.info(f"用户查询: {user_query}")
         logger.info(f"数据源ID: {datasource_id}")
         logger.info(f"聊天历史长度: {len(chat_history)}")
+
+        # 特别打印最近两轮的详细信息
+        if len(chat_history) >= 2:
+            logger.info("最近两轮对话详情:")
+            for i in range(-2, 0):
+                idx = len(chat_history) + i
+                item = chat_history[idx]
+                role = item.get("role", "unknown")
+                content_preview = str(item.get("content", ""))[:200] + (
+                    "..." if len(str(item.get("content", ""))) > 200 else "")
+                logger.info(f"  第{idx + 1}轮 [{role}]: {content_preview}")
+
         for i, item in enumerate(chat_history):
             role = item.get("role", "unknown")
             content_preview = str(item.get("content", ""))[:200] + (
@@ -151,12 +170,47 @@ def sql_generator(state: AgentState) -> AgentState:
             logger.info(f"历史记录 [{i}] - 角色: {role}, 内容预览: {content_preview}")
         logger.info("=" * 80)
 
-        # 使用 DeepSeek 大模型生成 SQL
+        # 判断当前是否是修改请求
+        is_modification = False
+        last_sql_hint = ""
+
+        if len(chat_history) >= 2:
+            # 检查最后一条助手消息是否包含SQL
+            for item in reversed(chat_history):
+                if item.get("role") == "assistant":
+                    assistant_content = item.get("content", "")
+                    # 检查是否包含SQL关键词
+                    sql_keywords = ["SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "FROM", "WHERE",
+                                    "JOIN"]
+                    if any(keyword in assistant_content.upper() for keyword in sql_keywords):
+                        is_modification = True
+                        # 提取SQL相关部分
+                        sql_content = assistant_content[:500]  # 截取前500字符
+                        last_sql_hint = f"\n（提示：上一轮生成了SQL查询，当前可能是对该SQL的修改）"
+                    break
+
+        # 构建系统提示
         system_prompt = f"""你是一个专业的 SQL 生成助手。请根据用户的自然语言查询、对话历史和提供的数据库表结构，生成对应的 SQL 语句。
 
 {schema_text}
 
 {history_text}
+
+{'=' * 60}
+重要：这是多轮对话的第{len(chat_history) + 1}轮
+{'=' * 60}
+
+核心指令：
+1. 这是多轮对话，当前用户的查询是对话的延续
+2. 请特别注意最近一轮（第{len(chat_history)}轮）的对话内容
+3. 如果用户当前的查询涉及到修改、调整或优化，应该基于最近一轮助手的回答进行修改
+4. 如果对话历史中有相关信息，请结合完整的对话历史来理解上下文
+5. 如果当前查询明显是对上一轮SQL的修改，请基于上一轮的SQL进行调整
+
+{'=' * 60}
+
+当前查询：{user_query}
+{last_sql_hint if is_modification else ''}
 
 请只返回 JSON 格式的结果，不要包含其他文字。
 JSON 格式：
@@ -177,14 +231,24 @@ JSON 格式：
 8. 对于复杂查询，选择最优的执行计划
 9. 参考对话历史，理解用户的上下文需求"""
 
-        user_prompt = f"用户查询: {user_query}"
+        # 构建用户提示
+        if is_modification and len(chat_history) > 0:
+            user_prompt = f"用户查询: {user_query}\n\n（请注意：这是对上一轮对话结果的修改请求，请基于上一轮的回答进行调整）"
+        else:
+            user_prompt = f"用户查询: {user_query}"
 
         # 打印传递给大模型的完整信息
         logger.info("=" * 80)
         logger.info("传递给大模型的完整提示:")
-        logger.info(f"系统提示: {system_prompt}")
+        logger.info(f"系统提示（前500字符）: {system_prompt[:500]}...")
         logger.info(f"用户提示: {user_prompt}")
         logger.info("=" * 80)
+
+        # 添加时序信息到日志
+        if len(chat_history) > 0:
+            logger.info(f"对话时序：当前是第{len(chat_history) + 1}轮，应该基于第{len(chat_history)}轮进行响应")
+            if is_modification:
+                logger.info("检测到当前查询可能是对上一轮SQL的修改")
 
         # 调用 LLM
         llm = get_llm(temperature=0.0)
@@ -202,7 +266,7 @@ JSON 格式：
         # 记录大模型原始响应
         logger.info("=" * 80)
         logger.info("大模型原始响应:")
-        logger.info(response_content)
+        logger.info(response_content[:500] + ("..." if len(response_content) > 500 else ""))
         logger.info("=" * 80)
 
         # 清理响应
@@ -218,6 +282,10 @@ JSON 格式：
             if result.get("success"):
                 state["generated_sql"] = result.get("sql", "")
                 logger.info(f"成功生成 SQL: {state['generated_sql']}")
+
+                # 记录对话时序信息
+                if is_modification:
+                    logger.info("✅ 成功处理了修改请求")
             else:
                 state["error_message"] = result.get("message", "SQL 生成失败")
         except json.JSONDecodeError as e:
@@ -226,9 +294,9 @@ JSON 格式：
             # 备用方案：直接返回简单 SQL
             if schema:
                 table_name = list(schema.keys())[0]
-                state["generated_sql"] = f"SELECT * FROM {table_name}; -- 查询: {user_query}"
+                state["generated_sql"] = f"SELECT * FROM {table_name} LIMIT 10; -- 查询: {user_query}"
             else:
-                state["generated_sql"] = f"SELECT * FROM users; -- 查询: {user_query}"
+                state["generated_sql"] = f"SELECT * FROM users LIMIT 10; -- 查询: {user_query}"
             logger.info(f"使用备用 SQL 生成: {state['generated_sql']}")
 
     except Exception as e:
