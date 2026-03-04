@@ -1,24 +1,28 @@
 <template>
   <div class="auth-page">
+    <!-- 背景装饰元素 -->
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
     <!-- 左侧品牌展示区域 -->
     <div class="brand-section">
       <div class="brand-header">
         <div class="brand-logo">
           <img src="../assets/logo.png" alt="Logo" class="logo-img" />
-          <span class="logo-text">多智能体数据库查询系统</span>
+          <span class="logo-text">数据灵犀</span>
         </div>
       </div>
-      
+
       <div class="brand-content">
         <h1 class="brand-title">多智能体协作，让数据查询更智能</h1>
         <div class="brand-badge">
           <el-icon><Star /></el-icon>
           <span>自然语言对话，复杂SQL一键生成</span>
         </div>
-        
+
         <!-- 产品展示卡片 -->
         <div class="product-showcase">
-          <div class="showcase-window">
+          <div class="showcase-window glass-card">
             <div class="window-header">
               <div class="window-dots">
                 <span></span>
@@ -43,45 +47,45 @@
           </div>
         </div>
       </div>
-      
+
       <div class="brand-footer">
         <p>© 2026 多智能体数据库查询系统</p>
       </div>
     </div>
-    
+
     <!-- 右侧登录注册表单区域 -->
     <div class="form-section">
       <div class="form-container">
         <!-- 登录表单 -->
-        <div v-if="activeTab === 'login'" class="auth-form">
+        <div v-if="activeTab === 'login'" class="auth-form glass-card">
           <h2 class="form-title">欢迎使用多智能体数据库查询系统</h2>
-          
+
           <!-- 登录方式切换 -->
           <div class="login-tabs">
-            <button 
-              :class="['tab-btn', { active: loginType === 'phone' }]" 
+            <button
+              :class="['tab-btn', { active: loginType === 'phone' }]"
               @click="loginType = 'phone'"
             >
               手机号登录
             </button>
-            <button 
-              :class="['tab-btn', { active: loginType === 'account' }]" 
+            <button
+              :class="['tab-btn', { active: loginType === 'account' }]"
               @click="loginType = 'account'"
             >
               账号登录
             </button>
           </div>
-          
+
           <!-- 登录表单 -->
-          <el-form 
-            :model="loginForm" 
-            :rules="loginRules" 
-            ref="loginFormRef" 
+          <el-form
+            :model="loginForm"
+            :rules="loginRules"
+            ref="loginFormRef"
             class="login-form"
           >
             <el-form-item v-if="loginType === 'phone'" prop="phone">
-              <el-input 
-                v-model="loginForm.phone" 
+              <el-input
+                v-model="loginForm.phone"
                 placeholder="请输入手机号码"
                 size="large"
                 class="custom-input"
@@ -92,8 +96,8 @@
               </el-input>
             </el-form-item>
             <el-form-item v-else prop="username">
-              <el-input 
-                v-model="loginForm.username" 
+              <el-input
+                v-model="loginForm.username"
                 placeholder="请输入账号名/账号ID"
                 size="large"
                 class="custom-input"
@@ -103,11 +107,11 @@
                 </template>
               </el-input>
             </el-form-item>
-            
+
             <el-form-item prop="password">
-              <el-input 
-                v-model="loginForm.password" 
-                type="password" 
+              <el-input
+                v-model="loginForm.password"
+                type="password"
                 placeholder="请输入登录密码"
                 size="large"
                 class="custom-input"
@@ -118,17 +122,17 @@
                 </template>
               </el-input>
             </el-form-item>
-            
+
             <div class="form-options">
               <el-checkbox v-model="loginForm.remember" class="remember-check">
                 记住密码
               </el-checkbox>
             </div>
-            
+
             <el-form-item>
-              <el-button 
-                type="primary" 
-                @click="handleLogin" 
+              <el-button
+                type="primary"
+                @click="handleLogin"
                 :loading="loading"
                 size="large"
                 class="submit-btn"
@@ -136,7 +140,7 @@
                 登录
               </el-button>
             </el-form-item>
-            
+
             <div class="form-links">
               <a href="#" class="link-text">忘记账号</a>
               <a href="#" class="link-text">忘记密码</a>
@@ -145,7 +149,7 @@
               </a>
             </div>
           </el-form>
-          
+
           <!-- 其他登录方式 -->
           <div class="other-login">
             <div class="divider">
@@ -170,20 +174,20 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 注册表单 -->
-        <div v-else class="auth-form">
+        <div v-else class="auth-form glass-card">
           <h2 class="form-title">欢迎注册</h2>
-          
-          <el-form 
-            :model="registerForm" 
-            :rules="registerRules" 
+
+          <el-form
+            :model="registerForm"
+            :rules="registerRules"
             ref="registerFormRef"
             class="register-form"
           >
             <el-form-item prop="username">
-              <el-input 
-                v-model="registerForm.username" 
+              <el-input
+                v-model="registerForm.username"
                 placeholder="请输入用户名"
                 size="large"
                 class="custom-input"
@@ -193,11 +197,11 @@
                 </template>
               </el-input>
             </el-form-item>
-            
+
             <el-form-item prop="password">
-              <el-input 
-                v-model="registerForm.password" 
-                type="password" 
+              <el-input
+                v-model="registerForm.password"
+                type="password"
                 placeholder="请输入密码"
                 size="large"
                 class="custom-input"
@@ -208,11 +212,11 @@
                 </template>
               </el-input>
             </el-form-item>
-            
+
             <el-form-item prop="confirmPassword">
-              <el-input 
-                v-model="registerForm.confirmPassword" 
-                type="password" 
+              <el-input
+                v-model="registerForm.confirmPassword"
+                type="password"
                 placeholder="请确认密码"
                 size="large"
                 class="custom-input"
@@ -223,11 +227,11 @@
                 </template>
               </el-input>
             </el-form-item>
-            
+
             <el-form-item>
-              <el-button 
-                type="primary" 
-                @click="handleRegister" 
+              <el-button
+                type="primary"
+                @click="handleRegister"
                 :loading="loading"
                 size="large"
                 class="submit-btn"
@@ -235,7 +239,7 @@
                 注册
               </el-button>
             </el-form-item>
-            
+
             <div class="form-links center">
               <span class="text-muted">已有账号？</span>
               <a href="#" class="link-text primary" @click.prevent="activeTab = 'login'">
@@ -318,19 +322,19 @@ const registerRules = {
 // 处理登录
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
-  
+
   const valid = await loginFormRef.value.validate();
   if (!valid) return;
-  
+
   loading.value = true;
   try {
-    const loginData = loginType.value === 'phone' 
+    const loginData = loginType.value === 'phone'
       ? { username: loginForm.phone, password: loginForm.password }
       : { username: loginForm.username, password: loginForm.password };
-    
+
     const response = await axios.post('http://localhost:8000/user/login', loginData);
     const { access_token, user } = response.data;
-    
+
     localStorage.setItem('token', access_token);
     // 存储用户信息到本地存储
     if (user) {
@@ -343,7 +347,7 @@ const handleLogin = async () => {
       localStorage.setItem('user', JSON.stringify(userInfo));
     }
     ElMessage.success('登录成功');
-    router.push('/');
+    await router.push('/');
   } catch (error) {
     console.error('登录失败:', error);
     ElMessage.error('登录失败，请检查用户名和密码');
@@ -355,10 +359,10 @@ const handleLogin = async () => {
 // 处理注册
 const handleRegister = async () => {
   if (!registerFormRef.value) return;
-  
+
   const valid = await registerFormRef.value.validate();
   if (!valid) return;
-  
+
   loading.value = true;
   try {
     await axios.post('http://localhost:8000/user/register', {
@@ -377,10 +381,53 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
+/* CSS变量定义 - 与HomeView保持一致 */
+:root {
+  --primary-glow: #4a89dc;
+  --secondary-glow: #6b9fde;
+  --bg-deep: #f8f9fa;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --border-glow: rgba(74, 137, 220, 0.3);
+  --text-primary: #1a2639;
+  --text-secondary: #2c3e50;
+  --accent-blue: #4a89dc;
+}
+
 .auth-page {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #faf8f5 0%, #f5f0e8 100%);
+  position: relative;
+  background: radial-gradient(ellipse at top, #e6f0ff, #d6e6ff);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* 网格背景（蓝色） */
+.bg-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(74, 137, 220, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 137, 220, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 大光晕（蓝色） */
+.bg-glow {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(74, 137, 220, 0.2) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* 左侧品牌区域 */
@@ -390,6 +437,7 @@ const handleRegister = async () => {
   flex-direction: column;
   padding: 40px 60px;
   position: relative;
+  z-index: 1;
 }
 
 .brand-header {
@@ -410,9 +458,12 @@ const handleRegister = async () => {
 }
 
 .logo-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4a89dc, #6b9fde);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
 }
 
 .brand-content {
@@ -424,17 +475,20 @@ const handleRegister = async () => {
 .brand-title {
   font-size: 42px;
   font-weight: 700;
-  color: #1f2937;
+  color: #1a2639;
   margin-bottom: 20px;
   line-height: 1.2;
+  background: linear-gradient(135deg, #1a2639, #2b4b7a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .brand-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(79, 70, 229, 0.1);
-  color: #4f46e5;
+  background: rgba(74, 137, 220, 0.1);
+  color: #4a89dc;
   padding: 8px 16px;
   border-radius: 20px;
   font-size: 14px;
@@ -453,19 +507,22 @@ const handleRegister = async () => {
 .showcase-window {
   width: 520px;
   height: 360px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
   overflow: hidden;
+  border: 1px solid rgba(74, 137, 220, 0.2);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
 }
 
 .window-header {
   height: 40px;
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(74, 137, 220, 0.2);
 }
 
 .window-dots {
@@ -501,7 +558,7 @@ const handleRegister = async () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #4a89dc 0%, #6b9fde 100%);
   flex-shrink: 0;
 }
 
@@ -514,7 +571,7 @@ const handleRegister = async () => {
 
 .message-line {
   height: 16px;
-  background: #f1f5f9;
+  background: rgba(74, 137, 220, 0.1);
   border-radius: 8px;
   width: 80%;
 }
@@ -529,9 +586,9 @@ const handleRegister = async () => {
 
 .input-box {
   height: 48px;
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.5);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(74, 137, 220, 0.2);
 }
 
 .brand-footer {
@@ -541,7 +598,7 @@ const handleRegister = async () => {
 }
 
 .brand-footer p {
-  color: #94a3b8;
+  color: #6b7280;
   font-size: 12px;
 }
 
@@ -552,6 +609,8 @@ const handleRegister = async () => {
   align-items: center;
   justify-content: center;
   padding: 40px;
+  position: relative;
+  z-index: 1;
 }
 
 .form-container {
@@ -559,26 +618,36 @@ const handleRegister = async () => {
   max-width: 400px;
 }
 
-.auth-form {
-  background: white;
-  padding: 48px;
+/* 玻璃卡片效果 - 与HomeView一致 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(74, 137, 220, 0.2);
   border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
+}
+
+.auth-form {
+  padding: 48px;
 }
 
 .form-title {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: #1a2639;
   margin-bottom: 32px;
   text-align: center;
+  background: linear-gradient(135deg, #1a2639, #2b4b7a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .login-tabs {
   display: flex;
   gap: 32px;
   margin-bottom: 28px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(74, 137, 220, 0.2);
 }
 
 .tab-btn {
@@ -593,11 +662,11 @@ const handleRegister = async () => {
 }
 
 .tab-btn:hover {
-  color: #4f46e5;
+  color: #4a89dc;
 }
 
 .tab-btn.active {
-  color: #4f46e5;
+  color: #4a89dc;
   font-weight: 500;
 }
 
@@ -608,7 +677,7 @@ const handleRegister = async () => {
   left: 0;
   right: 0;
   height: 2px;
-  background: #4f46e5;
+  background: #4a89dc;
   border-radius: 2px;
 }
 
@@ -616,23 +685,25 @@ const handleRegister = async () => {
   margin-bottom: 20px;
 }
 
+/* 自定义输入框样式 */
 .custom-input :deep(.el-input__wrapper) {
   border-radius: 10px;
-  box-shadow: 0 0 0 1px #e5e7eb inset;
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.3) inset;
   padding: 0 16px;
   height: 48px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .custom-input :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #d1d5db inset;
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.5) inset;
 }
 
 .custom-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #4f46e5 inset;
+  box-shadow: 0 0 0 1px #4a89dc inset;
 }
 
 .custom-input :deep(.el-input__prefix) {
-  color: #9ca3af;
+  color: #4a89dc;
   margin-right: 12px;
 }
 
@@ -648,18 +719,28 @@ const handleRegister = async () => {
   font-size: 14px;
 }
 
+.remember-check :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #4a89dc;
+  border-color: #4a89dc;
+}
+
+/* 提交按钮样式 */
 .submit-btn {
   width: 100%;
   height: 48px;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 500;
-  background: #4f46e5;
+  background: #4a89dc;
   border: none;
+  box-shadow: 0 4px 15px rgba(74, 137, 220, 0.3);
+  transition: all 0.3s ease;
 }
 
 .submit-btn:hover {
-  background: #4338ca;
+  background: #3b7dd8;
+  box-shadow: 0 6px 20px rgba(74, 137, 220, 0.4);
+  transform: translateY(-2px);
 }
 
 .form-links {
@@ -681,11 +762,11 @@ const handleRegister = async () => {
 }
 
 .link-text:hover {
-  color: #4f46e5;
+  color: #4a89dc;
 }
 
 .link-text.primary {
-  color: #4f46e5;
+  color: #4a89dc;
   font-weight: 500;
 }
 
@@ -710,7 +791,7 @@ const handleRegister = async () => {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e5e7eb;
+  background: rgba(74, 137, 220, 0.2);
 }
 
 .divider span {
@@ -729,8 +810,8 @@ const handleRegister = async () => {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 1px solid #e5e7eb;
-  background: white;
+  border: 1px solid rgba(74, 137, 220, 0.3);
+  background: rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -739,8 +820,9 @@ const handleRegister = async () => {
 }
 
 .social-btn:hover {
-  border-color: #4f46e5;
-  background: #f5f3ff;
+  border-color: #4a89dc;
+  background: rgba(74, 137, 220, 0.1);
+  box-shadow: 0 0 15px rgba(74, 137, 220, 0.2);
 }
 
 .social-btn svg {
@@ -750,7 +832,7 @@ const handleRegister = async () => {
 }
 
 .social-btn:hover svg {
-  color: #4f46e5;
+  color: #4a89dc;
 }
 
 /* 响应式设计 */
@@ -758,7 +840,7 @@ const handleRegister = async () => {
   .brand-section {
     display: none;
   }
-  
+
   .form-section {
     width: 100%;
     padding: 20px;
@@ -770,7 +852,7 @@ const handleRegister = async () => {
     padding: 32px 24px;
     border-radius: 16px;
   }
-  
+
   .form-title {
     font-size: 20px;
   }

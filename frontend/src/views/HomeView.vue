@@ -5,7 +5,11 @@
     <div class="bg-grid"></div>
 
     <div class="home-header">
-      <h1 class="glitch-text" data-text="多智能体数据库查询系统">多智能体数据库查询系统</h1>
+      <div class="brand-section">
+        <div class="brand-logo">
+          <span class="brand-text">数据灵犀</span>
+        </div>
+      </div>
       <div class="user-info">
         <el-dropdown trigger="click" @command="handleCommand">
           <div class="user-dropdown-trigger">
@@ -111,15 +115,6 @@ const showChangePasswordDialog = async () => {
       confirmButtonText: '确认修改',
       cancelButtonText: '取消',
       inputType: 'password',
-      inputValidator: (value) => {
-        if (!value) {
-          return '密码不能为空';
-        }
-        if (value.length < 6) {
-          return '密码长度至少6位';
-        }
-        return true;
-      }
     });
 
     if (value) {
@@ -215,15 +210,49 @@ onMounted(() => {
 .home-header {
   position: relative;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(74, 137, 220, 0.2);
+  background: transparent;
+  border-bottom: 1px solid rgba(74, 137, 220, 0.15);
   padding: 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 30px rgba(74, 137, 220, 0.1);
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-text {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4a89dc, #6b9fde);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.brand-text::after {
+  content: '数据灵犀';
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #6b9fde, #4a89dc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.brand-section:hover .brand-text::after {
+  opacity: 1;
 }
 
 .home-header h1 {
@@ -237,29 +266,7 @@ onMounted(() => {
   position: relative;
 }
 
-/* 故障效果（蓝色系） */
-.glitch-text::before,
-.glitch-text::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.4;
-}
 
-.glitch-text::before {
-  color: #4a89dc;
-  z-index: -1;
-  transform: translate(-1px, -1px);
-}
-
-.glitch-text::after {
-  color: #ff77aa;
-  z-index: -2;
-  transform: translate(1px, 1px);
-}
 
 .user-info {
   display: flex;
@@ -273,53 +280,36 @@ onMounted(() => {
   cursor: pointer;
   padding: 8px 16px;
   border-radius: 25px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(74, 137, 220, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(74, 137, 220, 0.25);
   transition: all 0.3s ease;
 }
 
 .user-dropdown-trigger:hover {
-  background: rgba(74, 137, 220, 0.1);
-  border-color: rgba(74, 137, 220, 0.6);
-  box-shadow: 0 0 15px rgba(74, 137, 220, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(74, 137, 220, 0.5);
+  box-shadow: 0 0 15px rgba(74, 137, 220, 0.15);
 }
 
 .user-icon {
   font-size: 18px;
-  color: #4a89dc;
+  color: #3a7bc8;
 }
 
 .username {
   font-size: 16px;
   font-weight: 500;
-  color: #4a89dc;
+  color: #3a7bc8;
 }
 
 .dropdown-arrow {
   font-size: 12px;
-  color: #4a89dc;
+  color: #3a7bc8;
   transition: transform 0.3s ease;
 }
 
 .user-dropdown-trigger:hover .dropdown-arrow {
   transform: rotate(180deg);
-}
-
-/* 玻璃按钮（蓝色系） */
-.glass-btn {
-  background: transparent !important;
-  border: 1px solid rgba(74, 137, 220, 0.6) !important;
-  color: #4a89dc !important;
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(74, 137, 220, 0.2);
-}
-
-.glass-btn:hover {
-  background: rgba(74, 137, 220, 0.1) !important;
-  border-color: #4a89dc !important;
-  box-shadow: 0 0 20px rgba(74, 137, 220, 0.4);
-  transform: scale(1.02);
 }
 
 .glass-btn-small {
@@ -466,9 +456,8 @@ onMounted(() => {
   text-align: center;
   padding: 20px;
   font-size: 14px;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
-
 .home-footer p {
   margin: 0;
 }

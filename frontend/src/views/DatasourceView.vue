@@ -1,5 +1,9 @@
 <template>
   <div class="datasource-container">
+    <!-- 背景装饰元素 -->
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
     <!-- 返回按钮（固定在左上角） -->
     <el-button
       class="back-home-btn glass-btn"
@@ -19,14 +23,14 @@
             v-model="searchQuery"
             placeholder="搜索数据源"
             clearable
-            class="search-input"
+            class="search-input custom-input"
             size="default"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-button class="refresh-btn" @click="fetchDatasourceList">
+          <el-button class="refresh-btn glass-btn" @click="fetchDatasourceList">
             <el-icon><Refresh /></el-icon>
             刷新
           </el-button>
@@ -42,7 +46,7 @@
         <el-card
           v-for="datasource in filteredDatasources"
           :key="datasource.id"
-          class="datasource-card"
+          class="datasource-card glass-card"
           shadow="hover"
         >
           <!-- 卡片头部 -->
@@ -92,6 +96,7 @@
               </button>
             </div>
           </div>
+          <div class="card-glow"></div>
         </el-card>
       </div>
     </div>
@@ -115,12 +120,10 @@ import DatasourceForm from '@/views/DatasourceForm.vue';
 
 const router = useRouter();
 
-// 返回主页函数
 const goToHome = () => {
   router.push('/');
 };
 
-// 使用 Vite 的 glob import 来导入所有图标
 const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
 
 const iconMap = {
@@ -135,7 +138,6 @@ const iconMap = {
 
 const getDatasourceIcon = (type) => {
   const iconName = iconMap[type] || 'icon_mysql.svg';
-  // 遍历 iconModules 找到匹配的图标
   for (const [path, url] of Object.entries(iconModules)) {
     if (path.endsWith(iconName)) {
       return url;
@@ -244,10 +246,39 @@ const viewDatabase = (datasource) => {
 <style scoped>
 .datasource-container {
   min-height: 100vh;
-  background: #f7f8fa;
+  background: radial-gradient(ellipse at top, #e6f0ff, #d6e6ff);
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow-x: hidden;
+}
+
+/* 网格背景（蓝色） */
+.bg-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(74, 137, 220, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 137, 220, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 大光晕（蓝色） */
+.bg-glow {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(74, 137, 220, 0.2) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* 返回按钮样式 - 固定在左上角，悬浮在内容之上 */
@@ -259,7 +290,7 @@ const viewDatabase = (datasource) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border: 1px solid rgba(74, 137, 220, 0.3) !important;
@@ -268,9 +299,7 @@ const viewDatabase = (datasource) => {
   border-radius: 25px !important;
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 20px rgba(74, 137, 220, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
 }
 
 .back-home-btn:hover {
@@ -278,10 +307,7 @@ const viewDatabase = (datasource) => {
   border-color: #4a89dc !important;
   color: #4a89dc !important;
   transform: translateX(-3px) translateY(-2px);
-  box-shadow:
-    0 8px 30px rgba(74, 137, 220, 0.25),
-    0 0 20px rgba(74, 137, 220, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  box-shadow: 0 20px 40px rgba(74, 137, 220, 0.25);
 }
 
 .back-home-btn:active {
@@ -292,8 +318,9 @@ const viewDatabase = (datasource) => {
 /* 主内容区域 */
 .main-content {
   flex: 1;
-  padding: 24px;
-  padding-top: 80px; /* 为返回按钮预留空间 */
+  padding: 80px 24px 24px;
+  position: relative;
+  z-index: 1;
 }
 
 /* 页面头部 */
@@ -301,14 +328,17 @@ const viewDatabase = (datasource) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
-  color: #1d2129;
+  color: #1a2639;
   margin: 0;
+  background: linear-gradient(135deg, #1a2639, #2b4b7a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .header-actions {
@@ -318,63 +348,122 @@ const viewDatabase = (datasource) => {
 }
 
 .search-input {
-  width: 240px;
+  width: 280px;
 }
 
-.search-input :deep(.el-input__wrapper) {
-  border-radius: 6px;
-  background: #f2f3f5;
-  box-shadow: none;
+/* 自定义输入框样式 */
+.custom-input :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.3) inset;
+  padding: 0 16px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
-.search-input :deep(.el-input__wrapper:hover) {
-  background: #e5e6eb;
+.custom-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.5) inset;
+}
+
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #4a89dc inset;
+}
+
+.custom-input :deep(.el-input__prefix) {
+  color: #4a89dc;
+}
+
+/* 玻璃按钮样式 */
+.glass-btn {
+  background: transparent !important;
+  border: 1px solid rgba(74, 137, 220, 0.6) !important;
+  color: #4a89dc !important;
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(74, 137, 220, 0.2);
+  border-radius: 10px;
+  height: 44px;
+  padding: 0 20px;
+}
+
+.glass-btn:hover {
+  background: rgba(74, 137, 220, 0.1) !important;
+  border-color: #4a89dc !important;
+  box-shadow: 0 0 20px rgba(74, 137, 220, 0.4);
+  transform: translateY(-2px);
 }
 
 .refresh-btn {
-  background: white;
-  border: 1px solid #e5e6eb;
-  color: #4e5969;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.refresh-btn:hover {
-  background: #f2f3f5;
-  border-color: #e5e6eb;
-  color: #1d2129;
-}
-
+/* 创建按钮样式 */
 .create-btn {
-  background: #165dff;
+  background: #4a89dc;
   border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: 10px;
+  padding: 0 20px;
+  height: 44px;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(74, 137, 220, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .create-btn:hover {
-  background: #4080ff;
+  background: #3b7dd8;
+  box-shadow: 0 6px 20px rgba(74, 137, 220, 0.4);
+  transform: translateY(-2px);
 }
 
 /* 数据源网格 */
 .datasource-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  gap: 24px;
+}
+
+/* 玻璃卡片样式 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(74, 137, 220, 0.2);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
+}
+
+.glass-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(74, 137, 220, 0.8);
+  box-shadow: 0 20px 40px rgba(74, 137, 220, 0.25), 0 0 30px rgba(74, 137, 220, 0.3);
+}
+
+.card-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(74, 137, 220, 0.2) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+.glass-card:hover .card-glow {
+  opacity: 1;
 }
 
 .datasource-card {
-  border-radius: 8px;
-  border: 1px solid #e5e6eb;
   overflow: hidden;
-  cursor: pointer;
-  background: #ffffff;
-  transition: all 0.3s ease;
-}
-
-.datasource-card:hover {
-  border-color: #4a89dc;
-  box-shadow: 0 8px 25px rgba(74, 137, 220, 0.15);
-  transform: translateY(-4px);
 }
 
 /* 卡片头部 */
@@ -382,8 +471,8 @@ const viewDatabase = (datasource) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f2f3f5;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(74, 137, 220, 0.08);
 }
 
 .datasource-info {
@@ -393,22 +482,20 @@ const viewDatabase = (datasource) => {
 }
 
 .datasource-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgba(74, 137, 220, 0.1), rgba(74, 137, 220, 0.05));
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(74, 137, 220, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  border: 1px solid rgba(74, 137, 220, 0.1);
+  padding: 8px;
 }
 
 .datasource-icon img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(74, 137, 220, 0.2));
 }
 
 .datasource-text {
@@ -417,20 +504,16 @@ const viewDatabase = (datasource) => {
 }
 
 .datasource-name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  color: #1d2129;
+  color: #1a2639;
   margin-bottom: 2px;
 }
 
 .datasource-type {
   font-size: 12px;
-  color: #4a89dc;
-  background: rgba(74, 137, 220, 0.1);
-  padding: 2px 8px;
-  border-radius: 10px;
-  display: inline-block;
-  width: fit-content;
+  color: #666;
+  font-weight: 400;
 }
 
 /* 状态点 */
@@ -438,29 +521,26 @@ const viewDatabase = (datasource) => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #e5e6eb;
+  background: #ccc;
   flex-shrink: 0;
-  position: relative;
 }
 
 .status-dot.success {
-  background: #00b42a;
-  box-shadow: 0 0 8px rgba(0, 180, 42, 0.4);
+  background: #52c41a;
 }
 
 .status-dot.failed {
-  background: #f53f3f;
-  box-shadow: 0 0 8px rgba(245, 63, 63, 0.4);
+  background: #ff4d4f;
 }
 
 /* 卡片内容 */
 .card-content {
-  padding: 16px;
+  padding: 16px 20px;
 }
 
 .datasource-desc {
-  font-size: 12px;
-  color: #86909c;
+  font-size: 14px;
+  color: #666;
   margin-bottom: 16px;
   line-height: 1.5;
   display: -webkit-box;
@@ -474,42 +554,23 @@ const viewDatabase = (datasource) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 6px;
-  border-left: 3px solid #4a89dc;
 }
 
 .detail-row {
   display: flex;
-  font-size: 12px;
+  font-size: 13px;
   align-items: center;
 }
 
 .detail-label {
-  color: #4a89dc;
-  min-width: 48px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-label::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  background: #4a89dc;
-  border-radius: 50%;
-  opacity: 0.6;
+  color: #999;
+  min-width: 52px;
+  font-weight: 400;
 }
 
 .detail-value {
-  color: #1d2129;
+  color: #333;
   flex: 1;
-  font-weight: 500;
-  font-family: 'Consolas', 'Monaco', monospace;
   word-break: break-all;
 }
 
@@ -518,28 +579,20 @@ const viewDatabase = (datasource) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-top: 1px solid #f2f3f5;
-  background: #fafbfc;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(74, 137, 220, 0.08);
 }
 
 .table-count {
-  font-size: 12px;
-  color: #86909c;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.table-count::before {
-  content: '📊';
-  font-size: 10px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 400;
 }
 
 /* 卡片操作 */
 .card-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   padding: 0;
   border-top: none;
 }
@@ -548,72 +601,49 @@ const viewDatabase = (datasource) => {
   flex: none;
   padding: 6px 12px;
   background: none;
-  border: 1px solid #e5e6eb;
-  font-size: 12px;
+  border: none;
+  font-size: 13px;
   cursor: pointer;
-  color: #4e5969;
+  color: #666;
   border-radius: 4px;
   transition: all 0.2s;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .action-btn:hover {
-  border-color: #4a89dc;
-  background: rgba(74, 137, 220, 0.05);
-  text-decoration: none;
-}
-
-.edit-btn {
-  color: #4a89dc;
-  border-color: rgba(74, 137, 220, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  color: #333;
 }
 
 .edit-btn:hover {
-  background: rgba(74, 137, 220, 0.1);
   color: #4a89dc;
-  box-shadow: 0 2px 8px rgba(74, 137, 220, 0.2);
-}
-
-.view-btn {
-  color: #ff7d00;
-  border-color: rgba(255, 125, 0, 0.3);
+  background: rgba(74, 137, 220, 0.08);
 }
 
 .view-btn:hover {
-  background: rgba(255, 125, 0, 0.1);
   color: #ff7d00;
-  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
-}
-
-.delete-btn {
-  color: #f53f3f;
-  border-color: rgba(245, 63, 63, 0.3);
+  background: rgba(255, 125, 0, 0.08);
 }
 
 .delete-btn:hover {
-  background: rgba(245, 63, 63, 0.1);
-  color: #f53f3f;
-  box-shadow: 0 2px 8px rgba(245, 63, 63, 0.2);
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.08);
 }
 
-/* 下拉选项样式 */
-.option-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* 覆盖 element-plus 默认卡片样式 */
+:deep(.el-card__header) {
+  border-bottom: none !important;
+  padding: 0 !important;
 }
 
-.option-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+:deep(.el-card__body) {
+  padding: 0 !important;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
   .main-content {
-    padding: 16px;
-    padding-top: 70px;
+    padding: 70px 16px 16px;
   }
 
   .back-home-btn {
@@ -626,7 +656,11 @@ const viewDatabase = (datasource) => {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
   }
 
   .header-actions {

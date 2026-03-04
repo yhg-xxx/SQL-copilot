@@ -1,18 +1,32 @@
 <template>
-  <div class="login-container">
-    <h2>用户登录</h2>
-    <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="80px">
-      <el-form-item label="用户名" prop="username">
-        <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
-      </el-form-item>
-      <el-form-item label="密码" prop="password">
-        <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"></el-input>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="handleLogin" :loading="loading">登录</el-button>
-        <el-button @click="goToRegister">去注册</el-button>
-      </el-form-item>
-    </el-form>
+  <div class="login-page">
+    <!-- 背景装饰元素 -->
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
+    <div class="login-container glass-card">
+      <h2 class="login-title">用户登录</h2>
+      <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="80px" class="login-form">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="loginForm.username" placeholder="请输入用户名" class="custom-input">
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" class="custom-input" show-password>
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleLogin" :loading="loading" class="submit-btn">登录</el-button>
+          <el-button @click="goToRegister" class="secondary-btn">去注册</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
   </div>
 </template>
 
@@ -20,6 +34,8 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { ElMessage } from 'element-plus';
+import { User, Lock } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const loginFormRef = ref(null);
@@ -41,23 +57,24 @@ const rules = {
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return;
-  
+
   const valid = await loginFormRef.value.validate();
   if (!valid) return;
-  
+
   loading.value = true;
   try {
     const response = await axios.post('http://localhost:8000/user/login', loginForm);
     const { access_token } = response.data;
-    
+
     // 存储token到localStorage
     localStorage.setItem('token', access_token);
-    
+
     // 跳转到首页
     await router.push('/');
+    ElMessage.success('登录成功');
   } catch (error) {
     console.error('登录失败:', error);
-    alert('登录失败，请检查用户名和密码');
+    ElMessage.error('登录失败，请检查用户名和密码');
   } finally {
     loading.value = false;
   }
@@ -69,17 +86,152 @@ const goToRegister = () => {
 </script>
 
 <style scoped>
-.login-container {
-  max-width: 400px;
-  margin: 100px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(ellipse at top, #e6f0ff, #d6e6ff);
+  overflow-x: hidden;
 }
 
-h2 {
+/* 网格背景（蓝色） */
+.bg-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(74, 137, 220, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 137, 220, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 大光晕（蓝色） */
+.bg-glow {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(74, 137, 220, 0.2) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 玻璃卡片效果 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(74, 137, 220, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
+}
+
+.login-container {
+  width: 100%;
+  max-width: 450px;
+  padding: 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-title {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
+  font-size: 28px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #1a2639, #2b4b7a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-form :deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+.login-form :deep(.el-form-item__label) {
+  color: #1a2639;
+  font-weight: 500;
+}
+
+/* 自定义输入框样式 */
+.custom-input :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.3) inset;
+  padding: 0 16px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.custom-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.5) inset;
+}
+
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #4a89dc inset;
+}
+
+.custom-input :deep(.el-input__prefix) {
+  color: #4a89dc;
+  margin-right: 8px;
+}
+
+/* 提交按钮样式 */
+.submit-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  background: #4a89dc;
+  border: none;
+  box-shadow: 0 4px 15px rgba(74, 137, 220, 0.3);
+  transition: all 0.3s ease;
+  margin-bottom: 12px;
+}
+
+.submit-btn:hover {
+  background: #3b7dd8;
+  box-shadow: 0 6px 20px rgba(74, 137, 220, 0.4);
+  transform: translateY(-2px);
+}
+
+/* 次要按钮样式 */
+.secondary-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid rgba(74, 137, 220, 0.5);
+  color: #4a89dc;
+  transition: all 0.3s ease;
+}
+
+.secondary-btn:hover {
+  background: rgba(74, 137, 220, 0.1);
+  border-color: #4a89dc;
+  box-shadow: 0 4px 15px rgba(74, 137, 220, 0.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 32px 24px;
+    margin: 20px;
+    border-radius: 16px;
+  }
+
+  .login-title {
+    font-size: 24px;
+  }
 }
 </style>
