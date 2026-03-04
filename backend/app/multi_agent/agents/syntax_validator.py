@@ -3,7 +3,7 @@ import json
 from typing import Dict, List, Any
 import mysql.connector
 from mysql.connector import Error as MySQLError
-
+from .sql_generator import get_datasource_schema
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.multi_agent.state.agent_state import AgentState, ValidationResult
@@ -359,7 +359,6 @@ def syntax_validator(state: AgentState) -> AgentState:
         # 如果 state 中没有 db_info，再从数据库获取（备用方案）
         if not datasource_schema and datasource_id:
             try:
-                from .sql_generator import get_datasource_schema
                 datasource_schema = get_datasource_schema(datasource_id)
                 logger.info(f"从数据库获取到数据源表结构，表数量: {len(datasource_schema)}")
             except ImportError as e:

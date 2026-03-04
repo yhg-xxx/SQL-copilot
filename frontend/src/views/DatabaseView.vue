@@ -41,16 +41,7 @@
           </div>
         </div>
 
-        <div class="sidebar-footer">
-          <el-button
-            :type="showRelationship ? 'primary' : 'default'"
-            class="relationship-btn"
-            @click="toggleRelationship"
-          >
-            <el-icon><Connection /></el-icon>
-            <span>{{ showRelationship ? '返回表列表' : '表关系管理' }}</span>
-          </el-button>
-        </div>
+
       </div>
 
       <!-- 主内容区域 -->
@@ -101,7 +92,23 @@
                       <span>{{ row.field_comment || '-' }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="custom_comment" label="自定义注释" min-width="150">
+                  <el-table-column prop="custom_comment" min-width="150">
+                    <template #header>
+                      <div class="header-with-info">
+                        <span>自定义注释</span>
+                        <el-popover
+                          placement="top"
+                          content="当原始字段注释不存在时，会使用自定义注释作为备选"
+                          trigger="click"
+                        >
+                          <template #reference>
+                            <el-button type="text" class="header-info-icon">
+                              <el-icon><QuestionFilled /></el-icon>
+                            </el-button>
+                          </template>
+                        </el-popover>
+                      </div>
+                    </template>
                     <template #default="{ row }">
                       <div class="comment-cell">
                         <span>{{ row.custom_comment || '-' }}</span>
@@ -184,21 +191,7 @@
       </template>
     </el-dialog>
 
-    <!-- 表关系管理对话框 -->
-    <el-dialog
-      v-model="showRelationship"
-      title="表关系管理"
-      width="90%"
-      :close-on-click-modal="false"
-      class="relationship-dialog"
-    >
-      <TableRelationship
-        :datasource-id="parseInt(route.params.id)"
-        :tables="tables"
-        :show="showRelationship"
-        @success="handleRelationshipSaved"
-      />
-    </el-dialog>
+
   </div>
 </template>
 
@@ -207,8 +200,7 @@ import { ref , onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Search, Connection, Edit } from '@element-plus/icons-vue'
-import TableRelationship from '@/components/TableRelationship.vue'
+import { ArrowLeft, Search, Edit, QuestionFilled } from '@element-plus/icons-vue'
 
 // 导入图标
 const iconModules = import.meta.glob('@/assets/*', { eager: true, as: 'url' });
@@ -238,7 +230,7 @@ const activeTab = ref('schema')
 const fieldsLoading = ref(false)
 const dataLoading = ref(false)
 
-const showRelationship = ref(false)
+
 
 const tableCommentDialogVisible = ref(false)
 const tableCommentInput = ref('')
@@ -403,13 +395,7 @@ const toggleFieldChecked = async (field) => {
   }
 }
 
-const toggleRelationship = () => {
-  showRelationship.value = !showRelationship.value
-}
 
-const handleRelationshipSaved = () => {
-  ElMessage.success('表关系保存成功')
-}
 
 const goBack = () => {
   router.push('/datasource')
@@ -454,10 +440,14 @@ onMounted(() => {
 .header-top {
   display: flex;
   align-items: center;
+  justify-content: center;
+  position: relative;
   gap: 16px;
 }
 
 .back-btn {
+  position: absolute;
+  left: 0;
   padding: 0;
   color: #6b7280;
   font-size: 14px;
@@ -469,14 +459,14 @@ onMounted(() => {
 }
 
 .ds-name {
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
   color: #111827;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
-  margin-left: 0;
+  max-width: 200px;
+  text-align: center;
 }
 
 .search-area {
@@ -503,6 +493,11 @@ onMounted(() => {
 
 .list-item:hover {
   background-color: #f3f4f6;
+}
+
+.list-item.active {
+  background-color: #e6f0ff;
+  border-left: 3px solid #3b82f6;
 }
 
 .item-icon {
@@ -537,17 +532,7 @@ onMounted(() => {
   margin-top: 2px;
 }
 
-.sidebar-footer {
-  padding: 12px 16px;
-  border-top: 1px solid #f3f4f6;
-  background: #fff;
-  flex-shrink: 0;
-}
 
-.relationship-btn {
-  width: 100%;
-  justify-content: center;
-}
 
 /* 主内容区域 */
 .main-content {
@@ -674,9 +659,35 @@ onMounted(() => {
   font-size: 14px;
   padding: 2px;
   border-radius: 4px;
+  margin-left: 4px;
 }
 
 .edit-icon:hover {
+  background-color: #eff6ff;
+}
+
+.header-with-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-info-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3b82f6;
+  font-size: 19px;
+  padding: 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.header-info-icon:hover {
   background-color: #eff6ff;
 }
 
@@ -698,9 +709,5 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-}
-
-:deep(.relationship-dialog .el-dialog__body) {
-  padding: 0;
 }
 </style>
