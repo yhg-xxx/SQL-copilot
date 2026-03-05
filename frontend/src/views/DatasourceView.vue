@@ -128,10 +128,11 @@ const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as:
 
 const iconMap = {
   mysql: 'icon_mysql.svg',
-  postgresql: 'icon_pg.svg',
+  pg: 'icon_pg.svg',
   oracle: 'icon_oracle.svg',
-  sqlserver: 'icon_sqlserver.svg',
+  sqlServer: 'icon_sqlserver.svg',
   clickhouse: 'icon_ck.svg',
+  ck: 'icon_ck.svg',
   starrocks: 'icon_starrocks.png',
   doris: 'icon_doris.png'
 };

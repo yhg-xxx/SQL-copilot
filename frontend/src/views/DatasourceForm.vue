@@ -136,38 +136,21 @@
           <div class="selection-info">
             <div>
               已选择 <span class="highlight">{{ selectedTables.length }}</span> / {{ tableList.length }} 个表
-              <span v-if="searchKeyword.trim()">（筛选后: {{ filteredTableList.length }} 个）</span>
               <span v-if="isSelectAll" class="select-all-badge">（全选模式）</span>
-            </div>
-            <div v-if="selectedTables.length > 0" class="estimated-time">
-              预计处理时间：{{ formatEstimatedTime(calculateEstimatedTime(selectedTables.length)) }}
             </div>
           </div>
           <div class="header-actions">
             <el-button
-              v-if="displayedTableList.length < filteredTableList.length"
+              v-if="displayedTableList.length < tableList.length"
               size="small"
               @click="handleSelectDisplayed"
             >
               {{ isDisplayedAllSelected ? '取消当前显示' : '全选当前显示' }}
             </el-button>
             <el-button size="small" @click="handleSelectAll">
-              {{ isAllSelected ? '取消全选' : '全选筛选' }}
+              {{ isAllSelected ? '取消全选' : '全选' }}
             </el-button>
           </div>
-        </div>
-
-        <div class="table-search-wrapper">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索表名或注释..."
-            clearable
-            size="small"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
         </div>
 
         <div v-loading="tableListLoading" class="table-list-wrapper">
@@ -186,10 +169,9 @@
             </el-row>
           </el-checkbox-group>
           <el-empty v-if="tableList.length === 0" description="未找到数据表" />
-          <el-empty v-else-if="filteredTableList.length === 0" description="未找到匹配的表" />
 
           <div v-if="canLoadMore && !isLoadingMore" class="load-more-tip">
-            <span class="tip-text">滚动到底部加载更多（已显示 {{ displayedTableList.length }} / {{ filteredTableList.length }}）</span>
+            <span class="tip-text">滚动到底部加载更多（已显示 {{ displayedTableList.length }} / {{ tableList.length }}）</span>
           </div>
 
           <div v-if="isLoadingMore" class="loading-more">
@@ -197,8 +179,8 @@
             <span>加载更多表中...</span>
           </div>
 
-          <div v-if="!canLoadMore && filteredTableList.length > 0" class="load-complete">
-            <span class="tip-text">已显示全部 {{ filteredTableList.length }} 张表</span>
+          <div v-if="!canLoadMore && tableList.length > 0" class="load-complete">
+            <span class="tip-text">已显示全部 {{ tableList.length }} 张表</span>
           </div>
         </div>
       </div>
@@ -225,10 +207,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { Search, Loading } from '@element-plus/icons-vue';
+import {computed, reactive, ref, watch} from 'vue';
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {Loading} from '@element-plus/icons-vue';
 import axios from 'axios';
+
+// 防抖函数
+const debounce = (func, wait) => {
+  let timeout;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func.apply(context, args);
+    }, wait);
+  };
+};
 
 const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
 
@@ -350,7 +345,6 @@ const currentStep = ref(1);
 const tableList = ref([]);
 const selectedTables = ref([]);
 const tableListLoading = ref(false);
-const searchKeyword = ref('');
 const displayedTableCount = ref(50);
 const pageSize = ref(50);
 const isLoadingMore = ref(false);
@@ -407,7 +401,6 @@ const initForm = async () => {
   currentStep.value = 1;
   selectedTables.value = [];
   tableList.value = [];
-  searchKeyword.value = '';
   displayedTableCount.value = pageSize.value;
   hasMoreTables.value = true;
   isLoadingMore.value = false;
@@ -532,102 +525,56 @@ const handleSelectDisplayed = () => {
     const displayedTableNames = displayedTableList.value.map(t => t.tableName);
     const newSelected = new Set([...selectedTables.value, ...displayedTableNames]);
     selectedTables.value = Array.from(newSelected);
-    isSelectAll.value = selectedTables.value.length >= filteredTableList.value.length;
+    isSelectAll.value = selectedTables.value.length >= tableList.value.length;
   }
-};
-
-const calculateEstimatedTime = (tableCount) => {
-  return Math.max(1, Math.ceil(tableCount / 100));
-};
-
-const formatEstimatedTime = (minutes) => {
-  if (minutes < 60) {
-    return `约 ${minutes} 分钟`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (mins === 0) {
-    return `约 ${hours} 小时`;
-  }
-  return `约 ${hours} 小时 ${mins} 分钟`;
 };
 
 const handleSelectAll = async () => {
   if (isAllSelected.value) {
-    const filteredTableNames = filteredTableList.value.map(t => t.tableName);
-    selectedTables.value = selectedTables.value.filter(name => !filteredTableNames.includes(name));
+    selectedTables.value = [];
     isSelectAll.value = false;
     return;
   }
 
-  const filteredCount = filteredTableList.value.length;
   const totalCount = tableList.value.length;
   const displayedCount = displayedTableList.value.length;
-  const hasSearch = searchKeyword.value.trim().length > 0;
-  const notAllDisplayed = displayedCount < filteredCount;
+  const notAllDisplayed = displayedCount < totalCount;
 
-  const estimatedMinutes = calculateEstimatedTime(filteredCount);
-  const estimatedTimeText = formatEstimatedTime(estimatedMinutes);
-
-  let content = `您将选择 ${filteredCount} 张表进行同步。`;
+  let content = `您将选择 ${totalCount} 张表进行同步。`;
   if (notAllDisplayed) {
-    content += `\n（当前仅显示 ${displayedCount} 张，将自动选择全部 ${filteredCount} 张表）`;
+    content += `\n（当前仅显示 ${displayedCount} 张，将自动选择全部 ${totalCount} 张表）`;
   }
-  if (hasSearch && filteredCount < totalCount) {
-    content += `\n（当前筛选条件：共 ${totalCount} 张表，筛选后 ${filteredCount} 张）`;
-  }
-  content += `\n预计处理时间：${estimatedTimeText}\n\n是否继续？`;
+  content += `\n\n是否继续？`;
 
-  if (filteredCount > displayedCount || filteredCount > 100) {
+  if (totalCount > displayedCount || totalCount > 100) {
     await ElMessageBox.confirm(
       content,
-      hasSearch ? '确认全选（筛选结果）' : '确认全选',
+      '确认全选',
       {
         confirmButtonText: '确认全选',
         cancelButtonText: '取消',
         type: 'warning'
       }
     ).then(() => {
-      const filteredTableNames = filteredTableList.value.map(t => t.tableName);
-      const newSelected = new Set([...selectedTables.value, ...filteredTableNames]);
-      selectedTables.value = Array.from(newSelected);
+      selectedTables.value = tableList.value.map(t => t.tableName);
       isSelectAll.value = true;
-      ElMessage.success(`已选择 ${filteredCount} 张表，预计处理时间：${estimatedTimeText}`);
+      ElMessage.success(`已选择 ${totalCount} 张表`);
     }).catch(() => {});
   } else {
-    const filteredTableNames = filteredTableList.value.map(t => t.tableName);
-    const newSelected = new Set([...selectedTables.value, ...filteredTableNames]);
-    selectedTables.value = Array.from(newSelected);
+    selectedTables.value = tableList.value.map(t => t.tableName);
     isSelectAll.value = true;
-    if (filteredCount > 0) {
-      ElMessage.success(`已选择 ${filteredCount} 张表，预计处理时间：${estimatedTimeText}`);
+    if (totalCount > 0) {
+      ElMessage.success(`已选择 ${totalCount} 张表`);
     }
   }
 };
 
-watch(searchKeyword, () => {
-  displayedTableCount.value = pageSize.value;
-  hasMoreTables.value = true;
-});
-
-const filteredTableList = computed(() => {
-  if (!searchKeyword.value.trim()) {
-    return tableList.value;
-  }
-  const keyword = searchKeyword.value.toLowerCase().trim();
-  return tableList.value.filter(table => {
-    const name = (table.tableName || '').toLowerCase();
-    const comment = (table.tableComment || '').toLowerCase();
-    return name.includes(keyword) || comment.includes(keyword);
-  });
-});
-
 const displayedTableList = computed(() => {
-  return filteredTableList.value.slice(0, displayedTableCount.value);
+  return tableList.value.slice(0, displayedTableCount.value);
 });
 
 const canLoadMore = computed(() => {
-  return displayedTableCount.value < filteredTableList.value.length;
+  return displayedTableCount.value < tableList.value.length;
 });
 
 const isDisplayedAllSelected = computed(() => {
@@ -636,31 +583,20 @@ const isDisplayedAllSelected = computed(() => {
 });
 
 const isAllSelected = computed(() => {
-  if (filteredTableList.value.length === 0) return false;
-  return filteredTableList.value.every(table => selectedTables.value.includes(table.tableName));
+  if (tableList.value.length === 0) return false;
+  return tableList.value.every(table => selectedTables.value.includes(table.tableName));
 });
 
 watch(selectedTables, (newSelected) => {
-  isSelectAll.value = newSelected.length === filteredTableList.value.length && filteredTableList.value.length === tableList.value.length;
+  isSelectAll.value = newSelected.length === tableList.value.length;
 }, { deep: true });
 
-const handleSave = async () => {
+const handleSave = debounce(async () => {
   if (loading.value) return;
 
   if (selectedTables.value.length === 0) {
     ElMessage.warning('请至少选择一个表');
     return;
-  }
-
-  const selectedCount = selectedTables.value.length;
-  const estimatedMinutes = calculateEstimatedTime(selectedCount);
-  const estimatedTimeText = formatEstimatedTime(estimatedMinutes);
-
-  if (selectedCount > 100) {
-    ElMessage.info(
-      `正在保存 ${selectedCount} 张表，预计处理时间：${estimatedTimeText}，请耐心等待...`,
-      { duration: 5000 }
-    );
   }
 
   loading.value = true;
@@ -725,7 +661,7 @@ const handleSave = async () => {
   } finally {
     loading.value = false;
   }
-};
+}, 1000);
 
 const handleClose = () => {
   emit('update:show', false);
