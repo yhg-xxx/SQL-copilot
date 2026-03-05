@@ -59,6 +59,25 @@ async def multi_agent_query(
 
             db.add(qa_record)
             db.commit()
+            
+            # 检查是否是对话的第一条消息，如果是，生成标题
+            from app.models.conversation import UserConversation
+            from app.utils.title_generator import generate_conversation_title
+            
+            # 查询对话
+            conversation = db.query(UserConversation).filter(
+                UserConversation.conversation_id == request.chat_id,
+                UserConversation.user_id == user_id
+            ).first()
+            
+            # 检查对话是否存在，且标题为默认的"新对话"
+            if conversation and conversation.title == "新对话":
+                # 生成新标题
+                new_title = generate_conversation_title(request.query)
+                # 更新对话标题
+                conversation.title = new_title
+                db.commit()
+                db.refresh(conversation)
 
         return QueryResponse(**result)
 
