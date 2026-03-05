@@ -358,7 +358,7 @@ def syntax_validator(state: AgentState) -> AgentState:
         if not generated_sql or generated_sql == "No SQL query generated":
             validation_result = ValidationResult(
                 valid=False,
-                errors=["没有可验证的 SQL"],
+                errors=["SQL语句为空，没有可验证的 SQL"],
                 warnings=[],
                 mysql_validation_passed=False,
                 llm_validation_passed=False,
@@ -366,7 +366,7 @@ def syntax_validator(state: AgentState) -> AgentState:
                 llm_feedback=""
             )
             state["validation_result"] = validation_result
-            state["error_message"] = "没有可验证的 SQL"
+            # state["error_message"] = "SQL语句为空，没有可验证的 SQL"
             return state
 
         # 获取数据库表结构信息 - 优先使用 state 中的 db_info，避免重复获取

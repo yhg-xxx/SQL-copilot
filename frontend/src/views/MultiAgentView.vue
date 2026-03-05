@@ -18,10 +18,27 @@
             :class="{ active: selectedConversationId === conversation.conversation_id }"
             @click="selectConversation(conversation)"
           >
-            <div class="conversation-title">{{ conversation.title }}</div>
-            <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
-            <div v-else class="conversation-last-message empty">暂无消息</div>
+            <div class="conversation-content">
+              <div class="conversation-title">{{ conversation.title }}</div>
+              <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
+              <div v-else class="conversation-last-message empty">暂无消息</div>
+            </div>
             <div class="conversation-time">{{ formatTime(conversation.updated_at) }}</div>
+            <div class="conversation-menu">
+              <el-dropdown @command="(command) => handleConversationMenu(command, conversation.conversation_id)">
+                <el-button type="text" class="menu-btn">
+                  <el-icon><More /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="delete" type="danger">
+                      <el-icon class="menu-icon"><Delete /></el-icon>
+                      删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </div>
           <div v-if="conversations.length === 0" class="empty-conversations">
             <el-icon class="empty-icon"><ChatLineSquare /></el-icon>
@@ -176,7 +193,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage, ElNotification, ElInput } from 'element-plus'
+import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
 import {
   Delete,
   DocumentCopy,
@@ -188,7 +205,8 @@ import {
   CircleClose,
   InfoFilled,
   Plus,
-  ChatLineSquare
+  ChatLineSquare,
+  More
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 
@@ -265,7 +283,7 @@ const sendMessage = async () => {
       // 更新对话的最后一条消息
       updateConversationLastMessage(selectedConversationId.value, message)
     } else {
-      ElNotification.error({ title: '失败', message: result.error_message, duration: 3000 })
+      ElNotification.error({ title: '失败', message: result.message, duration: 3000 })
     }
   } catch (error) {
     console.error('发送消息失败:', error)
@@ -444,6 +462,65 @@ const formatTime = (timeString) => {
   }
 }
 
+// 处理对话菜单
+const handleConversationMenu = (command, conversationId) => {
+  if (command === 'delete') {
+    confirmDeleteConversation(conversationId)
+  }
+}
+
+// 确认删除对话
+const confirmDeleteConversation = (conversationId) => {
+  ElMessageBox.confirm(
+    '确定要删除这个对话吗？删除后将无法恢复',
+    '确认删除',
+    {
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger',
+      customClass: 'delete-dialog'
+    }
+  ).then(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      await axios.delete(`http://localhost:8000/conversations/${conversationId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      // 从列表中移除对话
+      conversations.value = conversations.value.filter(
+        conv => conv.conversation_id !== conversationId
+      )
+      
+      // 如果删除的是当前选中的对话，清空消息并选择第一个对话
+      if (selectedConversationId.value === conversationId) {
+        messages.value = []
+        currentResult.value = null
+        if (conversations.value.length > 0) {
+          selectConversation(conversations.value[0])
+        } else {
+          selectedConversationId.value = null
+          // 显示欢迎消息
+          messages.value.push({
+            role: 'assistant',
+            content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
+            timestamp: new Date().toLocaleTimeString(),
+            isWelcome: true
+          })
+        }
+      }
+      
+      ElMessage.success('对话删除成功')
+    } catch (error) {
+      console.error('删除对话失败:', error)
+      ElMessage.error('删除对话失败，请重试')
+    }
+  }).catch(() => {
+    // 取消删除
+  })
+}
+
 onMounted(() => {
   loadDatasources()
   loadConversations()
@@ -549,6 +626,8 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .conversation-item:hover {
@@ -558,6 +637,11 @@ onMounted(() => {
 .conversation-item.active {
   background: #e0e7ff;
   border-left: 3px solid #667eea;
+}
+
+.conversation-content {
+  flex: 1;
+  margin-right: 30px;
 }
 
 .conversation-title {
@@ -584,7 +668,32 @@ onMounted(() => {
   color: #9ca3af;
   position: absolute;
   top: 12px;
-  right: 16px;
+  right: 40px;
+}
+
+.conversation-menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.menu-btn {
+  padding: 4px;
+  color: #6b7280;
+  font-size: 16px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.menu-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.menu-icon {
+  margin-right: 4px;
+  font-size: 14px;
 }
 
 .empty-conversations {
@@ -1177,5 +1286,42 @@ onMounted(() => {
   .send-btn {
     width: 100%; /* 小屏幕下占满宽度 */
   }
+}
+
+/* 删除对话框样式 */
+.delete-dialog {
+  width: 400px !important;
+}
+
+.delete-dialog .el-message-box__content {
+  padding: 20px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.delete-dialog .el-message-box__btns {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.delete-dialog .el-button--danger {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: white;
+  padding: 6px 20px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.delete-dialog .el-button--danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.delete-dialog .el-button--default {
+  padding: 6px 20px;
+  border-radius: 4px;
 }
 </style>
