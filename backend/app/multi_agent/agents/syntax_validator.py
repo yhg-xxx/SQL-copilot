@@ -297,28 +297,13 @@ JSON 格式：
                        f"warnings: {result.get('warnings')}, "
                        f"llm_feedback: {result.get('llm_feedback')}")
         except json.JSONDecodeError:
-            # 尝试处理可能的格式问题
-            try:
-                # 移除可能的 markdown 代码块标记
-                if response_content.startswith("```"):
-                    lines = response_content.split('\n')
-                    if lines[0].startswith("```"):
-                        response_content = '\n'.join(lines[1:-1])
-
-                # 再次尝试解析
-                llm_result = json.loads(response_content)
-                result.update(llm_result)
-                # 打印验证结果字段到日志
-                logger.info(f"LLM 验证结果 - valid: {result.get('valid')}, "
-                           f"llm_validation_passed: {result.get('llm_validation_passed')}, "
-                           f"errors: {result.get('errors')}, "
-                           f"warnings: {result.get('warnings')}, "
-                           f"llm_feedback: {result.get('llm_feedback')}")
-            except:
-                result["errors"].append("LLM 返回格式错误")
-                result["llm_feedback"] = f"无法解析的响应: {response_content[:100]}..."
-                logger.error(f"LLM 验证结果解析失败 - errors: {result.get('errors')}, "
-                            f"llm_feedback: {result.get('llm_feedback')}")
+            result["errors"].append("LLM 返回格式错误")
+            # 打印验证结果字段到日志
+            logger.error(f"LLM 验证结果 - valid: {result.get('valid')}, "
+                        f"llm_validation_passed: {result.get('llm_validation_passed')}, "
+                        f"errors: {result.get('errors')}, "
+                        f"warnings: {result.get('warnings')}, "
+                        f"llm_feedback: {result.get('llm_feedback')}")
 
     except Exception as e:
         result["errors"].append(f"LLM 验证过程异常: {str(e)}")
