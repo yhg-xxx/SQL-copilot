@@ -101,6 +101,15 @@ async def get_conversation_history(
         UserQARecord.conversation_id == conversation_id
     ).order_by(UserQARecord.create_time.asc()).all()
     
+    # 查询该对话最后使用的数据源ID
+    last_datasource_id = None
+    if history:
+        # 从最新的记录开始查找有数据源ID的记录
+        for record in reversed(history):
+            if record.datasource_id:
+                last_datasource_id = record.datasource_id
+                break
+    
     # 格式化历史记录
     formatted_history = []
     for record in history:
@@ -118,7 +127,10 @@ async def get_conversation_history(
                 "sql": record.sql_statement
             })
     
-    return {"history": formatted_history}
+    return {
+        "history": formatted_history,
+        "last_datasource_id": last_datasource_id
+    }
 
 # 更新对话
 @router.put("/{conversation_id}", response_model=ConversationResponse)

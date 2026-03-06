@@ -1,50 +1,51 @@
 <template>
-  <div class="register-page">
-    <!-- 背景装饰元素 -->
-    <div class="bg-glow"></div>
-    <div class="bg-grid"></div>
+  <div class="auth-form glass-card">
+    <h2 class="form-title">欢迎注册</h2>
 
-    <div class="register-container glass-card">
-      <h2 class="register-title">用户注册</h2>
-      <el-form :model="registerForm" :rules="rules" ref="registerFormRef" label-width="80px" class="register-form">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="registerForm.username" placeholder="请输入用户名" class="custom-input">
-            <template #prefix>
-              <el-icon><User /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="registerForm.password" type="password" placeholder="请输入密码" class="custom-input" show-password>
-            <template #prefix>
-              <el-icon><Lock /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="registerForm.confirmPassword" type="password" placeholder="请确认密码" class="custom-input" show-password>
-            <template #prefix>
-              <el-icon><Lock /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleRegister" :loading="loading" class="submit-btn">注册</el-button>
-          <el-button @click="goToLogin" class="secondary-btn">去登录</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+    <el-form :model="registerForm" :rules="rules" ref="registerFormRef" class="register-form">
+      <el-form-item prop="username">
+        <el-input v-model="registerForm.username" placeholder="请输入用户名" size="large" class="custom-input">
+          <template #prefix>
+            <el-icon><User /></el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="password">
+        <el-input v-model="registerForm.password" type="password" placeholder="请输入密码" size="large" class="custom-input" show-password>
+          <template #prefix>
+            <el-icon><Lock /></el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="confirmPassword">
+        <el-input v-model="registerForm.confirmPassword" type="password" placeholder="请确认密码" size="large" class="custom-input" show-password>
+          <template #prefix>
+            <el-icon><Lock /></el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="handleRegister" :loading="loading" size="large" class="submit-btn">注册</el-button>
+      </el-form-item>
+      <div class="form-links center">
+        <span class="text-muted">已有账号？</span>
+        <a href="#" class="link-text primary" @click.prevent="$emit('switch-to-login')">
+          立即登录
+        </a>
+      </div>
+    </el-form>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 
-const router = useRouter();
+// 定义事件
+const emit = defineEmits(['switch-to-login']);
+
 const registerFormRef = ref(null);
 const loading = ref(false);
 
@@ -62,9 +63,8 @@ const rules = {
     { required: true, message: '请输入密码', trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
     {
-      validator: (value, callback) => {
+      validator: (rule, value, callback) => {
         if (value !== registerForm.password) {
           callback(new Error('两次输入密码不一致'));
         } else {
@@ -89,7 +89,7 @@ const handleRegister = async () => {
       password: registerForm.password
     });
     ElMessage.success('注册成功，请登录');
-    await router.push('/login');
+    emit('switch-to-login');
   } catch (error) {
     console.error('注册失败:', error);
     ElMessage.error('注册失败，用户名可能已存在');
@@ -97,86 +97,21 @@ const handleRegister = async () => {
     loading.value = false;
   }
 };
-
-const goToLogin = () => {
-  router.push('/login');
-};
 </script>
 
 <style scoped>
-.register-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background: radial-gradient(ellipse at top, #e6f0ff, #d6e6ff);
-  overflow-x: hidden;
-}
-
-/* 网格背景（蓝色） */
-.bg-grid {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image:
-    linear-gradient(rgba(74, 137, 220, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 137, 220, 0.08) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* 大光晕（蓝色） */
-.bg-glow {
-  position: absolute;
-  top: -20%;
-  left: -10%;
-  width: 120%;
-  height: 60%;
-  background: radial-gradient(circle, rgba(74, 137, 220, 0.2) 0%, transparent 70%);
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* 玻璃卡片效果 */
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(74, 137, 220, 0.2);
-  border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(74, 137, 220, 0.15);
-}
-
-.register-container {
-  width: 100%;
-  max-width: 450px;
-  padding: 48px;
-  position: relative;
-  z-index: 1;
-}
-
-.register-title {
+/* 标题样式 */
+.form-title {
   text-align: center;
   margin-bottom: 32px;
-  font-size: 28px;
+  margin-top: -10px;
+  font-size: 24px;
   font-weight: 600;
-  background: linear-gradient(135deg, #1a2639, #2b4b7a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #1a2639;
 }
 
 .register-form :deep(.el-form-item) {
-  margin-bottom: 24px;
-}
-
-.register-form :deep(.el-form-item__label) {
-  color: #1a2639;
-  font-weight: 500;
+  margin-bottom: 20px;
 }
 
 /* 自定义输入框样式 */
@@ -184,7 +119,7 @@ const goToLogin = () => {
   border-radius: 10px;
   box-shadow: 0 0 0 1px rgba(74, 137, 220, 0.3) inset;
   padding: 0 16px;
-  height: 44px;
+  height: 48px;
   background: rgba(255, 255, 255, 0.5);
 }
 
@@ -198,13 +133,13 @@ const goToLogin = () => {
 
 .custom-input :deep(.el-input__prefix) {
   color: #4a89dc;
-  margin-right: 8px;
+  margin-right: 12px;
 }
 
 /* 提交按钮样式 */
 .submit-btn {
   width: 100%;
-  height: 44px;
+  height: 48px;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 500;
@@ -212,7 +147,6 @@ const goToLogin = () => {
   border: none;
   box-shadow: 0 4px 15px rgba(74, 137, 220, 0.3);
   transition: all 0.3s ease;
-  margin-bottom: 12px;
 }
 
 .submit-btn:hover {
@@ -221,35 +155,35 @@ const goToLogin = () => {
   transform: translateY(-2px);
 }
 
-/* 次要按钮样式 */
-.secondary-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  background: transparent;
-  border: 1px solid rgba(74, 137, 220, 0.5);
+.form-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.form-links.center {
+  justify-content: center;
+  gap: 8px;
+}
+
+.link-text {
+  color: #6b7280;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.link-text:hover {
   color: #4a89dc;
-  transition: all 0.3s ease;
 }
 
-.secondary-btn:hover {
-  background: rgba(74, 137, 220, 0.1);
-  border-color: #4a89dc;
-  box-shadow: 0 4px 15px rgba(74, 137, 220, 0.2);
+.link-text.primary {
+  color: #4a89dc;
+  font-weight: 500;
 }
 
-/* 响应式设计 */
-@media (max-width: 480px) {
-  .register-container {
-    padding: 32px 24px;
-    margin: 20px;
-    border-radius: 16px;
-  }
-
-  .register-title {
-    font-size: 24px;
-  }
+.text-muted {
+  color: #9ca3af;
+  font-size: 14px;
 }
 </style>

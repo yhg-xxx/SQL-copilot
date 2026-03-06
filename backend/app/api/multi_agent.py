@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from backend.app.multi_agent.multi_agent import MultiAgent
+from app.multi_agent.multi_agent import MultiAgent
 from app.schemas.multi_agent import QueryRequest, QueryResponse
 from app.utils.dependencies import get_current_user
 from app.database.db import get_db

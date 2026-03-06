@@ -375,6 +375,7 @@ const loadConversationHistory = async (conversationId) => {
     })
     
     const history = response.data.history
+    const lastDatasourceId = response.data.last_datasource_id
     messages.value = []
     
     if (history.length > 0) {
@@ -395,6 +396,15 @@ const loadConversationHistory = async (conversationId) => {
         timestamp: new Date().toLocaleTimeString(),
         isWelcome: true
       })
+    }
+    
+    // 如果有最后使用的数据源ID，且数据源列表已加载，则自动选择该数据源
+    if (lastDatasourceId && datasources.value.length > 0) {
+      // 检查数据源是否存在于列表中
+      const datasourceExists = datasources.value.some(ds => ds.id === lastDatasourceId)
+      if (datasourceExists) {
+        selectedDatasource.value = lastDatasourceId
+      }
     }
     
     currentResult.value = null
