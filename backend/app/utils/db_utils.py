@@ -2,6 +2,7 @@ import logging
 import pymysql
 import psycopg2
 import pyodbc
+import oracledb
 from psycopg2 import OperationalError
 
 logger = logging.getLogger(__name__)
@@ -573,12 +574,280 @@ class SQLServerHandler(BaseDatabaseHandler):
                 connection.close()
 
 
+class OracleHandler(BaseDatabaseHandler):
+    """Oracle数据库处理器"""
+
+    def test_connection(self):
+        connection = None
+        try:
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            # 构建Oracle连接字符串
+            dsn = self._build_dsn()
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            return True
+        except Exception as e:
+            logger.error("Oracle连接失败: %s", e)
+            raise
+        finally:
+            if connection:
+                connection.close()
+
+    def get_tables(self):
+        tables = []
+        connection = None
+        try:
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            dsn = self._build_dsn()
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            with connection.cursor() as cursor:
+                # 查询用户拥有的表
+                try:
+                    # 尝试使用标准的user_tab_comments视图
+                    cursor.execute("""
+                        SELECT 
+                            table_name, 
+                            comments 
+                        FROM 
+                            user_tab_comments 
+                        WHERE 
+                            table_type = 'TABLE' 
+                        ORDER BY 
+                            table_name
+                    """)
+                    all_tables = cursor.fetchall()
+
+                    for table in all_tables:
+                        tables.append({
+                            'tableName': table[0],
+                            'tableComment': table[1] if table[1] else ''
+                        })
+                except Exception as e:
+                    logger.warning("使用user_tab_comments失败: %s，尝试使用替代方案", e)
+                    # 尝试使用替代方案，只查询表名
+                    cursor.execute("""
+                        SELECT 
+                            table_name 
+                        FROM 
+                            user_tables 
+                        ORDER BY 
+                            table_name
+                    """)
+                    all_tables = cursor.fetchall()
+
+                    for table in all_tables:
+                        tables.append({
+                            'tableName': table[0],
+                            'tableComment': ''
+                        })
+            return tables
+        finally:
+            if connection:
+                connection.close()
+
+    def get_table_fields(self, table_name):
+        fields = []
+        connection = None
+        try:
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            dsn = self._build_dsn()
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            with connection.cursor() as cursor:
+                # 查询表字段信息
+                try:
+                    # 尝试使用包含comments列的查询
+                    cursor.execute("""
+                        SELECT 
+                            column_name, 
+                            data_type, 
+                            comments, 
+                            column_id 
+                        FROM 
+                            user_tab_columns 
+                        WHERE 
+                            table_name = UPPER(:table_name) 
+                        ORDER BY 
+                            column_id
+                    """, table_name=table_name)
+                    field_results = cursor.fetchall()
+
+                    for field in field_results:
+                        fields.append({
+                            'field_name': field[0],
+                            'field_type': field[1],
+                            'field_comment': field[2] if field[2] else '',
+                            'field_index': field[3]
+                        })
+                except Exception as e:
+                    logger.warning("使用user_tab_columns失败: %s，尝试使用替代方案", e)
+                    # 尝试使用不包含comments列的查询
+                    cursor.execute("""
+                        SELECT 
+                            column_name, 
+                            data_type, 
+                            column_id 
+                        FROM 
+                            user_tab_columns 
+                        WHERE 
+                            table_name = UPPER(:table_name) 
+                        ORDER BY 
+                            column_id
+                    """, table_name=table_name)
+                    field_results = cursor.fetchall()
+
+                    for field in field_results:
+                        fields.append({
+                            'field_name': field[0],
+                            'field_type': field[1],
+                            'field_comment': '',
+                            'field_index': field[2]
+                        })
+            return fields
+        finally:
+            if connection:
+                connection.close()
+
+    def get_table_indexes(self, table_name):
+        indexes = []
+        connection = None
+        try:
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            dsn = self._build_dsn()
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            with connection.cursor() as cursor:
+                # 查询表索引信息
+                cursor.execute("""
+                    SELECT 
+                        i.index_name, 
+                        ic.column_name, 
+                        CASE WHEN i.uniqueness = 'UNIQUE' THEN 0 ELSE 1 END AS non_unique, 
+                        ic.column_position AS seq_in_index, 
+                        CASE WHEN i.index_name = (SELECT constraint_name FROM user_constraints WHERE table_name = UPPER(:table_name) AND constraint_type = 'P') THEN 'PRIMARY' 
+                             WHEN i.uniqueness = 'UNIQUE' THEN 'UNIQUE' 
+                             ELSE 'INDEX' 
+                        END AS index_type 
+                    FROM 
+                        user_indexes i, 
+                        user_ind_columns ic 
+                    WHERE 
+                        i.table_name = UPPER(:table_name) 
+                        AND i.index_name = ic.index_name 
+                        AND i.table_name = ic.table_name 
+                    ORDER BY 
+                        i.index_name, 
+                        ic.column_position
+                """, table_name=table_name)
+                index_results = cursor.fetchall()
+
+                for index in index_results:
+                    indexes.append({
+                        'index_name': index[0],
+                        'column_name': index[1],
+                        'non_unique': index[2],
+                        'seq_in_index': index[3],
+                        'index_type': index[4]
+                    })
+            return indexes
+        finally:
+            if connection:
+                connection.close()
+
+    def get_table_comment(self, table_name):
+        connection = None
+        try:
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            dsn = self._build_dsn()
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            with connection.cursor() as cursor:
+                try:
+                    # 尝试使用user_tab_comments视图
+                    cursor.execute("""
+                        SELECT 
+                            comments 
+                        FROM 
+                            user_tab_comments 
+                        WHERE 
+                            table_name = UPPER(:table_name)
+                    """, table_name=table_name)
+                    comment_result = cursor.fetchone()
+                    return comment_result[0] if comment_result and comment_result[0] else ''
+                except Exception as e:
+                    logger.warning("获取表注释失败: %s，返回空字符串", e)
+                    return ''
+        finally:
+            if connection:
+                connection.close()
+
+    def _build_dsn(self):
+        """构建Oracle DSN"""
+        host = self.config['host']
+        port = int(self.config.get('port', 1521))
+        mode = self.config.get('mode', 'service_name')
+        db = self.config['database']
+        
+        if mode == 'service_name':
+            # 使用服务名称
+            return f"{host}:{port}/{db}"
+        else:
+            # 使用SID
+            return f"{host}:{port}:{db}"
+
+
 def get_database_handler(db_type, config):
     """
     获取数据库处理器
 
     Args:
-        db_type: 数据库类型 (mysql, pg, postgresql, sqlserver, sqlServer等)
+        db_type: 数据库类型 (mysql, pg, postgresql, sqlserver, sqlServer, oracle等)
 
     Returns:
         对应的数据库处理器实例
@@ -591,6 +860,8 @@ def get_database_handler(db_type, config):
         return PostgreSQLHandler(config)
     elif db_type in ['sqlserver', 'sql_server', 'mssql']:
         return SQLServerHandler(config)
+    elif db_type == 'oracle':
+        return OracleHandler(config)
     else:
         raise ValueError("不支持的数据库类型: {}".format(db_type))
 

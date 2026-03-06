@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import logging
 
 
 from app.database.db import get_db
@@ -10,6 +11,8 @@ from app.utils.dependencies import get_current_user
 from app.utils.db_utils import get_database_handler
 from typing import List
 import json
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/datasource", tags=["datasource"])
 
@@ -592,6 +595,56 @@ async def get_table_data(datasource_id: int, table_name: str, limit: int = 100, 
 
                 # 获取数据
                 cursor.execute(f'SELECT TOP {limit} * FROM [{schema}].[{table_name}]')
+                data = []
+                for row in cursor.fetchall():
+                    data.append(dict(zip([column[0] for column in cursor.description], row)))
+
+            connection.close()
+            return {
+                'columns': columns,
+                'data': data
+            }
+        elif datasource.type == "oracle":
+            import oracledb
+            # 尝试使用Thick模式
+            try:
+                oracledb.init_oracle_client()
+                logger.info("使用Oracle Thick模式连接")
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            # 构建Oracle DSN
+            host = config['host']
+            port = int(config.get('port', 1521))
+            mode = config.get('mode', 'service_name')
+            db = config['database']
+            
+            if mode == 'service_name':
+                dsn = f"{host}:{port}/{db}"
+            else:
+                dsn = f"{host}:{port}:{db}"
+            
+            # 连接到数据库
+            connection = oracledb.connect(
+                user=config['username'],
+                password=config['password'],
+                dsn=dsn
+            )
+
+            # 获取表数据
+            with connection.cursor() as cursor:
+                # 获取列信息
+                cursor.execute("""
+                    SELECT COLUMN_NAME
+                    FROM USER_TAB_COLUMNS
+                    WHERE TABLE_NAME = UPPER(:table_name)
+                    ORDER BY COLUMN_ID
+                """, table_name=table_name)
+                columns_info = cursor.fetchall()
+                columns = [col[0] for col in columns_info]
+
+                # 获取数据
+                cursor.execute(f'SELECT * FROM {table_name} WHERE ROWNUM <= {limit}')
                 data = []
                 for row in cursor.fetchall():
                     data.append(dict(zip([column[0] for column in cursor.description], row)))

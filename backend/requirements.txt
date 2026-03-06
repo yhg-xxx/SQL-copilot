@@ -9,6 +9,7 @@ pymysql
 mysql-connector-python
 psycopg2-binary
 pyodbc
+oracledb
 langgraph
 langchain
 langchain-core

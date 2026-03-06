@@ -91,25 +91,40 @@
 
         <el-row :gutter="24">
           <el-col :span="12">
-            <el-form-item label="数据库名" prop="database">
+            <el-form-item v-if="!showOracleMode" label="数据库名" prop="database">
               <el-input v-model="formData.database" placeholder="请输入数据库名" clearable />
             </el-form-item>
+            <el-form-item v-else :label="formData.mode === 'service_name' ? '服务名称' : 'SID'" prop="database">
+              <el-input v-model="formData.database" :placeholder="formData.mode === 'service_name' ? 'ORCL' : 'XE'" clearable />
+            </el-form-item>
           </el-col>
-          <el-col :span="12" v-if="showSchema">
+          <el-col :span="12" v-if="showOracleMode">
+            <el-form-item label="驱动程序">
+              <el-select v-model="formData.driver" placeholder="请选择驱动程序" style="width: 100%">
+                <el-option label="Thin" value="thin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-else-if="showSchema">
             <el-form-item label="Schema" prop="dbSchema">
               <el-input v-model="formData.dbSchema" placeholder="public" clearable />
             </el-form-item>
           </el-col>
         </el-row>
 
-        <div v-if="showOracleMode || formData.extraJdbc || formData.timeout !== 30">
+        <el-row v-if="showOracleMode" :gutter="24">
+          <el-col :span="24">
+            <el-form-item label="连接类型" prop="mode">
+              <el-radio-group v-model="formData.mode">
+                <el-radio value="service_name">服务名称</el-radio>
+                <el-radio value="sid">SID</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div v-if="formData.extraJdbc || formData.timeout !== 30">
           <el-divider>高级设置</el-divider>
-          <el-form-item v-if="showOracleMode" label="连接模式" prop="mode">
-            <el-radio-group v-model="formData.mode">
-              <el-radio value="service_name">Service Name</el-radio>
-              <el-radio value="sid">SID</el-radio>
-            </el-radio-group>
-          </el-form-item>
           <el-form-item label="额外参数">
             <el-input
               v-model="formData.extraJdbc"
@@ -272,7 +287,7 @@ const datasourceTypes = [
   { label: 'StarRocks', value: 'starrocks' }
 ];
 
-const needSchemaTypes = ['sqlServer', 'pg', 'oracle', 'dm'];
+const needSchemaTypes = ['sqlServer', 'pg', 'dm'];
 
 const formRef = ref(null);
 const dialogVisible = computed({
@@ -294,7 +309,8 @@ const formData = reactive({
   dbSchema: '',
   extraJdbc: '',
   timeout: 30,
-  mode: 'service_name'
+  mode: 'service_name',
+  driver: 'thin'
 });
 
 const rules = {
@@ -395,7 +411,8 @@ const initForm = async () => {
       dbSchema: '',
       extraJdbc: '',
       timeout: 30,
-      mode: 'service_name'
+      mode: 'service_name',
+      driver: 'thin'
     });
   }
   currentStep.value = 1;
@@ -495,7 +512,8 @@ const buildConfiguration = () => {
     dbSchema: formData.dbSchema || formData.database,
     extraJdbc: formData.extraJdbc,
     timeout: formData.timeout,
-    mode: formData.mode
+    mode: formData.mode,
+    driver: formData.driver
   };
 };
 
