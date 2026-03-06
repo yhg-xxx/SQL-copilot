@@ -168,7 +168,7 @@
           </div>
         </div>
 
-        <div v-loading="tableListLoading" class="table-list-wrapper">
+        <div v-loading="tableListLoading" class="table-list-wrapper" ref="tableListWrapper" @scroll="handleScroll">
           <el-checkbox-group v-model="selectedTables">
             <el-row :gutter="12">
               <el-col :span="12" v-for="table in displayedTableList" :key="table.tableName">
@@ -290,6 +290,7 @@ const datasourceTypes = [
 const needSchemaTypes = ['sqlServer', 'pg', 'dm'];
 
 const formRef = ref(null);
+const tableListWrapper = ref(null);
 const dialogVisible = computed({
   get: () => props.show,
   set: (val) => emit('update:show', val)
@@ -680,6 +681,23 @@ const handleSave = debounce(async () => {
     loading.value = false;
   }
 }, 1000);
+
+const handleScroll = () => {
+  if (!tableListWrapper.value) return;
+  
+  const { scrollTop, scrollHeight, clientHeight } = tableListWrapper.value;
+  
+  // 当滚动到距离底部100px以内时，加载更多
+  if (scrollHeight - scrollTop - clientHeight < 100 && canLoadMore.value && !isLoadingMore.value) {
+    isLoadingMore.value = true;
+    
+    // 模拟加载延迟
+    setTimeout(() => {
+      displayedTableCount.value = Math.min(displayedTableCount.value + pageSize.value, tableList.value.length);
+      isLoadingMore.value = false;
+    }, 300);
+  }
+};
 
 const handleClose = () => {
   emit('update:show', false);

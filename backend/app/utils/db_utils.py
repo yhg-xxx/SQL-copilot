@@ -1,4 +1,5 @@
 import logging
+import os
 import pymysql
 import psycopg2
 import pyodbc
@@ -582,8 +583,14 @@ class OracleHandler(BaseDatabaseHandler):
         try:
             # 尝试使用Thick模式
             try:
-                oracledb.init_oracle_client()
-                logger.info("使用Oracle Thick模式连接")
+                # 从环境变量中读取Oracle客户端库路径
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                    logger.info("使用Oracle Thick模式连接")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("使用Oracle Thick模式连接（默认路径）")
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
@@ -608,8 +615,14 @@ class OracleHandler(BaseDatabaseHandler):
         try:
             # 尝试使用Thick模式
             try:
-                oracledb.init_oracle_client()
-                logger.info("使用Oracle Thick模式连接")
+                # 从环境变量中读取Oracle客户端库路径
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                    logger.info("使用Oracle Thick模式连接")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("使用Oracle Thick模式连接（默认路径）")
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
@@ -670,8 +683,14 @@ class OracleHandler(BaseDatabaseHandler):
         try:
             # 尝试使用Thick模式
             try:
-                oracledb.init_oracle_client()
-                logger.info("使用Oracle Thick模式连接")
+                # 从环境变量中读取Oracle客户端库路径
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                    logger.info("使用Oracle Thick模式连接")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("使用Oracle Thick模式连接（默认路径）")
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
@@ -742,8 +761,14 @@ class OracleHandler(BaseDatabaseHandler):
         try:
             # 尝试使用Thick模式
             try:
-                oracledb.init_oracle_client()
-                logger.info("使用Oracle Thick模式连接")
+                # 从环境变量中读取Oracle客户端库路径
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                    logger.info("使用Oracle Thick模式连接")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("使用Oracle Thick模式连接（默认路径）")
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
@@ -796,8 +821,14 @@ class OracleHandler(BaseDatabaseHandler):
         try:
             # 尝试使用Thick模式
             try:
-                oracledb.init_oracle_client()
-                logger.info("使用Oracle Thick模式连接")
+                # 从环境变量中读取Oracle客户端库路径
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                    logger.info("使用Oracle Thick模式连接")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("使用Oracle Thick模式连接（默认路径）")
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
