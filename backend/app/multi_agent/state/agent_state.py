@@ -37,6 +37,20 @@ class ExecutionResult(BaseModel):
     error: Optional[str] = None
 
 
+class SummaryResult(BaseModel):
+    """
+    对话总结结果
+    """
+    success: bool
+    summary: Optional[str] = None
+    key_topics: Optional[List[str]] = None
+    sql_queries: Optional[List[Dict[str, Any]]] = None
+    statistics: Optional[Dict[str, Any]] = None
+    insights: Optional[List[str]] = None
+    query_result_data: Optional[Dict[str, Any]] = None  # 查询结果数据
+    error: Optional[str] = None
+
+
 class AgentState(TypedDict):
     """
     多智能体系统状态定义
@@ -55,4 +69,5 @@ class AgentState(TypedDict):
     user_id: Optional[int]  # 用户 ID
     error_message: Optional[str]  # 错误信息
     chat_history: Optional[List[Dict[str, Any]]]  # 对话历史记录
+    summary_result: Optional[SummaryResult]  # 对话总结结果
     db_type: Optional[str]

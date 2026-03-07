@@ -121,11 +121,11 @@ class MySQLVerifierExecutor(BaseDBVerifierExecutor):
                 if cursor.description:
                     columns = [desc[0] for desc in cursor.description]
                     result["columns"] = columns
-
-                if hasattr(cursor, 'with_rows') and cursor.with_rows:
+                    # 直接获取数据，不检查 with_rows
                     data = cursor.fetchall()
-                    result["data"] = data
-                    result["row_count"] = len(data)
+                    result["data"] = list(data) if data else []
+                    result["row_count"] = len(result["data"])
+                    logger.info(f"查询返回 {result['row_count']} 条数据")
 
                 result["success"] = True
 

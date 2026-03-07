@@ -209,6 +209,7 @@ import {
   More
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
+import ConversationSummary from '@/components/ConversationSummary.vue'
 
 const router = useRouter()
 const messages = ref([])
@@ -256,34 +257,110 @@ const sendMessage = async () => {
   loading.value = true
   await scrollToBottom()
 
+  const token = localStorage.getItem('token')
+
+  // 使用流式接口
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.post('http://localhost:8000/multi-agent/query', {
-      query: message,
-      datasource_id: selectedDatasource.value,
-      chat_id: selectedConversationId.value
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
+    const response = await fetch('http://localhost:8000/multi-agent/query/stream', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify({
+        query: message,
+        datasource_id: selectedDatasource.value,
+        chat_id: selectedConversationId.value
+      })
     })
 
-    const result = response.data
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    // 创建助手消息占位
+    let assistantMessageIndex = messages.value.length
     messages.value.push({
       role: 'assistant',
-      content: result.success
-        ? `生成成功！\n\n最终 SQL:\n${result.final_sql}`
-        : `生成失败: ${result.error_message}`,
+      content: '',
       timestamp: new Date().toLocaleTimeString(),
-      sql: result.final_sql,
-      success: result.success
+      sql: null,
+      success: null,
+      summary: '',
+      queryData: [],
+      isStreaming: true
     })
-    currentResult.value = result
 
-    if (result.success) {
-      ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
-      // 更新对话的最后一条消息
-      updateConversationLastMessage(selectedConversationId.value, message)
-    } else {
-      ElNotification.error({ title: '失败', message: result.message, duration: 3000 })
+    let sqlResult = null
+
+    while (true) {
+      const { done, value } = await reader.read()
+
+      if (done) {
+        // 流结束，更新状态
+        messages.value[assistantMessageIndex].isStreaming = false
+        loading.value = false
+        break
+      }
+
+      const text = decoder.decode(value, { stream: true })
+      const lines = text.split('\n')
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+
+            if (data.type === 'sql_result') {
+              // 收到SQL结果
+              sqlResult = data.data
+              currentResult.value = sqlResult
+
+              messages.value[assistantMessageIndex].content = sqlResult.success
+                ? `生成成功！\n\n最终SQL:\n${sqlResult.final_sql}`
+                : `生成失败: ${sqlResult.error_message}`
+              messages.value[assistantMessageIndex].sql = sqlResult.final_sql
+              messages.value[assistantMessageIndex].success = sqlResult.success
+
+              // 提取查询结果数据用于表格显示
+              if (sqlResult.sql_execution_result && sqlResult.sql_execution_result.data) {
+                messages.value[assistantMessageIndex].queryData = sqlResult.sql_execution_result.data
+              }
+
+              if (sqlResult.success) {
+                ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
+                updateConversationLastMessage(selectedConversationId.value, message)
+              } else {
+                ElNotification.error({ title: '失败', message: sqlResult.error_message, duration: 3000 })
+              }
+            } else if (data.type === 'summary') {
+              // 流式追加总结内容
+              if (data.content) {
+                messages.value[assistantMessageIndex].summary += data.content
+                await scrollToBottom()
+              }
+            } else if (data.type === 'summary_data') {
+              // 接收查询结果数据用于表格显示
+              if (data.query_result_data && data.query_result_data.data) {
+                messages.value[assistantMessageIndex].queryData = data.query_result_data.data
+              }
+            } else if (data.type === 'error') {
+              messages.value[assistantMessageIndex].content = `发生错误: ${data.content}`
+              messages.value[assistantMessageIndex].success = false
+              ElMessage.error(data.content)
+            } else if (data.type === 'done') {
+              messages.value[assistantMessageIndex].isStreaming = false
+              loading.value = false
+            }
+          } catch (e) {
+            console.error('解析SSE数据失败:', e, line)
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('发送消息失败:', error)
@@ -294,10 +371,10 @@ const sendMessage = async () => {
       success: false
     })
     ElMessage.error('发送失败，请重试')
-  } finally {
     loading.value = false
-    await scrollToBottom()
   }
+
+  await scrollToBottom()
 }
 
 const clearChat = () => {
@@ -385,7 +462,9 @@ const loadConversationHistory = async (conversationId) => {
           role: item.role,
           content: item.content,
           timestamp: new Date(item.timestamp).toLocaleTimeString(),
-          sql: item.sql
+          sql: item.sql,
+          summary: item.summary || '',
+          queryData: item.queryData || []
         })
       })
     } else {

@@ -6,6 +6,7 @@ from app.models.user_qa_record import UserQARecord
 from app.schemas.conversation import ConversationCreate, ConversationUpdate, ConversationResponse, ConversationListResponse
 from app.utils.dependencies import get_current_user
 import uuid
+import json
 
 router = APIRouter(prefix="/conversations", tags=["conversation"])
 
@@ -119,12 +120,23 @@ async def get_conversation_history(
                 "content": record.question,
                 "timestamp": record.create_time
             })
-        if record.to2_answer:
+        if record.to2_answer or record.sql_statement:
+            # 解析 to4_answer 中的数据表格信息
+            query_data = []
+            if record.to4_answer:
+                try:
+                    to4_data = json.loads(record.to4_answer)
+                    query_data = to4_data.get("query_data", [])
+                except:
+                    pass
+            
             formatted_history.append({
                 "role": "assistant",
-                "content": record.to2_answer,
+                "content": record.sql_statement or "",  # SQL语句作为content
+                "summary": record.to2_answer or "",  # 总结内容
                 "timestamp": record.create_time,
-                "sql": record.sql_statement
+                "sql": record.sql_statement,
+                "queryData": query_data  # 数据表格
             })
     
     return {
