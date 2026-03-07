@@ -1,23 +1,21 @@
 import logging
 import json
 from typing import Dict, List, Any
-import mysql.connector
-from mysql.connector import Error as MySQLError
 from .sql_generator import get_datasource_schema
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.multi_agent.state.agent_state import AgentState, ValidationResult
 from app.multi_agent.agents.datasource_utils import get_datasource_config
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
+from app.multi_agent.agents.db_verifier_executor import get_db_verifier_executor
 from app.utils.llm_util import get_llm
 
 logger = logging.getLogger(__name__)
 
 
-def validate_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]) -> Dict[str, Any]:
+def validate_sql_with_database(state: AgentState, datasource_config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    使用 MySQL 直接验证 SQL 语法正确性
-    注意：此函数仅验证 SELECT 查询语句，其他类型 SQL 直接返回错误
+    使用对应数据库验证 SQL 语句
 
     Args:
         state: 智能体状态
@@ -30,8 +28,8 @@ def validate_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]
         "valid": False,
         "errors": [],
         "warnings": [],
-        "mysql_validation_passed": False,
-        "mysql_explain_result": None
+        "validation_passed": False,
+        "explain_result": None
     }
 
     try:
@@ -40,172 +38,17 @@ def validate_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]
             result["errors"].append("SQL 语句为空")
             return result
 
-        # 只处理 SELECT 查询语句
-        sql_upper = sql_query.upper().strip()
-        logger.info(f"SQL 类型判断: {sql_upper[:50]}...")
+        db_type = datasource_config.get("db_type", "mysql")
+        logger.info(f"使用数据库类型进行验证: {db_type}")
 
-        # 检查是否为 SELECT 语句
-        # if not sql_upper.startswith("SELECT"):
-        #     error_msg = f"仅支持 SELECT 查询语句验证，当前语句类型为: {sql_upper.split()[0] if sql_upper else '未知'}"
-        #     logger.error(error_msg)
-        #     result["errors"].append(error_msg)
-        #     return result
+        verifier_executor = get_db_verifier_executor(db_type, datasource_config)
+        verify_result = verifier_executor.validate_sql(sql_query)
 
-        # 检查必要的配置项
-        required_fields = ["host", "username", "password", "database"]
-        missing_fields = [field for field in required_fields if not datasource_config.get(field)]
+        result.update(verify_result)
 
-        if missing_fields:
-            result["warnings"].append(f"数据源配置缺少必要字段: {missing_fields}")
-            return result
-
-        # 打印连接配置信息（隐藏密码）
-        safe_config = datasource_config.copy()
-        if safe_config.get("password"):
-            safe_config["password"] = "***"
-        logger.info(f"MySQL 连接配置: {safe_config}")
-
-        # 建立数据库连接
-        try:
-            connection = mysql.connector.connect(
-                host=datasource_config.get("host"),
-                port=datasource_config.get("port", 3306),
-                user=datasource_config.get("username"),
-                password=datasource_config.get("password"),
-                database=datasource_config.get("database"),
-                connection_timeout=10,
-                autocommit=False
-            )
-            logger.info(
-                f"MySQL 连接成功: {datasource_config.get('host')}:{datasource_config.get('port', 3306)}/{datasource_config.get('database')}")
-        except Exception as e:
-            logger.error(f"MySQL 连接失败: {e}")
-            result["errors"].append(f"MySQL 连接失败: {str(e)}")
-            return result
-
-        cursor = None
-        try:
-            # 创建游标，使用缓冲游标避免 Unread result found 错误
-            cursor = connection.cursor(buffered=True)
-            logger.info("MySQL 游标创建成功")
-
-            # 1. 尝试执行 EXPLAIN 验证语法和执行计划
-            try:
-                # 清理 SQL 语句，移除可能的多余分号
-                clean_sql = sql_query.strip().rstrip(';')
-                explain_sql = f"EXPLAIN {clean_sql}"
-                logger.info(f"执行 EXPLAIN 语句: {explain_sql}")
-
-                cursor.execute(explain_sql)
-                explain_result = cursor.fetchall()
-                # EXPLAIN是 MySQL 自带的 SQL 分析命令，
-                # 可以识别：语法错误、不存在的表、不存在的字段、索引使用情况等
-
-                # 打印 EXPLAIN 结果
-                logger.info("EXPLAIN 结果详情:")
-                logger.info(f"结果行数: {len(explain_result)}")
-
-                if cursor.description:
-                    # 获取列名
-                    columns = [desc[0] for desc in cursor.description]
-                    logger.info(f"EXPLAIN 列名: {columns}")
-
-                for i, row in enumerate(explain_result):
-                    logger.info(f"行 {i}: {row}")
-
-                result["mysql_explain_result"] = str(explain_result)
-                logger.info("EXPLAIN 执行成功")
-
-            except MySQLError as e:
-                logger.error(f"EXPLAIN 执行失败: {e}")
-                result["errors"].append(f"EXPLAIN 执行失败: {str(e)}")
-                return result
-
-            # 确保所有结果都被读取
-            if cursor.with_rows:
-                remaining = cursor.fetchall()
-                if remaining:
-                    logger.warning(f"EXPLAIN 有未读取的结果: {remaining}")
-
-            # 2. 执行 SELECT 查询验证
-            logger.info("开始 SELECT 查询语句验证")
-
-            # 对于 SELECT 查询，使用 LIMIT 10 验证
-            clean_sql = sql_query.rstrip(';').strip()
-
-            # 检查是否已有 LIMIT 子句
-            if "LIMIT" not in sql_upper:
-                validation_sql = f"{clean_sql} LIMIT 10"
-                logger.info(f"添加 LIMIT 10 进行验证")
-            else:
-                validation_sql = clean_sql
-                logger.info(f"已存在 LIMIT 子句，使用原 SQL")
-
-            try:
-                logger.info(f"执行 SELECT 验证: {validation_sql}")
-                cursor.execute(validation_sql)
-
-                # 打印查询信息
-                logger.info(f"SELECT 验证执行成功")
-                logger.info(f"影响行数: {cursor.rowcount}")
-
-                # 打印列信息
-                if cursor.description:
-                    columns = [desc[0] for desc in cursor.description]
-                    logger.info(f"查询列: {columns}")
-
-                # 读取所有结果
-                if cursor.with_rows:
-                    results = cursor.fetchall()
-                    logger.info(f"查询结果行数: {len(results)}")
-
-                    # 打印前几行结果
-                    if results:
-                        logger.info("查询结果示例 (前5行):")
-                        for i, row in enumerate(results[:5]):
-                            logger.info(f"  行 {i}: {row}")
-                    else:
-                        logger.info("查询结果为空")
-
-                result["mysql_validation_passed"] = True
-                result["warnings"].append("MySQL SELECT 语法验证通过")
-                logger.info("SELECT 语法验证通过")
-
-            except MySQLError as e:
-                logger.error(f"SELECT 语法验证失败: {e}")
-                result["errors"].append(f"SELECT 语法验证失败: {str(e)}")
-                result["mysql_validation_passed"] = False
-
-        except MySQLError as e:
-            logger.error(f"MySQL 验证失败: {e}")
-            result["errors"].append(f"MySQL 验证失败: {str(e)}")
-        except Exception as e:
-            logger.error(f"MySQL 验证过程异常: {e}", exc_info=True)
-            result["errors"].append(f"MySQL 验证过程异常: {str(e)}")
-        finally:
-            if cursor:
-                try:
-                    cursor.close()
-                    logger.info("MySQL 游标已关闭")
-                except Exception as e:
-                    logger.error(f"关闭游标时出错: {e}")
-            try:
-                connection.close()
-                logger.info("MySQL 连接已关闭")
-            except Exception as e:
-                logger.error(f"关闭连接时出错: {e}")
-
-    except mysql.connector.Error as e:
-        logger.error(f"MySQL 连接失败: {e}")
-        result["errors"].append(f"MySQL 连接失败: {str(e)}")
     except Exception as e:
-        logger.error(f"MySQL 验证过程异常: {e}", exc_info=True)
-        result["errors"].append(f"MySQL 验证过程异常: {str(e)}")
-
-    # 输出最终验证结果
-    result["valid"] = len(result["errors"]) == 0 and result["mysql_validation_passed"]
-    logger.info(
-        f"MySQL 验证最终结果: valid={result['valid']}, mysql_validation_passed={result['mysql_validation_passed']}, errors={result['errors']}")
+        logger.error(f"数据库验证过程异常: {e}", exc_info=True)
+        result["errors"].append(f"验证过程异常: {str(e)}")
 
     return result
 
@@ -237,7 +80,6 @@ def validate_sql_with_llm(state: AgentState, datasource_schema: Dict[str, Any]) 
             result["errors"].append("SQL 语句为空")
             return result
 
-        # 准备提示词
         schema_text = format_schema_for_prompt(datasource_schema) if datasource_schema else ""
 
         system_prompt = f"""你是一个专业的 SQL 验证专家。请验证给定的 SQL 语句是否符合以下标准：
@@ -269,7 +111,6 @@ JSON 格式：
 
         user_prompt = f"请验证以下 SQL 语句：\n```sql\n{sql_query}\n```"
 
-        # 调用 LLM
         llm = get_llm(temperature=0.0)
         messages = [
             SystemMessage(content=system_prompt),
@@ -279,18 +120,15 @@ JSON 格式：
         response = llm.invoke(messages)
         response_content = response.content.strip()
 
-        # 清理响应
         if "```json" in response_content:
             response_content = response_content.split("```json")[1]
         if "```" in response_content:
             response_content = response_content.split("```")[0]
         response_content = response_content.strip()
 
-        # 解析 LLM 验证结果
         try:
             llm_result = json.loads(response_content)
             result.update(llm_result)
-            # 打印验证结果字段到日志
             logger.info(f"LLM 验证结果 - valid: {result.get('valid')}, "
                        f"llm_validation_passed: {result.get('llm_validation_passed')}, "
                        f"errors: {result.get('errors')}, "
@@ -298,7 +136,6 @@ JSON 格式：
                        f"llm_feedback: {result.get('llm_feedback')}")
         except json.JSONDecodeError:
             result["errors"].append("LLM 返回格式错误")
-            # 打印验证结果字段到日志
             logger.error(f"LLM 验证结果 - valid: {result.get('valid')}, "
                         f"llm_validation_passed: {result.get('llm_validation_passed')}, "
                         f"errors: {result.get('errors')}, "
@@ -326,16 +163,14 @@ def syntax_validator(state: AgentState) -> AgentState:
     """
     logger.info("语法验证智能体开始工作")
 
-    # 获取修复尝试次数
     fix_attempts = state.get("fix_attempts", 0)
-    max_fix_attempts = 3  # 最大修复尝试次数
+    max_fix_attempts = 3
 
     try:
         generated_sql = state.get("generated_sql", "")
         datasource_id = state.get("datasource_id")
         user_query = state.get("user_query", "")
 
-        # 添加调试信息
         logger.info(f"开始验证 SQL: {generated_sql}")
         logger.info(f"数据源ID: {datasource_id}")
         logger.info(f"当前修复尝试次数: {fix_attempts}")
@@ -351,13 +186,10 @@ def syntax_validator(state: AgentState) -> AgentState:
                 llm_feedback=""
             )
             state["validation_result"] = validation_result
-            # state["error_message"] = "SQL语句为空，没有可验证的 SQL"
             return state
 
-        # 获取数据库表结构信息 - 优先使用 state 中的 db_info，避免重复获取
         datasource_schema = state.get("db_info", {})
-        
-        # 如果 state 中没有 db_info，再从数据库获取（备用方案）
+
         if not datasource_schema and datasource_id:
             try:
                 datasource_schema = get_datasource_schema(datasource_id)
@@ -368,20 +200,16 @@ def syntax_validator(state: AgentState) -> AgentState:
         elif datasource_schema:
             logger.info(f"使用 state 中的数据源表结构，表数量: {len(datasource_schema)}")
 
-        # 验证循环（最多尝试修复 max_fix_attempts 次）
         for attempt in range(fix_attempts, max_fix_attempts + 1):
             logger.info(f"验证尝试 {attempt + 1}/{max_fix_attempts + 1}")
 
-            # 初始化验证结果
             all_errors = []
             all_warnings = []
-            mysql_validation_passed = False
+            validation_passed = False
             llm_validation_passed = False
-            mysql_explain_result = None
+            explain_result = None
             llm_feedback = ""
 
-            # 1. MySQL 直接验证
-            mysql_result = {}
             if datasource_id:
                 try:
                     datasource_config = get_datasource_config(datasource_id)
@@ -393,40 +221,36 @@ def syntax_validator(state: AgentState) -> AgentState:
                                           if not datasource_config.get(field)]
 
                         if missing_fields:
-                            warning_msg = f"数据源配置不完整，缺少字段: {missing_fields}，跳过 MySQL 验证"
+                            warning_msg = f"数据源配置不完整，缺少字段: {missing_fields}，跳过数据库验证"
                             all_warnings.append(warning_msg)
                             logger.warning(warning_msg)
                         else:
-                            # 创建临时状态进行验证
                             temp_state = state.copy()
                             temp_state["generated_sql"] = generated_sql
 
-                            mysql_result = validate_sql_with_mysql(temp_state, datasource_config)
-                            all_errors.extend(mysql_result.get("errors", []))
-                            all_warnings.extend(mysql_result.get("warnings", []))
-                            mysql_validation_passed = mysql_result.get("mysql_validation_passed", False)
-                            mysql_explain_result = mysql_result.get("mysql_explain_result")
-                            logger.info(f"MySQL 验证结果: {'通过' if mysql_validation_passed else '失败'}")
+                            db_result = validate_sql_with_database(temp_state, datasource_config)
+                            all_errors.extend(db_result.get("errors", []))
+                            all_warnings.extend(db_result.get("warnings", []))
+                            validation_passed = db_result.get("validation_passed", False)
+                            explain_result = db_result.get("explain_result")
+                            logger.info(f"数据库验证结果: {'通过' if validation_passed else '失败'}")
 
-                            if mysql_result.get("errors"):
-                                logger.error(f"MySQL 验证错误: {mysql_result.get('errors')}")
+                            if db_result.get("errors"):
+                                logger.error(f"数据库验证错误: {db_result.get('errors')}")
                     else:
-                        warning_msg = "无法获取数据源配置，跳过 MySQL 验证"
+                        warning_msg = "无法获取数据源配置，跳过数据库验证"
                         all_warnings.append(warning_msg)
                         logger.warning(warning_msg)
                 except Exception as e:
-                    error_msg = f"MySQL 验证异常: {str(e)}"
+                    error_msg = f"数据库验证异常: {str(e)}"
                     all_warnings.append(error_msg)
                     logger.error(error_msg, exc_info=True)
             else:
-                warning_msg = "无数据源ID，跳过 MySQL 验证"
+                warning_msg = "无数据源ID，跳过数据库验证"
                 all_warnings.append(warning_msg)
                 logger.warning(warning_msg)
 
-            # 2. LLM 语义验证
-            llm_result = {}
             try:
-                # 创建包含当前 generated_sql 的状态用于验证
                 current_state = state.copy()
                 current_state["generated_sql"] = generated_sql
 
@@ -442,17 +266,14 @@ def syntax_validator(state: AgentState) -> AgentState:
                 all_errors.append(error_msg)
                 logger.error(error_msg, exc_info=True)
 
-            # 判断是否需要修复
             need_fix = len(all_errors) > 0 and attempt < max_fix_attempts
 
             if not need_fix:
-                # 验证通过或达到最大尝试次数
                 is_valid = llm_validation_passed and len(all_errors) == 0
 
                 if len(all_errors) == 0 and len(all_warnings) > 0:
                     is_valid = True
 
-                # 记录修复历史
                 if fix_attempts > 0:
                     state["was_fixed"] = True
                     state["fix_attempts"] = fix_attempts
@@ -461,14 +282,14 @@ def syntax_validator(state: AgentState) -> AgentState:
                     valid=is_valid,
                     errors=all_errors,
                     warnings=all_warnings,
-                    mysql_validation_passed=mysql_validation_passed,
+                    mysql_validation_passed=validation_passed,
                     llm_validation_passed=llm_validation_passed,
-                    mysql_explain_result=mysql_explain_result,
+                    mysql_explain_result=explain_result,
                     llm_feedback=llm_feedback
                 )
 
                 state["validation_result"] = validation_result
-                state["generated_sql"] = generated_sql  # 确保最终 SQL 被保存
+                state["generated_sql"] = generated_sql
 
                 if is_valid:
                     logger.info(f"SQL 语法验证通过 (修复尝试: {fix_attempts}次)")
@@ -479,15 +300,12 @@ def syntax_validator(state: AgentState) -> AgentState:
 
                 break
             else:
-                # 需要尝试修复
                 logger.info(f"验证失败，尝试修复 (第 {attempt + 1} 次尝试)")
 
-                # 使用 LLM 进行智能修复
                 logger.info("使用 LLM 进行智能修复")
                 llm_fixed_sql = llm_based_fix(generated_sql, all_errors, user_query, datasource_schema)
 
                 if llm_fixed_sql and llm_fixed_sql != generated_sql:
-                    # 修复成功，更新 SQL 并继续验证
                     state["generated_sql"] = llm_fixed_sql
                     state["fix_attempts"] = attempt + 1
                     state["fix_explanation"] = f"使用 LLM 进行智能修复，修正了 {len(all_errors)} 个错误"
@@ -496,22 +314,19 @@ def syntax_validator(state: AgentState) -> AgentState:
                     logger.info(f"LLM 修复成功，新 SQL: {llm_fixed_sql}")
                     logger.info(f"继续验证修复后的 SQL...")
 
-                    # 继续下一轮验证
                     continue
                 else:
-                    # 无法修复
                     logger.warning("LLM 修复失败或无变化")
 
-                    # 无法修复或达到最大尝试次数
                     logger.warning(f"无法修复错误或达到最大尝试次数: {all_errors}")
 
                     validation_result = ValidationResult(
                         valid=False,
                         errors=all_errors,
                         warnings=all_warnings,
-                        mysql_validation_passed=mysql_validation_passed,
+                        mysql_validation_passed=validation_passed,
                         llm_validation_passed=llm_validation_passed,
-                        mysql_explain_result=mysql_explain_result,
+                        mysql_explain_result=explain_result,
                         llm_feedback=llm_feedback
                     )
 
@@ -536,7 +351,7 @@ def syntax_validator(state: AgentState) -> AgentState:
     return state
 
 
-def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schema: Dict[str, Any] = None) -> str:
+def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schema: Dict[str, Any] = None) -> Any | None:
     """
     使用 LLM 进行智能修复
 
@@ -552,7 +367,6 @@ def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schem
     try:
         logger.info("使用 LLM 进行智能修复")
 
-        # 准备表结构信息
         schema_text = format_schema_for_prompt(datasource_schema) if datasource_schema else ""
 
         system_prompt = f"""你是一个专业的 SQL 修复专家。请根据以下信息修复有问题的 SQL 语句：
@@ -566,12 +380,12 @@ def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schem
 
 请修复以下 SQL 语句中的错误，只返回修复后的 SQL 语句，不要包含其他解释或文字。
 
-原 SQL:sql
+原 SQL:
 {sql}
-        修复后的 SQL:"""
 
-        # 调用 LLM
-        llm = get_llm(temperature=0.1)  # 较低温度以获得更确定的修复
+修复后的 SQL:"""
+
+        llm = get_llm(temperature=0.1)
         messages = [
             SystemMessage(content=system_prompt),
         ]
@@ -579,7 +393,6 @@ def llm_based_fix(sql: str, errors: List[str], user_query: str, datasource_schem
         response = llm.invoke(messages)
         response_content = response.content.strip()
 
-        # 提取 SQL
         if "```sql" in response_content:
             response_content = response_content.split("```sql")[1]
         if "```" in response_content:

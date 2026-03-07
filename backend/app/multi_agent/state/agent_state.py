@@ -55,3 +55,4 @@ class AgentState(TypedDict):
     user_id: Optional[int]  # 用户 ID
     error_message: Optional[str]  # 错误信息
     chat_history: Optional[List[Dict[str, Any]]]  # 对话历史记录
+    db_type: Optional[str]

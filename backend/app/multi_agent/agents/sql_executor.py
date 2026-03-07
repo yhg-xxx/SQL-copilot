@@ -1,17 +1,16 @@
 import logging
 from typing import Dict, Any
-import mysql.connector
-from mysql.connector import Error as MySQLError
 
 from app.multi_agent.state.agent_state import AgentState, ExecutionResult
 from app.multi_agent.agents.datasource_utils import get_datasource_config
+from app.multi_agent.agents.db_verifier_executor import get_db_verifier_executor
 
 logger = logging.getLogger(__name__)
 
 
-def execute_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any]) -> Dict[str, Any]:
+def execute_sql_with_database(state: AgentState, datasource_config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    使用 MySQL 执行 SQL 语句并返回结果
+    使用对应数据库执行 SQL 语句
 
     Args:
         state: 智能体状态
@@ -20,136 +19,34 @@ def execute_sql_with_mysql(state: AgentState, datasource_config: Dict[str, Any])
     Returns:
         执行结果字典
     """
-    result = {
-        "success": False,
-        "data": None,
-        "columns": None,
-        "row_count": 0,
-        "error": None
-    }
-
     try:
         final_sql = state.get("final_sql", "")
         if not final_sql:
-            result["error"] = "SQL 语句为空"
-            return result
+            return {
+                "success": False,
+                "data": None,
+                "columns": None,
+                "row_count": 0,
+                "error": "SQL 语句为空"
+            }
 
-        # 只处理 SELECT 查询语句
-        sql_upper = final_sql.upper().strip()
-        logger.info(f"SQL 类型判断: {sql_upper[:50]}...")
+        db_type = datasource_config.get("db_type", "mysql")
+        logger.info(f"使用数据库类型执行 SQL: {db_type}")
 
-        # 检查必要的配置项
-        required_fields = ["host", "username", "password", "database"]
-        missing_fields = [field for field in required_fields if not datasource_config.get(field)]
+        verifier_executor = get_db_verifier_executor(db_type, datasource_config)
+        exec_result = verifier_executor.execute_sql(final_sql)
 
-        if missing_fields:
-            result["error"] = f"数据源配置缺少必要字段: {missing_fields}"
-            return result
+        return exec_result
 
-        # 打印连接配置信息（隐藏密码）
-        safe_config = datasource_config.copy()
-        if safe_config.get("password"):
-            safe_config["password"] = "***"
-        logger.info(f"MySQL 连接配置: {safe_config}")
-
-        # 建立数据库连接
-        try:
-            connection = mysql.connector.connect(
-                host=datasource_config.get("host"),
-                port=datasource_config.get("port", 3306),
-                user=datasource_config.get("username"),
-                password=datasource_config.get("password"),
-                database=datasource_config.get("database"),
-                connection_timeout=30,
-                autocommit=False
-            )
-            logger.info(
-                f"MySQL 连接成功: {datasource_config.get('host')}:{datasource_config.get('port', 3306)}/{datasource_config.get('database')}")
-        except Exception as e:
-            logger.error(f"MySQL 连接失败: {e}")
-            result["error"] = f"MySQL 连接失败: {str(e)}"
-            return result
-
-        cursor = None
-        try:
-            # 创建游标，使用缓冲游标
-            cursor = connection.cursor(buffered=True, dictionary=True)
-            logger.info("MySQL 游标创建成功")
-
-            # 清理 SQL 语句，移除注释和多余分号
-            clean_sql = final_sql.strip().rstrip(';')
-
-            # 对于 SELECT 查询，使用 LIMIT 1000 限制返回结果数量
-            if "LIMIT" not in sql_upper:
-                execution_sql = f"{clean_sql} LIMIT 1000"
-                logger.info(f"添加 LIMIT 1000 限制结果数量")
-            else:
-                execution_sql = clean_sql
-                logger.info(f"已存在 LIMIT 子句，使用原 SQL")
-
-            try:
-                logger.info(f"执行 SQL: {execution_sql}")
-                cursor.execute(execution_sql)
-
-                # 获取列信息
-                if cursor.description:
-                    columns = [desc[0] for desc in cursor.description]
-                    result["columns"] = columns
-                    logger.info(f"查询列: {columns}")
-
-                # 读取所有结果
-                if cursor.with_rows:
-                    data = cursor.fetchall()
-                    result["data"] = data
-                    result["row_count"] = len(data)
-                    logger.info(f"查询结果行数: {len(data)}")
-
-                    # 打印前几行结果
-                    if data:
-                        logger.info("查询结果示例 (前5行):")
-                        for i, row in enumerate(data[:5]):
-                            logger.info(f"  行 {i}: {row}")
-                    else:
-                        logger.info("查询结果为空")
-
-                result["success"] = True
-                logger.info("SQL 执行成功")
-
-            except MySQLError as e:
-                logger.error(f"SQL 执行失败: {e}")
-                result["error"] = f"SQL 执行失败: {str(e)}"
-
-        except MySQLError as e:
-            logger.error(f"MySQL 执行失败: {e}")
-            result["error"] = f"MySQL 执行失败: {str(e)}"
-        except Exception as e:
-            logger.error(f"MySQL 执行过程异常: {e}", exc_info=True)
-            result["error"] = f"MySQL 执行过程异常: {str(e)}"
-        finally:
-            if cursor:
-                try:
-                    cursor.close()
-                    logger.info("MySQL 游标已关闭")
-                except Exception as e:
-                    logger.error(f"关闭游标时出错: {e}")
-            try:
-                connection.close()
-                logger.info("MySQL 连接已关闭")
-            except Exception as e:
-                logger.error(f"关闭连接时出错: {e}")
-
-    except mysql.connector.Error as e:
-        logger.error(f"MySQL 连接失败: {e}")
-        result["error"] = f"MySQL 连接失败: {str(e)}"
     except Exception as e:
-        logger.error(f"MySQL 执行过程异常: {e}", exc_info=True)
-        result["error"] = f"MySQL 执行过程异常: {str(e)}"
-
-    # 输出最终执行结果
-    logger.info(
-        f"SQL 执行最终结果: success={result['success']}, row_count={result['row_count']}, error={result['error']}")
-
-    return result
+        logger.error(f"数据库执行过程异常: {e}", exc_info=True)
+        return {
+            "success": False,
+            "data": None,
+            "columns": None,
+            "row_count": 0,
+            "error": f"执行过程异常: {str(e)}"
+        }
 
 
 def sql_executor(state: AgentState) -> AgentState:
@@ -178,13 +75,11 @@ def sql_executor(state: AgentState) -> AgentState:
             state["error_message"] = "没有可执行的 SQL"
             return state
 
-        # 获取数据源配置
         datasource_config = {}
         if datasource_id:
             datasource_config = get_datasource_config(datasource_id)
             logger.info(f"获取到的数据源配置: {datasource_config}")
 
-        # 执行 SQL
         if datasource_config:
             required_config_fields = ["host", "username", "password", "database"]
             missing_fields = [field for field in required_config_fields
@@ -201,8 +96,7 @@ def sql_executor(state: AgentState) -> AgentState:
                 state["error_message"] = error_msg
                 return state
 
-            # 执行 SQL
-            exec_result = execute_sql_with_mysql(state, datasource_config)
+            exec_result = execute_sql_with_database(state, datasource_config)
 
             if exec_result.get("success"):
                 execution_result = ExecutionResult(
@@ -213,7 +107,6 @@ def sql_executor(state: AgentState) -> AgentState:
                 )
                 state["execution_result"] = execution_result
 
-                # 同时设置 sql_execution_result 字段（向后兼容）
                 state["sql_execution_result"] = {
                     "columns": exec_result.get("columns"),
                     "data": exec_result.get("data"),

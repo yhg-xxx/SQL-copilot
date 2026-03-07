@@ -1,6 +1,8 @@
 import logging
 import json
 from typing import Dict, Any
+from app.database.db import SessionLocal
+from app.models.datasource import Datasource
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +15,12 @@ def get_datasource_config(datasource_id: int) -> Dict[str, Any]:
         datasource_id: 数据源ID
 
     Returns:
-        连接配置字典
+        连接配置字典，包含 db_type 字段
     """
     try:
-        from app.database.db import SessionLocal
         db = SessionLocal()
 
         try:
-            from app.models.datasource import Datasource
             datasource = db.query(Datasource).filter(Datasource.id == datasource_id).first()
 
             if not datasource:
@@ -58,12 +58,26 @@ def get_datasource_config(datasource_id: int) -> Dict[str, Any]:
 
             logger.info(f"解析后的配置字典: {config}")
 
+            db_type = datasource.type if hasattr(datasource, 'type') else 'mysql'
+            logger.info(f"数据源类型: {db_type}")
+
+            default_port = 3306
+            db_type_lower = db_type.lower()
+            if db_type_lower in ['pg', 'postgresql']:
+                default_port = 5432
+            elif db_type_lower in ['sqlserver', 'sql_server', 'mssql']:
+                default_port = 1433
+            elif db_type_lower == 'oracle':
+                default_port = 1521
+
             connection_config = {
+                "db_type": db_type,
                 "host": config.get("host"),
-                "port": config.get("port", 3306),
+                "port": config.get("port", default_port),
                 "username": config.get("username"),
                 "password": config.get("password"),
-                "database": config.get("database")
+                "database": config.get("database"),
+                "db_schema": config.get("dbSchema", config.get("db_schema"))
             }
 
             required_fields = ["host", "username", "password", "database"]

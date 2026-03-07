@@ -247,10 +247,6 @@ const iconMap = {
   pg: 'icon_pg.svg',
   oracle: 'icon_oracle.svg',
   sqlServer: 'icon_sqlserver.svg',
-  ck: 'icon_ck.svg',
-  dm: 'icon_dm.png',
-  doris: 'icon_doris.png',
-  starrocks: 'icon_starrocks.png'
 };
 
 const getDatasourceIcon = (type) => {
@@ -281,10 +277,6 @@ const datasourceTypes = [
   { label: 'PostgreSQL', value: 'pg' },
   { label: 'Oracle', value: 'oracle' },
   { label: 'SQL Server', value: 'sqlServer' },
-  { label: 'ClickHouse', value: 'ck' },
-  { label: '达梦', value: 'dm' },
-  { label: 'Apache Doris', value: 'doris' },
-  { label: 'StarRocks', value: 'starrocks' }
 ];
 
 const needSchemaTypes = ['sqlServer', 'pg', 'dm'];
@@ -345,11 +337,7 @@ watch(() => formData.type, (newType) => {
     mysql: 3306,
     pg: 5432,
     oracle: 1521,
-    sqlServer: 1433,
-    ck: 8123,
-    dm: 5236,
-    doris: 9030,
-    starrocks: 9030
+    sqlServer: 1433
   };
   if (defaultPorts[newType]) {
     formData.port = defaultPorts[newType];

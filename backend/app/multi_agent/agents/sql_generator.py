@@ -96,7 +96,7 @@ def get_datasource_schema(datasource_id: int) -> dict[Any, Any] | None:
         return {}
 
 
-def sql_generator(state: AgentState) -> AgentState:
+def sql_generator(state: AgentState) -> AgentState | None:
     """
     SQL 生成智能体：负责根据用户查询生成 SQL 语句
 
@@ -119,11 +119,27 @@ def sql_generator(state: AgentState) -> AgentState:
 
         # 获取数据源表结构
         schema = {}
+        db_type = "mysql"
         if datasource_id:
             schema = get_datasource_schema(datasource_id)
+            # 获取数据库类型
+            try:
+                from app.database.db import SessionLocal
+                from app.models.datasource import Datasource
+                db = SessionLocal()
+                try:
+                    datasource = db.query(Datasource).filter(Datasource.id == datasource_id).first()
+                    if datasource:
+                        db_type = datasource.type if datasource.type else "mysql"
+                        logger.info(f"数据源类型: {db_type}")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.warning(f"获取数据源类型失败: {e}")
 
         # 将表结构存入 state，供后续智能体使用
         state["db_info"] = schema
+        state["db_type"] = db_type
 
         # 格式化表结构信息
         schema_text = format_schema_for_prompt(schema)
@@ -185,12 +201,19 @@ def sql_generator(state: AgentState) -> AgentState:
                     if any(keyword in assistant_content.upper() for keyword in sql_keywords):
                         is_modification = True
                         # 提取SQL相关部分
-                        sql_content = assistant_content[:500]  # 截取前500字符
                         last_sql_hint = f"\n（提示：上一轮生成了SQL查询，当前可能是对该SQL的修改）"
                     break
 
         # 构建系统提示
+        db_type_display = db_type
+        if db_type.lower() == 'pg':
+            db_type_display = 'PostgreSQL'
+        elif db_type.lower() in ['sqlserver', 'sql_server', 'mssql']:
+            db_type_display = 'SQL Server'
+        
         system_prompt = f"""你是一个专业的 SQL 生成助手。请根据用户的自然语言查询、对话历史和提供的数据库表结构，生成对应的 SQL 语句。
+
+重要：当前数据库类型是 {db_type_display}，请生成符合该数据库语法规范的 SQL 语句！
 
 {schema_text}
 
@@ -229,7 +252,8 @@ JSON 格式：
 6. 优先使用索引字段作为过滤条件、JOIN 条件和排序字段
 7. 避免在非索引字段上进行大范围过滤或排序
 8. 对于复杂查询，选择最优的执行计划
-9. 参考对话历史，理解用户的上下文需求"""
+9. 参考对话历史，理解用户的上下文需求
+10. 确保生成的 SQL 符合 {db_type_display} 数据库的语法规范"""
 
         # 构建用户提示
         if is_modification and len(chat_history) > 0:

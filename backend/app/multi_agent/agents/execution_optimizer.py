@@ -172,7 +172,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
 
 
         # 2. 使用大模型同时生成优化建议和功能说明
-        llm_result = generate_optimization_and_explanation(generated_sql, db_info, user_query)
+        llm_result = generate_optimization_suggestions(generated_sql, db_info, user_query)
         logger.info(f"LLM 分析结果: {llm_result}")
         
         # 3. 提取功能说明并生成注释
