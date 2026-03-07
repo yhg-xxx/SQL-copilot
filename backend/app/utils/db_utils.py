@@ -701,21 +701,26 @@ class OracleHandler(BaseDatabaseHandler):
                 dsn=dsn
             )
             with connection.cursor() as cursor:
-                # 查询表字段信息
+                # 查询表字段信息，使用user_tab_columns和user_col_comments连接获取注释
                 try:
-                    # 尝试使用包含comments列的查询
+                    # 使用正确的查询，从user_tab_columns获取字段信息，从user_col_comments获取注释
                     cursor.execute("""
                         SELECT 
-                            column_name, 
-                            data_type, 
-                            comments, 
-                            column_id 
+                            utc.column_name, 
+                            utc.data_type, 
+                            NVL(ucm.comments, '') as comments, 
+                            utc.column_id 
                         FROM 
-                            user_tab_columns 
+                            user_tab_columns utc
+                        LEFT JOIN 
+                            user_col_comments ucm
+                        ON 
+                            utc.table_name = ucm.table_name 
+                            AND utc.column_name = ucm.column_name
                         WHERE 
-                            table_name = UPPER(:table_name) 
+                            utc.table_name = UPPER(:table_name) 
                         ORDER BY 
-                            column_id
+                            utc.column_id
                     """, table_name=table_name)
                     field_results = cursor.fetchall()
 
@@ -727,8 +732,8 @@ class OracleHandler(BaseDatabaseHandler):
                             'field_index': field[3]
                         })
                 except Exception as e:
-                    logger.warning("使用user_tab_columns失败: %s，尝试使用替代方案", e)
-                    # 尝试使用不包含comments列的查询
+                    logger.warning("获取字段信息失败: %s，尝试使用替代方案", e)
+                    # 尝试使用不包含注释的查询
                     cursor.execute("""
                         SELECT 
                             column_name, 
