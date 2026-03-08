@@ -18,5 +18,6 @@ class UserQARecord(Base):
     to2_answer = Column(Text, nullable=True, comment="大模型答案")
     to4_answer = Column(Text, nullable=True, comment="业务数据")
     datasource_id = Column(BigInteger, nullable=True, comment="数据源ID")
-    sql_statement = Column(Text, nullable=True, comment="SQL语句（数据问答时保存）")
+    generated_sql = Column(Text, nullable=True, comment="原始生成的SQL（未优化，用于RAG检索）")
+    sql_statement = Column(Text, nullable=True, comment="SQL语句（优化后的SQL（带注释，用于前端展示）")
     create_time = Column(DateTime, nullable=True, server_default=func.now(), comment="创建时间")

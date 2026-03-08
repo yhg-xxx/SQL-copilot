@@ -293,6 +293,8 @@ def syntax_validator(state: AgentState) -> AgentState:
 
                 if is_valid:
                     logger.info(f"SQL 语法验证通过 (修复尝试: {fix_attempts}次)")
+                    state["validated_sql"] = generated_sql  # 保存验证通过但未优化的SQL
+                    logger.info(f"已保存验证成功的SQL: {generated_sql}")
                     if all_warnings:
                         logger.warning(f"验证警告: {all_warnings}")
                 else:

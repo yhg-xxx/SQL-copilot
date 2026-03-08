@@ -58,6 +58,7 @@ class AgentState(TypedDict):
     user_query: str  # 用户输入的自然语言查询
     db_info: Optional[Dict]  # 数据库表结构信息
     generated_sql: Optional[str]  # 初始生成的 SQL 语句
+    validated_sql: Optional[str]  # 语法验证成功后的 SQL 语句（未优化，用于RAG检索）
     validation_result: Optional[ValidationResult]  # SQL 语法验证结果
     optimized_sql: Optional[str]  # 优化后的 SQL 语句
     optimization_result: Optional[OptimizationResult]  # SQL 优化结果
@@ -74,3 +75,4 @@ class AgentState(TypedDict):
     fix_attempts:int # 修复次数
     was_fixed: bool # 是否修复成功
     fix_explanation: Optional[str] # 修复描述
+    retrieved_examples: Optional[List[Dict[str, Any]]] # RAG检索到的历史示例

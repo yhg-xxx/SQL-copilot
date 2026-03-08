@@ -103,6 +103,8 @@ class MultiAgent:
             "success": final_state.get("error_message") is None,
             "user_query": query,
             "generated_sql": final_state.get("generated_sql"),
+            "validated_sql": final_state.get("validated_sql"),  # 验证成功但未优化的SQL
+            "retrieved_examples": final_state.get("retrieved_examples"),  # RAG检索到的历史示例
             "final_sql": final_state.get("final_sql"),
             "validation_result": (
                 final_state.get("validation_result").model_dump()

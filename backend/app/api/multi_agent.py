@@ -9,6 +9,7 @@ from app.models.user_qa_record import UserQARecord
 from app.models.conversation import UserConversation
 from app.utils.title_generator import generate_conversation_title
 from app.multi_agent.agents.conversation_summarizer import stream_conversation_summary
+from app.multi_agent.agents.history_retriever import save_query_to_vector_store
 import uuid
 import json
 from typing import AsyncGenerator
@@ -119,10 +120,26 @@ async def multi_agent_query_stream(
                         to2_answer=full_summary,  # 总结内容
                         to4_answer=json.dumps(to4_data, ensure_ascii=False, default=str),  # 数据表格信息
                         datasource_id=request.datasource_id,
-                        sql_statement=result.get("final_sql", "")
+                        generated_sql=result.get("validated_sql", ""),  # 原始未优化SQL，用于RAG检索
+                        sql_statement=result.get("final_sql", "")  # 优化后的SQL，用于前端展示
                     )
                     db.add(qa_record)
                     db.commit()
+                    db.refresh(qa_record)
+
+                    # ========== 保存到向量数据库 ==========
+                    try:
+                        save_query_to_vector_store(
+                            question=request.query,
+                            sql=result.get("validated_sql", ""),
+                            datasource_id=request.datasource_id,
+                            user_id=user_id,
+                            record_id=qa_record.id
+                        )
+                    except Exception as e:
+                        import logging
+                        logging.error(f"保存到向量数据库失败: {e}")
+                    # =====================================
 
                     conversation = db.query(UserConversation).filter(
                         UserConversation.conversation_id == request.chat_id,
@@ -207,11 +224,27 @@ async def multi_agent_query(
                 question=request.query,
                 to2_answer=result.get("final_sql", ""),
                 datasource_id=request.datasource_id,
-                sql_statement=result.get("final_sql", "")
+                generated_sql=result.get("validated_sql", ""),  # 原始未优化SQL，用于RAG检索
+                sql_statement=result.get("final_sql", "")  # 优化后的SQL，用于前端展示
             )
 
             db.add(qa_record)
             db.commit()
+            db.refresh(qa_record)
+
+            # ========== 保存到向量数据库 ==========
+            try:
+                save_query_to_vector_store(
+                    question=request.query,
+                    sql=result.get("validated_sql", ""),
+                    datasource_id=request.datasource_id,
+                    user_id=user_id,
+                    record_id=qa_record.id
+                )
+            except Exception as e:
+                import logging
+                logging.error(f"保存到向量数据库失败: {e}")
+            # =====================================
             
             # 检查是否是对话的第一条消息，如果是，生成标题
             from app.models.conversation import UserConversation
