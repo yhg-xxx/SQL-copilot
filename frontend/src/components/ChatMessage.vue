@@ -423,14 +423,6 @@ const copySql = () => {
   font-size: 15px;
   transition: all 0.3s ease;
   border: 1px solid rgba(224, 230, 255, 0.5);
-  max-width: 100%;
-  word-wrap: break-word;
-  align-self: flex-start;
-  min-width: 60px;
-}
-
-.user-message .text-message {
-  align-self: flex-end;
 }
 
 .text-message:hover {
@@ -451,13 +443,12 @@ const copySql = () => {
   border-bottom: 10px solid transparent;
   transform: rotate(-45deg);
   border-radius: 4px;
-  z-index: 1;
 }
 
 .user-message .text-message {
   background: #f3f4f6;
   color: #374151;
-  text-align: right;
+  text-align: left;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
 }
@@ -469,7 +460,6 @@ const copySql = () => {
   border-bottom: 10px solid transparent;
   left: auto;
   right: -10px;
-  z-index: 1;
 }
 
 .user-message .text-message:hover {

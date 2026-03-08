@@ -9,10 +9,8 @@
           <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
             <el-icon><ArrowLeft /></el-icon>
           </el-button>
-          <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
-            <el-icon><ArrowLeft /></el-icon>
-          </el-button>
         </div>
+
 
         <!-- 搜索框 -->
         <div class="search-container">
@@ -28,19 +26,7 @@
           </el-input>
         </div>
 
-        <!-- 搜索框 -->
-        <div class="search-container">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索对话"
-            size="small"
-            class="search-input"
-          >
-            <template #prefix>
-              <el-icon class="search-icon"><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
+        <!-- 对话列表 -->
 
         <!-- 对话列表 -->
         <div class="conversation-items">
@@ -223,8 +209,6 @@ const toggleSidebar = () => {
 // 对话相关状态
 const conversations = ref([])
 const selectedConversationId = ref(null)
-const creatingConversation = ref(false)
-const newConversationTitle = ref('')
 const searchQuery = ref('')
 
 // 分组后的对话列表
