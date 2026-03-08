@@ -67,7 +67,7 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
         # 使用统一的数据库处理器测试连接
         handler = get_database_handler(datasource.type, config_dict)
         handler.test_connection()
-    except Exception as e:
+    except Exception:
         connection_status = "Failed"
 
     # 计算表数量

@@ -1,13 +1,13 @@
 import logging
 import json
-from typing import Dict, Any
+from typing import  Any
 from app.database.db import SessionLocal
 from app.models.datasource import Datasource
 
 logger = logging.getLogger(__name__)
 
 
-def get_datasource_config(datasource_id: int) -> Dict[str, Any]:
+def get_datasource_config(datasource_id: int) -> dict[Any, Any] | None:
     """
     获取数据源的连接配置
 

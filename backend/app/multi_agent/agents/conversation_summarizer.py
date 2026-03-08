@@ -96,7 +96,7 @@ SQL执行结果数据：
         logger.error(f"[流式总结] 生成失败: {e}", exc_info=True)
         yield {"type": "error", "content": str(e)}
 
-
+# 早期开发的非流式版本，已弃用！
 def conversation_summarizer(state: AgentState) -> AgentState:
     """
     对话总结智能体：分析对话历史和查询结果，生成包含数据表格和图表的总结
@@ -107,6 +107,7 @@ def conversation_summarizer(state: AgentState) -> AgentState:
     Returns:
         更新后的状态
     """
+    global content
     logger.info("对话总结智能体开始工作")
     
     try:

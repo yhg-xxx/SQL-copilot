@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 from langgraph.graph.state import CompiledStateGraph
 from app.multi_agent.analysis.graph import create_multi_agent_graph
-from app.multi_agent.state.agent_state import AgentState
+from app.multi_agent.state.agent_state import AgentState, ValidationResult, OptimizationResult, ExecutionResult, \
+    SummaryResult
 
 logger = logging.getLogger(__name__)
 
@@ -17,23 +18,20 @@ class MultiAgent:
         self.step_start_times = {}
         self.step_progress_ids = {}
 
+    @staticmethod
     async def run_agent(
-            self,
             query: str,
-            response=None,
             chat_id: str = None,
-            uuid_str: str = None,
             user_id: int = 1,
             datasource_id: int = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, None | str | dict | ValidationResult | OptimizationResult | ExecutionResult | dict[str, Any] | int |
+                   list[dict[str, Any]] | SummaryResult | bool | Any] | None:
         """
         运行多智能体系统
 
         Args:
             query: 用户输入的自然语言查询
-            response: 响应对象（用于流式输出）
             chat_id: 会话ID
-            uuid_str: 自定义任务ID
             user_id: 用户ID
             datasource_id: 数据源ID
 
@@ -47,7 +45,6 @@ class MultiAgent:
         except Exception as e:
             logger.error(f"记录用户ID时出错: {e}")
 
-        # ========== 关键修复：将 initial_state 初始化移到 try-except 块之外 ==========
         # 获取对话历史
         chat_history = []
         if chat_id:

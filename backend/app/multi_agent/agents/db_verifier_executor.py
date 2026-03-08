@@ -5,6 +5,7 @@ import psycopg2
 import pyodbc
 import oracledb
 from typing import Dict, Any
+from app.utils.db_utils import build_oracle_dsn
 
 
 
@@ -435,7 +436,7 @@ class OracleVerifierExecutor(BaseDBVerifierExecutor):
 
         try:
             self._init_thick_mode()
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -488,7 +489,7 @@ class OracleVerifierExecutor(BaseDBVerifierExecutor):
 
         try:
             self._init_thick_mode()
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -538,18 +539,6 @@ class OracleVerifierExecutor(BaseDBVerifierExecutor):
             result["error"] = f"连接失败: {str(e)}"
 
         return result
-
-    def _build_dsn(self):
-        """构建 Oracle DSN"""
-        host = self.config['host']
-        port = int(self.config.get('port', 1521))
-        mode = self.config.get('mode', 'service_name')
-        db = self.config['database']
-
-        if mode == 'service_name':
-            return f"{host}:{port}/{db}"
-        else:
-            return f"{host}:{port}:{db}"
 
 
 def get_db_verifier_executor(db_type: str, config: Dict[str, Any]) -> BaseDBVerifierExecutor:

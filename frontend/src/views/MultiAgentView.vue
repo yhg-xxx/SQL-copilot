@@ -9,8 +9,11 @@
           <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
             <el-icon><ArrowLeft /></el-icon>
           </el-button>
+          <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
+            <el-icon><ArrowLeft /></el-icon>
+          </el-button>
         </div>
-        
+
         <!-- 搜索框 -->
         <div class="search-container">
           <el-input
@@ -24,7 +27,21 @@
             </template>
           </el-input>
         </div>
-        
+
+        <!-- 搜索框 -->
+        <div class="search-container">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索对话"
+            size="small"
+            class="search-input"
+          >
+            <template #prefix>
+              <el-icon class="search-icon"><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+
         <!-- 对话列表 -->
         <div class="conversation-items">
           <!-- 新对话按钮 -->
@@ -32,13 +49,13 @@
             <el-icon class="new-chat-icon"><Plus /></el-icon>
             <span>开启新对话</span>
           </div>
-          
+
           <!-- 时间分组的对话列表 -->
           <template v-if="groupedConversations.length > 0">
             <div v-for="(group, index) in groupedConversations" :key="index">
               <div class="time-group-header">{{ group.date }}</div>
-              <div 
-                v-for="conversation in group.conversations" 
+              <div
+                v-for="conversation in group.conversations"
                 :key="conversation.conversation_id"
                 class="conversation-item"
                 :class="{ active: selectedConversationId === conversation.conversation_id }"
@@ -68,7 +85,7 @@
               </div>
             </div>
           </template>
-          
+
           <!-- 空状态 -->
           <div v-else class="empty-conversations">
             <el-icon class="empty-icon"><ChatLineSquare /></el-icon>
@@ -174,14 +191,9 @@ import axios from 'axios'
 import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
 import {
   Delete,
-  DocumentCopy,
   ChatDotRound,
   DataAnalysis,
   ArrowUp,
-  Document,
-  CircleCheck,
-  CircleClose,
-  InfoFilled,
   Plus,
   ChatLineSquare,
   More,
@@ -218,11 +230,11 @@ const searchQuery = ref('')
 // 分组后的对话列表
 const groupedConversations = computed(() => {
   // 过滤搜索结果
-  const filteredConversations = conversations.value.filter(conv => 
+  const filteredConversations = conversations.value.filter(conv =>
     conv.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     (conv.last_message && conv.last_message.toLowerCase().includes(searchQuery.value.toLowerCase()))
   )
-  
+
   // 按日期分组
   const groups = {}
   filteredConversations.forEach(conv => {
@@ -232,7 +244,7 @@ const groupedConversations = computed(() => {
     }
     groups[date].conversations.push(conv)
   })
-  
+
   // 转换为数组并按日期排序
   return Object.values(groups).sort((a, b) => {
     // 特殊处理今天和昨天
@@ -251,7 +263,7 @@ const formatDateGroup = (timeString) => {
   const now = new Date()
   const diffTime = now - date
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  
+
   if (diffDays === 0) {
     return '今天'
   } else if (diffDays === 1) {
@@ -370,7 +382,7 @@ const sendMessage = async () => {
 
               if (sqlResult.success) {
                 ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
-                updateConversationLastMessage(selectedConversationId.value, message)
+                await updateConversationLastMessage(selectedConversationId.value, message)
               } else {
                 ElNotification.error({ title: '失败', message: sqlResult.error_message, duration: 3000 })
               }
@@ -414,18 +426,7 @@ const sendMessage = async () => {
   await scrollToBottom()
 }
 
-const clearChat = () => {
-  messages.value = []
-  currentResult.value = null
-  ElMessage.success('聊天记录已清空')
-}
 
-const copySql = () => {
-  if (currentResult.value?.final_sql) {
-    navigator.clipboard.writeText(currentResult.value.final_sql)
-    ElMessage.success('SQL 已复制到剪贴板')
-  }
-}
 
 const loadDatasources = async () => {
   try {
@@ -452,7 +453,7 @@ const loadConversations = async () => {
     })
     conversations.value = response.data.conversations
     if (conversations.value.length > 0 && !selectedConversationId.value) {
-      selectConversation(conversations.value[0])
+      await selectConversation(conversations.value[0])
     }
   } catch (error) {
     console.error('获取对话列表失败:', error)
@@ -472,7 +473,7 @@ const createNewConversation = async () => {
     
     const newConversation = response.data
     conversations.value.unshift(newConversation)
-    selectConversation(newConversation)
+    await selectConversation(newConversation)
     ElMessage.success('新对话创建成功')
   } catch (error) {
     console.error('创建对话失败:', error)
@@ -624,7 +625,7 @@ const confirmDeleteConversation = (conversationId) => {
         messages.value = []
         currentResult.value = null
         if (conversations.value.length > 0) {
-          selectConversation(conversations.value[0])
+          await selectConversation(conversations.value[0])
         } else {
           selectedConversationId.value = null
           // 显示欢迎消息
@@ -1407,11 +1408,14 @@ onMounted(() => {
   .conversation-list {
     width: 100%;
     height: 30vh;
+    margin-bottom: 0;
+    border-radius: 16px;
   }
 
   .chat-container {
     flex: 1;
     min-height: 30vh;
+    border-radius: 16px;
   }
 
   .chat-messages {

@@ -870,24 +870,24 @@ const copySql = () => {
     font-size: 14px;
     padding: 16px 20px;
   }
-  
+
   .message-header {
     margin-bottom: 10px;
     font-size: 13px;
   }
-  
+
   .summary-section {
     padding: 16px;
   }
-  
+
   .summary-data-table {
     padding: 12px;
   }
-  
+
   .chart-container {
     padding: 16px;
   }
-  
+
   .chart-area {
     height: 250px;
   }
