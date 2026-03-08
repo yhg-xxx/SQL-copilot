@@ -1,46 +1,76 @@
 <template>
   <div class="multi-agent-view">
-    <div class="content-container">
+    <div class="content-container" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
       <!-- 左侧对话列表 -->
-      <div class="conversation-list">
+      <div class="conversation-list" :class="{ 'collapsed': sidebarCollapsed }">
+        <!-- 顶部搜索和新对话按钮 -->
         <div class="conversation-header">
-          <h2>对话</h2>
-          <el-button @click="createNewConversation" type="primary" size="small" class="new-conversation-btn">
-            <el-icon><Plus /></el-icon>
-            新对话
+          <h2 v-if="!sidebarCollapsed">对话</h2>
+          <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
+            <el-icon><ArrowLeft /></el-icon>
           </el-button>
         </div>
-        <div class="conversation-items">
-          <div 
-            v-for="conversation in conversations" 
-            :key="conversation.conversation_id"
-            class="conversation-item"
-            :class="{ active: selectedConversationId === conversation.conversation_id }"
-            @click="selectConversation(conversation)"
+        
+        <!-- 搜索框 -->
+        <div class="search-container">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索对话"
+            size="small"
+            class="search-input"
           >
-            <div class="conversation-content">
-              <div class="conversation-title">{{ conversation.title }}</div>
-              <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
-              <div v-else class="conversation-last-message empty">暂无消息</div>
-            </div>
-            <div class="conversation-time">{{ formatTime(conversation.updated_at) }}</div>
-            <div class="conversation-menu">
-              <el-dropdown @command="(command) => handleConversationMenu(command, conversation.conversation_id)">
-                <el-button type="text" class="menu-btn">
-                  <el-icon><More /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="delete" type="danger">
-                      <el-icon class="menu-icon"><Delete /></el-icon>
-                      删除
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
+            <template #prefix>
+              <el-icon class="search-icon"><Search /></el-icon>
+            </template>
+          </el-input>
+        </div>
+        
+        <!-- 对话列表 -->
+        <div class="conversation-items">
+          <!-- 新对话按钮 -->
+          <div class="new-chat-button" @click="createNewConversation">
+            <el-icon class="new-chat-icon"><Plus /></el-icon>
+            <span>开启新对话</span>
           </div>
-          <div v-if="conversations.length === 0" class="empty-conversations">
+          
+          <!-- 时间分组的对话列表 -->
+          <template v-if="groupedConversations.length > 0">
+            <div v-for="(group, index) in groupedConversations" :key="index">
+              <div class="time-group-header">{{ group.date }}</div>
+              <div 
+                v-for="conversation in group.conversations" 
+                :key="conversation.conversation_id"
+                class="conversation-item"
+                :class="{ active: selectedConversationId === conversation.conversation_id }"
+                @click="selectConversation(conversation)"
+              >
+                <div class="conversation-content">
+                  <div class="conversation-title">{{ conversation.title }}</div>
+                  <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
+                  <div v-else class="conversation-last-message empty">暂无消息</div>
+                </div>
+                <div class="conversation-time">{{ formatTime(conversation.updated_at) }}</div>
+                <div class="conversation-menu">
+                  <el-dropdown @command="(command) => handleConversationMenu(command, conversation.conversation_id)">
+                    <el-button type="text" class="menu-btn">
+                      <el-icon><More /></el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="delete" type="danger">
+                          <el-icon class="menu-icon"><Delete /></el-icon>
+                          删除
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </div>
+            </div>
+          </template>
+          
+          <!-- 空状态 -->
+          <div v-else class="empty-conversations">
             <el-icon class="empty-icon"><ChatLineSquare /></el-icon>
             <p>暂无对话</p>
             <p class="empty-hint">点击上方按钮创建新对话</p>
@@ -50,23 +80,11 @@
 
       <!-- 中间聊天区域 -->
       <div class="chat-container">
-        <!-- 聊天头部 -->
-        <div class="chat-header">
-          <div class="header-left">
-            <div class="header-icon">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
-            <div class="header-text">
-              <h2>多智能体 SQL 助手</h2>
-              <p class="subtitle">使用自然语言与数据库对话</p>
-            </div>
-          </div>
-          <div class="header-right">
-            <el-button @click="clearChat" type="text" class="clear-btn">
-              <el-icon><Delete /></el-icon>
-              清空聊天
-            </el-button>
-          </div>
+        <!-- 侧边栏切换按钮 -->
+        <div class="sidebar-toggle-container">
+          <el-button @click="toggleSidebar" type="text" class="sidebar-open-btn" v-if="sidebarCollapsed">
+            <el-icon><ArrowRight /></el-icon>
+          </el-button>
         </div>
 
         <!-- 聊天消息区域（仅内部滚动） -->
@@ -150,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
@@ -166,7 +184,10 @@ import {
   InfoFilled,
   Plus,
   ChatLineSquare,
-  More
+  More,
+  Search,
+  ArrowLeft,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 
@@ -179,11 +200,68 @@ const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
 
+// 侧边栏状态
+const sidebarCollapsed = ref(false)
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
 // 对话相关状态
 const conversations = ref([])
 const selectedConversationId = ref(null)
 const creatingConversation = ref(false)
 const newConversationTitle = ref('')
+const searchQuery = ref('')
+
+// 分组后的对话列表
+const groupedConversations = computed(() => {
+  // 过滤搜索结果
+  const filteredConversations = conversations.value.filter(conv => 
+    conv.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    (conv.last_message && conv.last_message.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  )
+  
+  // 按日期分组
+  const groups = {}
+  filteredConversations.forEach(conv => {
+    const date = formatDateGroup(conv.updated_at)
+    if (!groups[date]) {
+      groups[date] = { date, conversations: [] }
+    }
+    groups[date].conversations.push(conv)
+  })
+  
+  // 转换为数组并按日期排序
+  return Object.values(groups).sort((a, b) => {
+    // 特殊处理今天和昨天
+    if (a.date === '今天') return -1
+    if (b.date === '今天') return 1
+    if (a.date === '昨天') return -1
+    if (b.date === '昨天') return 1
+    // 其他日期按时间排序
+    return new Date(b.conversations[0].updated_at) - new Date(a.conversations[0].updated_at)
+  })
+})
+
+// 格式化日期分组
+const formatDateGroup = (timeString) => {
+  const date = new Date(timeString)
+  const now = new Date()
+  const diffTime = now - date
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) {
+    return '今天'
+  } else if (diffDays === 1) {
+    return '昨天'
+  } else if (diffDays < 7) {
+    return `${diffDays}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  }
+}
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -593,103 +671,291 @@ onMounted(() => {
 .multi-agent-view {
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f0ff 100%);
   display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; /* 关键：完全禁止外部滚动 */
-  position: fixed; /* 固定定位，避免页面滚动 */
+  overflow: hidden;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
 }
 
-/* 内容容器：限制最大宽度，内部 flex 布局 */
+/* 内容容器：填充满整个屏幕，内部 flex 布局 */
 .content-container {
   width: 100%;
-  max-width: 1600px;
-  height: calc(100vh - 40px); /* 减去上下内边距 */
-  max-height: calc(100vh - 40px);
+  height: 100%;
   display: flex;
-  gap: 20px;
-  align-items: stretch; /* 子项等高 */
-  padding: 0 20px;
-  overflow: hidden; /* 防止内容溢出 */
+  align-items: stretch;
+  overflow: hidden;
+  background: white;
 }
 
 /* 左侧对话列表 */
 .conversation-list {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-right: 1px solid #e8ecf4;
+  transition: width 0.3s ease;
+  will-change: width;
+  min-width: 0;
+}
+
+/* 侧边栏收起状态 */
+.conversation-list.collapsed {
+  width: 0;
+  border-right: none;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* 侧边栏收起时隐藏所有内容 */
+.conversation-list.collapsed .conversation-header,
+.conversation-list.collapsed .search-container,
+.conversation-list.collapsed .conversation-items {
+  opacity: 0;
+  transform: translateX(-20px);
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+/* 侧边栏内容正常状态 */
+.conversation-header,
+.search-container,
+.conversation-items {
+  transition: all 0.3s ease;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* 侧边栏打开按钮样式 */
+.sidebar-open-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #6b7280;
+  position: absolute;
+  left: 12px;
+  top: 20px;
+  z-index: 10;
+  background: white;
+  border: 1px solid #e8ecf4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sidebar-open-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+  transform: scale(1.05);
+}
+
+/* 内容容器收起侧边栏状态 */
+.content-container.sidebar-collapsed {
+  /* 收起侧边栏时的样式 */
 }
 
 .conversation-header {
-  padding: 16px 20px;
+  padding: 20px 12px;
   border-bottom: 1px solid #e8ecf4;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+  background: white;
+  transition: all 0.3s ease;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+  transform: scale(1.05);
+}
+
+/* 侧边栏收起时的头部样式 */
+.conversation-list.collapsed .conversation-header {
+  padding: 20px 8px;
+  justify-content: center;
 }
 
 .conversation-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #1a1a2a;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .new-conversation-btn {
   min-width: 80px;
   height: 32px;
-  font-size: 12px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-size: 13px;
+  border-radius: 8px;
+  background: #4f46e5;
   border: none;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
 .new-conversation-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  background: #4338ca;
 }
 
+/* 搜索框容器 */
+.search-container {
+  padding: 12px 20px;
+  border-bottom: 1px solid #e8ecf4;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.search-input {
+  width: 100%;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  border: 1px solid #e8ecf4;
+  background: white;
+  transition: all 0.3s ease;
+  padding: 4px 12px;
+}
+
+.search-input :deep(.el-input__wrapper):hover,
+.search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.search-icon {
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+/* 侧边栏收起时隐藏搜索框 */
+.conversation-list.collapsed .search-container {
+  display: none;
+}
+
+/* 对话列表 */
 .conversation-items {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px;
+  transition: all 0.3s ease;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: white;
 }
 
+/* 新对话按钮 */
+.new-chat-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  border: 1px dashed #e0e6ff;
+  min-width: 260px;
+  flex-shrink: 0;
+}
+
+.new-chat-button:hover {
+  background: #f0f4ff;
+  border-color: #4f46e5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+}
+
+.new-chat-icon {
+  font-size: 18px;
+  color: #4f46e5;
+  flex-shrink: 0;
+}
+
+.new-chat-button span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4f46e5;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 侧边栏收起时隐藏对话列表内容 */
+.conversation-list.collapsed .conversation-items {
+  display: none;
+}
+
+/* 时间分组标题 */
+.time-group-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9ca3af;
+  margin: 16px 0 8px 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* 对话项 */
 .conversation-item {
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
   margin-bottom: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   position: relative;
   display: flex;
   flex-direction: column;
+  background: white;
+  border: 1px solid transparent;
+  min-width: 280px;
+  flex-shrink: 0;
 }
 
 .conversation-item:hover {
-  background: #f0f2ff;
+  background: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .conversation-item.active {
-  background: #e0e7ff;
-  border-left: 3px solid #667eea;
+  background: #f0f4ff;
+  border: 1px solid #e0e7ff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
 }
 
 .conversation-content {
   flex: 1;
-  margin-right: 30px;
+  margin-right: 36px;
+  flex-shrink: 0;
+  min-width: 200px;
 }
 
 .conversation-title {
@@ -697,13 +963,21 @@ onMounted(() => {
   font-size: 14px;
   color: #1a1a2a;
   margin-bottom: 4px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .conversation-last-message {
   font-size: 12px;
   color: #6b7280;
   margin-bottom: 4px;
-  line-height: 1.3;
+  line-height: 1.4;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .conversation-last-message.empty {
@@ -715,13 +989,13 @@ onMounted(() => {
   font-size: 11px;
   color: #9ca3af;
   position: absolute;
-  top: 12px;
+  top: 14px;
   right: 40px;
 }
 
 .conversation-menu {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 8px;
   z-index: 10;
 }
@@ -729,14 +1003,15 @@ onMounted(() => {
 .menu-btn {
   padding: 4px;
   color: #6b7280;
-  font-size: 16px;
-  border-radius: 4px;
+  font-size: 14px;
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .menu-btn:hover {
   background: #e5e7eb;
   color: #374151;
+  transform: scale(1.05);
 }
 
 .menu-icon {
@@ -744,6 +1019,7 @@ onMounted(() => {
   font-size: 14px;
 }
 
+/* 空状态 */
 .empty-conversations {
   display: flex;
   flex-direction: column;
@@ -752,6 +1028,7 @@ onMounted(() => {
   height: 100%;
   color: #6b7280;
   text-align: center;
+  padding: 40px 20px;
 }
 
 .empty-icon {
@@ -761,188 +1038,214 @@ onMounted(() => {
 }
 
 .empty-conversations p {
-  margin: 4px 0;
+  margin: 6px 0;
   font-size: 14px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .empty-hint {
   font-size: 12px;
   color: #9ca3af;
+  margin-top: 8px;
 }
 
 /* 中间聊天容器：占满剩余空间，内部滚动 */
 .chat-container {
   flex: 1;
   min-width: 0;
-  background: #fff;
-  border-radius: 16px; /* 减小圆角，更紧凑 */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* 减弱阴影 */
+  background: white;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%; /* 占满父容器高度 */
+  height: 100%;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 5;
 }
-
-
 
 /* 聊天头部：固定高度，减少内边距 */
 .chat-header {
-  background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
-  padding: 16px 24px; /* 减小内边距 */
+  background: white;
+  padding: 20px 28px 20px 60px;
   border-bottom: 1px solid #e8ecf4;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  height: 80px; /* 固定高度 */
+  height: 92px;
+  transition: padding-left 0.3s ease;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px; /* 减小间距 */
+  gap: 16px;
 }
 
 .header-icon {
-  width: 40px; /* 减小图标尺寸 */
-  height: 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 20px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  font-size: 24px;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+  transition: all 0.3s ease;
+}
+
+.header-icon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
 }
 
 .header-text h2 {
   margin: 0;
-  font-size: 18px; /* 减小字体 */
-  font-weight: 600; /* 调整字重 */
+  font-size: 20px;
+  font-weight: 600;
   color: #1a1a2a;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .subtitle {
-  margin: 2px 0 0 0;
-  font-size: 12px; /* 减小字体 */
+  margin: 4px 0 0 0;
+  font-size: 14px;
   color: #6b7280;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .clear-btn {
   color: #6b7280;
   font-weight: 500;
-  padding: 6px 12px; /* 减小内边距 */
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .clear-btn:hover {
   color: #ef4444;
   background: #fee2e2;
+  transform: translateY(-1px);
 }
 
 /* 聊天消息区域：仅内部滚动，占满剩余高度 */
 .chat-messages {
   flex: 1;
-  padding: 20px 24px; /* 减小内边距 */
-  overflow-y: auto; /* 仅内部滚动 */
+  padding: 24px 28px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px; /* 减小消息间距 */
+  gap: 20px;
   background: #fafbfc;
   min-height: 0;
-  max-height: calc(100vh - 240px); /* 动态计算最大高度 */
 }
 
 /* 加载消息：紧凑样式 */
 .loading-message {
   display: flex;
-  gap: 12px; /* 减小间距 */
+  gap: 16px;
   align-self: flex-start;
-  animation: fadeIn 0.3s ease-in;
+  animation: fadeIn 0.4s ease-in;
 }
 
 .loading-avatar {
-  width: 36px; /* 减小尺寸 */
-  height: 36px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  font-size: 20px;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .loading-content {
   display: flex;
   flex-direction: column;
-  gap: 6px; /* 减小间距 */
-  padding: 12px 16px; /* 减小内边距 */
+  gap: 8px;
+  padding: 16px 20px;
   background: #f7f8ff;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(224, 230, 255, 0.8);
 }
 
 .loading-dots span {
-  width: 6px; /* 减小点尺寸 */
-  height: 6px;
-  background: #667eea;
+  width: 8px;
+  height: 8px;
+  background: #4f46e5;
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
+  display: inline-block;
+  margin: 0 2px;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
 }
 
 .loading-text {
-  font-size: 12px; /* 减小字体 */
+  font-size: 14px;
   color: #6b7280;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 /* 输入区域：紧凑布局，固定高度 */
 .chat-input-area {
-  padding: 16px 24px; /* 减小内边距 */
+  padding: 20px 28px;
   border-top: 1px solid #e8ecf4;
   background: #fff;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* 减小间距 */
-  height: 160px; /* 固定高度 */
+  gap: 16px;
+  height: 180px;
 }
 
 /* 输入框容器：横向布局，输入框占满剩余空间 */
 .input-wrapper {
   background: #f8f9ff;
-  border-radius: 12px; /* 减小圆角 */
-  padding: 16px; /* 减小内边距 */
-  border: 1px solid #e8ecf4; /* 减弱边框 */
-  transition: all 0.2s ease;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e8ecf4;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* 输入框与操作栏的间距 */
-  height: 100%; /* 占满父容器高度 */
+  gap: 16px;
+  height: 100%;
 }
 
 .input-wrapper:focus-within {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+  transform: translateY(-1px);
 }
 
 /* 输入框：占满宽度，减少内边距 */
 .chat-input {
   background: transparent;
-  flex: 1; /* 占满剩余高度 */
+  flex: 1;
 }
 
 .chat-input :deep(.el-textarea__inner) {
   background: transparent;
   border: none;
   padding: 0;
-  font-size: 14px; /* 减小字体 */
-  line-height: 1.5; /* 调整行高 */
+  font-size: 16px;
+  line-height: 1.6;
   resize: none;
-  height: 100% !important; /* 强制占满高度 */
+  height: 100% !important;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #1a1a2a;
 }
 
 .chat-input :deep(.el-textarea__inner):focus {
@@ -954,22 +1257,22 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px; /* 减小间距 */
-  margin-top: auto; /* 推到容器底部 */
+  gap: 16px;
+  margin-top: auto;
 }
 
 /* 数据源选择器：紧凑样式 */
 .datasource-selector {
   display: flex;
   align-items: center;
-  gap: 6px; /* 减小间距 */
-  flex: 1; /* 占满剩余空间 */
-  max-width: 300px; /* 限制最大宽度 */
+  gap: 8px;
+  flex: 1;
+  max-width: 320px;
 }
 
 .selector-icon {
-  color: #667eea;
-  font-size: 16px; /* 减小图标尺寸 */
+  color: #4f46e5;
+  font-size: 20px;
 }
 
 .datasource-select {
@@ -977,17 +1280,18 @@ onMounted(() => {
 }
 
 .datasource-select :deep(.el-input__wrapper) {
-  border-radius: 8px; /* 减小圆角 */
+  border-radius: 12px;
   border: 1px solid #e8ecf4;
   background: #fff;
-  transition: all 0.2s ease;
-  padding: 4px 8px; /* 减小内边距 */
+  transition: all 0.3s ease;
+  padding: 6px 12px;
 }
 
 .datasource-select :deep(.el-input__wrapper):hover,
 .datasource-select :deep(.el-input__wrapper.is-focus) {
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  transform: translateY(-1px);
 }
 
 .datasource-option {
@@ -1000,40 +1304,44 @@ onMounted(() => {
 .datasource-name {
   font-weight: 500;
   color: #1a1a2a;
-  font-size: 13px; /* 减小字体 */
+  font-size: 14px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .datasource-type {
-  font-size: 11px; /* 减小字体 */
+  font-size: 12px;
   color: #6b7280;
   background: #f3f4f6;
-  padding: 1px 6px; /* 减小内边距 */
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 /* 发送按钮：紧凑样式 */
 .send-btn {
-  min-width: 80px; /* 减小最小宽度 */
-  height: 36px; /* 减小高度 */
-  border-radius: 8px; /* 减小圆角 */
-  font-weight: 500; /* 调整字重 */
-  font-size: 14px; /* 减小字体 */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-width: 96px;
+  height: 40px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
   border: none;
-  transition: all 0.2s ease;
-  flex-shrink: 0; /* 防止按钮被压缩 */
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .send-btn:hover:not(:disabled) {
-  transform: translateY(-1px); /* 减小 hover 位移 */
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
 }
 
 .send-btn:disabled {
   background: #d1d5db;
   cursor: not-allowed;
+  box-shadow: none;
 }
-
 
 @keyframes slideInRight {
   from {
@@ -1046,54 +1354,43 @@ onMounted(() => {
   }
 }
 
-
-.preview-header .header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px; /* 减小间距 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-
-.preview-header h3 {
-  margin: 0;
-  font-size: 15px; /* 减小字体 */
-  font-weight: 600;
-  color: #1a1a2a;
-}
-
-.result-content .label {
-  font-size: 11px; /* 减小字体 */
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.result-content .status,
-.result-content .suggestions {
-  font-size: 13px; /* 减小字体 */
-  color: #1a1a2a;
-  font-weight: 600;
-}
-
-.result-content .status.valid {
-  color: #16a34a;
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
 }
 
 /* 滚动条样式：更细、更柔和 */
 .chat-messages::-webkit-scrollbar,
 .sql-content::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .chat-messages::-webkit-scrollbar-track,
 .sql-content::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb,
 .sql-content::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 3px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover,
@@ -1105,21 +1402,11 @@ onMounted(() => {
 @media (max-width: 1024px) {
   .content-container {
     flex-direction: column;
-    max-width: 800px;
-    height: calc(100vh - 20px);
-    padding: 0 10px;
   }
 
   .conversation-list {
     width: 100%;
     height: 30vh;
-    margin-bottom: 20px;
-  }
-
-  .preview-container {
-    width: 100%;
-    margin-top: 20px;
-    height: 30vh; /* 固定高度 */
   }
 
   .chat-container {
@@ -1128,73 +1415,41 @@ onMounted(() => {
   }
 
   .chat-messages {
-    max-height: calc(50vh - 240px);
-  }
-
-  .sql-content {
-    /* 移动端重新计算高度：100% - 头部(80px) - 底部(120px) */
-    max-height: calc(100% - 200px);
+    padding: 16px 20px;
+    gap: 16px;
   }
 }
 
 @media (max-width: 768px) {
-  .multi-agent-view {
-    position: fixed;
-  }
-
-  .content-container {
-    height: calc(100vh - 10px);
-    padding: 0 8px;
-  }
-
-  .chat-container {
-    height: 60vh;
-  }
-
-  .preview-container {
-    height: 40vh;
-  }
-
-  .chat-container,
-  .sql-preview {
-    border-radius: 12px; /* 减小圆角 */
-  }
-
   .chat-header,
-  .chat-input-area,
-  .preview-header,
-  .preview-footer {
-    padding: 12px 16px; /* 减小内边距 */
+  .chat-input-area {
+    padding: 16px 20px;
   }
 
   .chat-messages {
-    padding: 12px 16px;
-  }
-
-  .sql-content {
-    padding: 12px 16px;
+    padding: 16px 20px;
   }
 
   .input-wrapper {
-    padding: 12px 16px;
+    padding: 16px;
   }
 
   .header-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
 
   .header-text h2 {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .subtitle {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .input-actions {
-    flex-direction: column; /* 小屏幕下垂直排列 */
+    flex-direction: column;
     align-items: stretch;
   }
 
@@ -1203,44 +1458,56 @@ onMounted(() => {
   }
 
   .send-btn {
-    width: 100%; /* 小屏幕下占满宽度 */
+    width: 100%;
   }
 }
 
 /* 删除对话框样式 */
 .delete-dialog {
   width: 400px !important;
+  border-radius: 16px !important;
+  overflow: hidden;
 }
 
 .delete-dialog .el-message-box__content {
-  padding: 20px 0;
-  font-size: 14px;
-  line-height: 1.5;
+  padding: 24px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .delete-dialog .el-message-box__btns {
-  margin-top: 20px;
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
+  padding: 0 24px 24px 24px;
 }
 
 .delete-dialog .el-button--danger {
   background-color: #ef4444;
   border-color: #ef4444;
   color: white;
-  padding: 6px 20px;
-  border-radius: 4px;
-  font-weight: 500;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
 .delete-dialog .el-button--danger:hover {
   background-color: #dc2626;
   border-color: #dc2626;
+  transform: translateY(-1px);
 }
 
 .delete-dialog .el-button--default {
-  padding: 6px 20px;
-  border-radius: 4px;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.delete-dialog .el-button--default:hover {
+  transform: translateY(-1px);
 }
 </style>
