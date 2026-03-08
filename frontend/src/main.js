@@ -5,17 +5,43 @@ import App from './App.vue'
 import router from "@/router.js";
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
-// 全局配置 axios 携带 Cookie
-axios.defaults.withCredentials = true;
-const app = createApp(App)
 import axios from "axios";
-axios.defaults.baseURL ='http://localhost:8080'
-app.use(ElementPlus,{
-    locale:zhCn
+
+// 修复 Edge 浏览器无法最小化问题
+(function fixEdgeMinimizeIssue() {
+    const isEdge = navigator.userAgent.indexOf('Edg') > -1;
+    if (!isEdge) return;
+
+    const originalReplaceState = window.history.replaceState;
+    const originalPushState = window.history.pushState;
+
+    window.history.replaceState = function(state, title, url) {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
+        return originalReplaceState.call(this, state, title, url);
+    };
+
+    window.history.pushState = function(state, title, url) {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
+        return originalPushState.call(this, state, title, url);
+    };
+})();
+
+// 全局配置 axios
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = 'http://localhost:8080'
+
+const app = createApp(App)
+
+app.use(ElementPlus, {
+    locale: zhCn
 })
 app.use(router)
 app.mount('#app')
 
-for(const [key,component]of Object.entries(ElementPlusIconsVue) ){
-    app.component(key,component)
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    app.component(key, component)
 }

@@ -5,6 +5,7 @@ import psycopg2
 import pyodbc
 import oracledb
 from psycopg2 import OperationalError
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -595,7 +596,7 @@ class OracleHandler(BaseDatabaseHandler):
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
             # 构建Oracle连接字符串
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -626,7 +627,7 @@ class OracleHandler(BaseDatabaseHandler):
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -694,7 +695,7 @@ class OracleHandler(BaseDatabaseHandler):
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -777,7 +778,7 @@ class OracleHandler(BaseDatabaseHandler):
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -837,7 +838,7 @@ class OracleHandler(BaseDatabaseHandler):
             except Exception as init_error:
                 logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
             
-            dsn = self._build_dsn()
+            dsn = build_oracle_dsn(self.config)
             connection = oracledb.connect(
                 user=self.config['username'],
                 password=self.config['password'],
@@ -863,19 +864,18 @@ class OracleHandler(BaseDatabaseHandler):
             if connection:
                 connection.close()
 
-    def _build_dsn(self):
-        """构建Oracle DSN"""
-        host = self.config['host']
-        port = int(self.config.get('port', 1521))
-        mode = self.config.get('mode', 'service_name')
-        db = self.config['database']
-        
-        if mode == 'service_name':
-            # 使用服务名称
-            return f"{host}:{port}/{db}"
-        else:
-            # 使用SID
-            return f"{host}:{port}:{db}"
+
+def build_oracle_dsn(config: Dict[str, Any]) -> str:
+    """构建Oracle DSN"""
+    host = config['host']
+    port = int(config.get('port', 1521))
+    mode = config.get('mode', 'service_name')
+    db = config['database']
+    
+    if mode == 'service_name':
+        return f"{host}:{port}/{db}"
+    else:
+        return f"{host}:{port}:{db}"
 
 
 def get_database_handler(db_type, config):

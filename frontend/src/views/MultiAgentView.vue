@@ -187,14 +187,9 @@ import axios from 'axios'
 import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
 import {
   Delete,
-  DocumentCopy,
   ChatDotRound,
   DataAnalysis,
   ArrowUp,
-  Document,
-  CircleCheck,
-  CircleClose,
-  InfoFilled,
   Plus,
   ChatLineSquare,
   More,
@@ -224,8 +219,6 @@ const toggleSidebar = () => {
 // 对话相关状态
 const conversations = ref([])
 const selectedConversationId = ref(null)
-const creatingConversation = ref(false)
-const newConversationTitle = ref('')
 const searchQuery = ref('')
 
 // 分组后的对话列表
@@ -383,7 +376,7 @@ const sendMessage = async () => {
 
               if (sqlResult.success) {
                 ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
-                updateConversationLastMessage(selectedConversationId.value, message)
+                await updateConversationLastMessage(selectedConversationId.value, message)
               } else {
                 ElNotification.error({ title: '失败', message: sqlResult.error_message, duration: 3000 })
               }
@@ -427,18 +420,7 @@ const sendMessage = async () => {
   await scrollToBottom()
 }
 
-const clearChat = () => {
-  messages.value = []
-  currentResult.value = null
-  ElMessage.success('聊天记录已清空')
-}
 
-const copySql = () => {
-  if (currentResult.value?.final_sql) {
-    navigator.clipboard.writeText(currentResult.value.final_sql)
-    ElMessage.success('SQL 已复制到剪贴板')
-  }
-}
 
 const loadDatasources = async () => {
   try {
@@ -465,7 +447,7 @@ const loadConversations = async () => {
     })
     conversations.value = response.data.conversations
     if (conversations.value.length > 0 && !selectedConversationId.value) {
-      selectConversation(conversations.value[0])
+      await selectConversation(conversations.value[0])
     }
   } catch (error) {
     console.error('获取对话列表失败:', error)
@@ -485,7 +467,7 @@ const createNewConversation = async () => {
     
     const newConversation = response.data
     conversations.value.unshift(newConversation)
-    selectConversation(newConversation)
+    await selectConversation(newConversation)
     ElMessage.success('新对话创建成功')
   } catch (error) {
     console.error('创建对话失败:', error)
@@ -637,7 +619,7 @@ const confirmDeleteConversation = (conversationId) => {
         messages.value = []
         currentResult.value = null
         if (conversations.value.length > 0) {
-          selectConversation(conversations.value[0])
+          await selectConversation(conversations.value[0])
         } else {
           selectedConversationId.value = null
           // 显示欢迎消息
@@ -914,7 +896,7 @@ onMounted(() => {
   color: #9ca3af;
   margin: 16px 0 8px 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
