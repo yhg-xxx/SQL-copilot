@@ -14,9 +14,6 @@
       <div class="message-body">
         <!-- 有SQL和总结时 -->
         <template v-if="message.sql && message.summary">
-          <!-- SQL显示 -->
-          <pre class="sql-message">{{ message.content }}</pre>
-          
           <!-- 总结显示 -->
           <div class="summary-section">
             <div class="summary-header">
@@ -69,7 +66,18 @@
               </template>
               <!-- SQL语句 -->
               <template v-else>
-                <pre class="inline-sql-message">{{ message.sql }}</pre>
+                <div class="sql-with-copy">
+                  <pre class="inline-sql-message">{{ message.sql }}</pre>
+                  <el-button 
+                    type="primary" 
+                    size="small" 
+                    class="copy-btn"
+                    @click="copySql"
+                  >
+                    <el-icon><DocumentCopy /></el-icon>
+                    复制
+                  </el-button>
+                </div>
               </template>
             </div>
           </div>
@@ -77,7 +85,7 @@
         
         <!-- 仅有SQL无总结时 -->
         <template v-else-if="message.sql && !message.summary">
-          <pre class="sql-message">{{ message.content }}</pre>
+          <!-- 不显示任何内容 -->
         </template>
         
         <!-- 普通文本消息 -->
@@ -93,7 +101,8 @@
 
 <script setup>
 import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
-import { User, ChatDotRound, Warning, Document, Coin, Grid, TrendCharts } from '@element-plus/icons-vue'
+import { User, ChatDotRound, Warning, Document, Coin, Grid, TrendCharts, DocumentCopy } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
 const props = defineProps({
@@ -265,6 +274,20 @@ const formattedSummary = computed(() => {
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
 })
+
+// 复制SQL语句
+const copySql = () => {
+  if (props.message.sql) {
+    navigator.clipboard.writeText(props.message.sql)
+      .then(() => {
+        ElMessage.success('SQL 已复制到剪贴板')
+      })
+      .catch(err => {
+        console.error('复制失败:', err)
+        ElMessage.error('复制失败，请手动复制')
+      })
+  }
+}
 </script>
 
 <style scoped>
@@ -538,7 +561,12 @@ const formattedSummary = computed(() => {
   margin-left: auto;
 }
 
-/* 内联SQL样式 */
+/* SQL带复制按钮样式 */
+.sql-with-copy {
+  position: relative;
+  margin: 12px 0 0 0;
+}
+
 .inline-sql-message {
   background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
   color: #e8e8e8;
@@ -548,9 +576,29 @@ const formattedSummary = computed(() => {
   font-size: 13px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  margin: 12px 0 0 0;
   line-height: 1.6;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(102, 126, 234, 0.9);
+  border: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: rgba(102, 126, 234, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
 
 /* 切换按钮组 */

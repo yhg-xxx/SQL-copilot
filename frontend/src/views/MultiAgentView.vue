@@ -145,46 +145,6 @@
         </div>
       </div>
 
-      <!-- 右侧 SQL 预览（独立区域） -->
-      <div v-if="currentResult" class="preview-container">
-        <div class="sql-preview">
-          <div class="preview-header">
-            <div class="header-left">
-              <el-icon class="preview-icon"><Document /></el-icon>
-              <h3>SQL 预览</h3>
-            </div>
-            <el-button @click="copySql" type="text" size="small" class="copy-btn">
-              <el-icon><DocumentCopy /></el-icon>
-              复制
-            </el-button>
-          </div>
-          <div class="sql-content">
-            <pre class="sql-code">{{ currentResult.final_sql }}</pre>
-          </div>
-          <div class="preview-footer">
-            <div class="result-card validation-result">
-              <div class="result-icon" :class="{ valid: currentResult.validation_result?.valid }">
-                <el-icon><CircleCheck v-if="currentResult.validation_result?.valid" /><CircleClose v-else /></el-icon>
-              </div>
-              <div class="result-content">
-                <span class="label">验证结果</span>
-                <span :class="['status', { valid: currentResult.validation_result?.valid }]">
-                  {{ currentResult.validation_result?.valid ? '验证通过' : '验证失败' }}
-                </span>
-              </div>
-            </div>
-            <div class="result-card optimization-result">
-              <div class="result-icon">
-                <el-icon><InfoFilled /></el-icon>
-              </div>
-              <div class="result-content">
-                <span class="label">优化建议</span>
-                <span class="suggestions">{{ currentResult.optimization_result?.suggestions?.[0] || '无' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -1074,16 +1034,6 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-/* 右侧 SQL 预览面板：紧凑样式，占满剩余高度 */
-.preview-container {
-  width: 380px; /* 减小宽度 */
-  flex-shrink: 0;
-  animation: slideInRight 0.5s ease-out;
-  height: 100%; /* 占满父容器高度 */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* 禁止外部滚动 */
-}
 
 @keyframes slideInRight {
   from {
@@ -1096,26 +1046,6 @@ onMounted(() => {
   }
 }
 
-.sql-preview {
-  background: #fff;
-  border-radius: 16px; /* 减小圆角 */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* 减弱阴影 */
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%; /* 占满父容器高度 */
-}
-
-.preview-header {
-  background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
-  padding: 16px 24px; /* 减小内边距 */
-  border-bottom: 1px solid #e8ecf4;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  height: 80px; /* 固定高度 */
-}
 
 .preview-header .header-left {
   display: flex;
@@ -1123,111 +1053,12 @@ onMounted(() => {
   gap: 8px; /* 减小间距 */
 }
 
-.preview-icon {
-  color: #667eea;
-  font-size: 18px; /* 减小图标尺寸 */
-}
 
 .preview-header h3 {
   margin: 0;
   font-size: 15px; /* 减小字体 */
   font-weight: 600;
   color: #1a1a2a;
-}
-
-.copy-btn {
-  color: #6b7280;
-  font-weight: 500;
-  padding: 4px 8px; /* 减小内边距 */
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.copy-btn:hover {
-  color: #667eea;
-  background: #f0f2ff;
-}
-
-/* 修正SQL内容区域：允许滚动，计算正确高度 */
-.sql-content {
-  flex: 1;
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-  padding: 16px 20px; /* 减小内边距 */
-  overflow-y: auto; /* SQL 内容可滚动 */
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  /* 动态计算高度：100% - 头部高度(80px) - 底部高度(120px) */
-  max-height: calc(100% - 200px);
-}
-
-.sql-code {
-  background: transparent;
-  color: #e8e8e8;
-  padding: 0;
-  margin: 0;
-  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px; /* 减小字体 */
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.5; /* 调整行高 */
-  flex: 1;
-  min-height: 0;
-  overflow: auto; /* 确保代码可以滚动 */
-}
-
-.preview-footer {
-  padding: 16px 24px; /* 减小内边距 */
-  border-top: 1px solid #e8ecf4;
-  background: #fafbfc;
-  display: flex;
-  flex-direction: column;
-  gap: 12px; /* 减小间距 */
-  flex-shrink: 0;
-  height: 120px; /* 固定高度 */
-}
-
-.result-card {
-  display: flex;
-  align-items: center;
-  gap: 10px; /* 减小间距 */
-  padding: 12px 16px; /* 减小内边距 */
-  background: #fff;
-  border-radius: 10px; /* 减小圆角 */
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); /* 减弱阴影 */
-  border: 1px solid #e8ecf4;
-  transition: all 0.2s ease;
-  flex: 1; /* 占满可用空间 */
-}
-
-.result-card:hover {
-  transform: translateY(-1px); /* 减小 hover 位移 */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.result-icon {
-  width: 32px; /* 减小尺寸 */
-  height: 32px;
-  border-radius: 8px; /* 减小圆角 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px; /* 减小图标尺寸 */
-  background: #f3f4f6;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-
-.result-icon.valid {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.result-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px; /* 减小间距 */
 }
 
 .result-content .label {
