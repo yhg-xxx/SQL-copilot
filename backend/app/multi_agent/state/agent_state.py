@@ -70,4 +70,7 @@ class AgentState(TypedDict):
     error_message: Optional[str]  # 错误信息
     chat_history: Optional[List[Dict[str, Any]]]  # 对话历史记录
     summary_result: Optional[SummaryResult]  # 对话总结结果
-    db_type: Optional[str]
+    db_type: Optional[str] # 数据源类型
+    fix_attempts:int # 修复次数
+    was_fixed: bool # 是否修复成功
+    fix_explanation: Optional[str] # 修复描述

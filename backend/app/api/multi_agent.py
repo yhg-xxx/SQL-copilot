@@ -87,7 +87,7 @@ async def multi_agent_query_stream(
                         yield f"data: {json.dumps({'type': 'summary', 'content': content}, ensure_ascii=False)}\n\n"
                     elif chunk.get("type") == "data":
                         query_data_for_save = chunk.get('query_result_data')
-                        yield f"data: {json.dumps({'type': 'summary_data', 'query_result_data': query_data_for_save}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'summary_data', 'query_result_data': query_data_for_save}, ensure_ascii=False, default=str)}\n\n"
                     elif chunk.get("type") == "error":
                         yield f"data: {json.dumps({'type': 'error', 'content': chunk.get('content', '')}, ensure_ascii=False)}\n\n"
             

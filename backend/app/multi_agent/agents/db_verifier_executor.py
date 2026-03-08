@@ -6,6 +6,8 @@ import pyodbc
 import oracledb
 from typing import Dict, Any
 
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,7 @@ class BaseDBVerifierExecutor:
 class MySQLVerifierExecutor(BaseDBVerifierExecutor):
     """MySQL 数据库验证和执行器"""
 
-    def validate_sql(self, sql: str) -> Dict[str, Any]:
+    def validate_sql(self, sql: str) -> dict[str, bool | list[Any] | None | str] | None:
         """使用 MySQL 验证 SQL 语句"""
         result = {
             "valid": False,
@@ -84,7 +86,8 @@ class MySQLVerifierExecutor(BaseDBVerifierExecutor):
 
         return result
 
-    def execute_sql(self, sql: str) -> Dict[str, Any]:
+    def execute_sql(self, sql: str) -> dict[str, None | list[tuple[Any, ...]] | list[Any] | str | bool | list[
+        str] | int] | None:
         """使用 MySQL 执行 SQL 语句"""
         result = {
             "success": False,
@@ -147,7 +150,7 @@ class MySQLVerifierExecutor(BaseDBVerifierExecutor):
 class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
     """PostgreSQL 数据库验证和执行器"""
 
-    def validate_sql(self, sql: str) -> Dict[str, Any]:
+    def validate_sql(self, sql: str) -> dict[str, bool | list[Any] | None | str] | None:
         """使用 PostgreSQL 验证 SQL 语句"""
         result = {
             "valid": False,
@@ -204,7 +207,7 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
 
         return result
 
-    def execute_sql(self, sql: str) -> Dict[str, Any]:
+    def execute_sql(self, sql: str) -> dict[str, None | list[dict[Any, Any]] | str | bool | list[Any] | int] | None:
         """使用 PostgreSQL 执行 SQL 语句"""
         result = {
             "success": False,
@@ -270,7 +273,7 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
 class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
     """SQL Server 数据库验证和执行器"""
 
-    def validate_sql(self, sql: str) -> Dict[str, Any]:
+    def validate_sql(self, sql: str) -> dict[str, bool | list[Any] | None] | None:
         """使用 SQL Server 验证 SQL 语句"""
         result = {
             "valid": False,
@@ -331,7 +334,7 @@ class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
 
         return result
 
-    def execute_sql(self, sql: str) -> Dict[str, Any]:
+    def execute_sql(self, sql: str) -> dict[str, None | list[dict[str, Any]] | str | bool | list[str] | int] | None:
         """使用 SQL Server 执行 SQL 语句"""
         result = {
             "success": False,
@@ -420,7 +423,7 @@ class OracleVerifierExecutor(BaseDBVerifierExecutor):
         except Exception as init_error:
             logger.warning("无法初始化 Oracle 客户端，将使用 Thin 模式: %s", init_error)
 
-    def validate_sql(self, sql: str) -> Dict[str, Any]:
+    def validate_sql(self, sql: str) -> dict[str, bool | list[Any] | None] | None:
         """使用 Oracle 验证 SQL 语句"""
         result = {
             "valid": False,
@@ -473,7 +476,7 @@ class OracleVerifierExecutor(BaseDBVerifierExecutor):
 
         return result
 
-    def execute_sql(self, sql: str) -> Dict[str, Any]:
+    def execute_sql(self, sql: str) -> dict[str, None | list[dict[Any, Any]] | str | bool | list[Any] | int] | None:
         """使用 Oracle 执行 SQL 语句"""
         result = {
             "success": False,

@@ -209,7 +209,6 @@ import {
   More
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
-import ConversationSummary from '@/components/ConversationSummary.vue'
 
 const router = useRouter()
 const messages = ref([])

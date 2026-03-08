@@ -258,9 +258,12 @@ const formattedContent = computed(() => {
 const formattedSummary = computed(() => {
   if (!props.message.summary) return ''
   return props.message.summary
-    .replace(/\n/g, '<br>')
+    .replace(/^#\s+(.+)$/gm, '<h1 style="font-size: 18px; font-weight: 600; color: #667eea; margin: 8px 0 6px 0;">$1</h1>')
+    .replace(/^##\s+(.+)$/gm, '<h2 style="font-size: 16px; font-weight: 600; color: #667eea; margin: 6px 0 4px 0;">$1</h2>')
+    .replace(/^###\s+(.+)$/gm, '<h3 style="font-size: 14px; font-weight: 600; color: #667eea; margin: 4px 0 2px 0;">$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
+    .replace(/\n/g, '<br>')
 })
 </script>
 
