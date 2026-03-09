@@ -13,7 +13,6 @@
           </el-button>
         </div>
 
-
         <!-- 搜索框 -->
         <div class="search-container">
           <el-input
@@ -27,8 +26,6 @@
             </template>
           </el-input>
         </div>
-
-        <!-- 对话列表 -->
 
         <!-- 对话列表 -->
         <div class="conversation-items">
@@ -109,12 +106,15 @@
 
         <!-- 聊天消息区域（仅内部滚动） -->
         <div class="chat-messages" ref="messagesContainer">
+          <!-- 普通消息 -->
           <ChatMessage
-            v-for="(message, index) in messages"
+            v-for="(message, index) in messages.filter(m => !m.isWelcome)"
             :key="index"
             :message="message"
             :is-user="message.role === 'user'"
           />
+          
+          <!-- 加载消息 -->
           <div v-if="loading" class="loading-message">
             <div class="loading-avatar">
               <el-icon><ChatDotRound /></el-icon>
@@ -128,59 +128,36 @@
               <span class="loading-text">正在生成 SQL...</span>
             </div>
           </div>
-        </div>
-
-        <!-- 输入区域（紧凑布局） -->
-        <div class="chat-input-area">
-          <div class="input-wrapper">
-            <!-- 输入框：占满剩余空间，减少内边距 -->
-            <el-input
-              v-model="inputMessage"
-              type="textarea"
-              placeholder="输入您的查询，例如：查询所有用户信息"
-              :rows="2"
-              resize="none"
-              @keyup.enter.exact="sendMessage"
-              :disabled="loading"
-              class="chat-input"
-            ></el-input>
-
-            <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
-            <div class="input-actions">
-              <div class="datasource-selector">
-                <el-icon class="selector-icon"><DataAnalysis /></el-icon>
-                <el-select
-                  v-model="selectedDatasource"
-                  placeholder="选择数据源"
-                  size="small"
-                  class="datasource-select"
-                >
-                  <el-option
-                    v-for="datasource in datasources"
-                    :key="datasource.id"
-                    :label="datasource.name"
-                    :value="datasource.id"
-                  >
-                    <div class="datasource-option">
-                      <span class="datasource-name">{{ datasource.name }}</span>
-                      <span class="datasource-type">{{ datasource.type }}</span>
-                    </div>
-                  </el-option>
-                </el-select>
-              </div>
-              <el-button
-                @click="sendMessage"
-                type="primary"
-                :loading="loading"
-                class="send-btn"
-                :disabled="!inputMessage.trim() || !selectedDatasource"
-              >
-                <el-icon v-if="!loading"><ArrowUp /></el-icon>
-                发送
-              </el-button>
-            </div>
+          
+          <!-- 欢迎提示 -->
+          <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="welcome-message">
+            <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
+            <span class="welcome-text">今天有什么可以帮到您？</span>
+          </div>
+          
+          <!-- 输入框区域 -->
+          <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="centered-input-container">
+            <FloatingInput
+              :loading="loading"
+              :datasources="datasources"
+              :selectedDatasource="selectedDatasource"
+              @update:selectedDatasource="(value) => selectedDatasource.value = value"
+              @send="handleSendMessage"
+            />
           </div>
         </div>
+
+        <!-- 输入框区域（有消息时显示在底部） -->
+        <div v-if="messages.filter(m => !m.isWelcome).length > 0 || loading" class="input-container">
+          <FloatingInput
+            :loading="loading"
+            :datasources="datasources"
+            :selectedDatasource="selectedDatasource"
+            @update:selectedDatasource="(value) => selectedDatasource.value = value"
+            @send="handleSendMessage"
+          />
+        </div>
+        
       </div>
 
     </div>
@@ -204,10 +181,10 @@ import {
   Edit
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
+import FloatingInput from '@/components/FloatingInput.vue'
 
 const router = useRouter()
 const messages = ref([])
-const inputMessage = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
@@ -290,8 +267,7 @@ const scrollToBottom = async () => {
   }
 }
 
-const sendMessage = async () => {
-  const message = inputMessage.value.trim()
+const handleSendMessage = async (message) => {
   if (!message) {
     ElMessage.warning('请输入查询内容')
     return
@@ -300,9 +276,26 @@ const sendMessage = async () => {
     ElMessage.warning('请先选择数据源')
     return
   }
+  // 如果没有选中的对话，自动创建一个新对话
   if (!selectedConversationId.value) {
-    ElMessage.warning('请先创建或选择一个对话')
-    return
+    try {
+      const token = localStorage.getItem('token')
+      const response = await axios.post('http://localhost:8000/conversations', {
+        title: '新对话'
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      const newConversation = response.data
+      conversations.value.unshift(newConversation)
+      selectedConversationId.value = newConversation.conversation_id
+      // 清空欢迎消息
+      messages.value = []
+    } catch (error) {
+      console.error('创建对话失败:', error)
+      ElMessage.error('创建对话失败，请重试')
+      return
+    }
   }
 
   messages.value.push({
@@ -310,7 +303,6 @@ const sendMessage = async () => {
     content: message,
     timestamp: new Date().toLocaleTimeString()
   })
-  inputMessage.value = ''
   loading.value = true
   
   // 发送消息时强制滚动到底部，确保用户消息可见
@@ -468,9 +460,6 @@ const loadConversations = async () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     conversations.value = response.data.conversations
-    if (conversations.value.length > 0 && !selectedConversationId.value) {
-      await selectConversation(conversations.value[0])
-    }
   } catch (error) {
     console.error('获取对话列表失败:', error)
     ElMessage.error('获取对话列表失败')
@@ -725,7 +714,7 @@ onMounted(() => {
   loadConversations()
   messages.value.push({
     role: 'assistant',
-    content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
+    content: '今天有什么可以帮到你？',
     timestamp: new Date().toLocaleTimeString(),
     isWelcome: true
   })
@@ -1309,16 +1298,36 @@ onBeforeUnmount(() => {
 /* 聊天消息区域：仅内部滚动，占满剩余高度 */
 .chat-messages {
   flex: 1;
-  padding: 24px 28px;
+  padding: 24px 28px 60px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  background: #fafbfc;
+  gap: 12px;
+  background: white;
   min-height: 0;
   max-width: 1000px;
   width: 100%;
   transition: width 0.3s ease;
+  z-index: 1;
+}
+
+/* 无消息时的布局 */
+.chat-messages:empty {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+/* 有欢迎消息时的布局 */
+.chat-messages:not(:empty) {
+  justify-content: center;
+  align-items: center;
+}
+
+/* 有消息时的布局 */
+.chat-messages:not(:empty):has(.chat-message) {
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 /* 加载消息：紧凑样式 */
@@ -1377,154 +1386,7 @@ onBeforeUnmount(() => {
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-/* 输入区域：紧凑布局，固定高度 */
-.chat-input-area {
-  padding: 20px 28px;
-  border-top: 1px solid #e8ecf4;
-  background: #fff;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: 180px;
-  width: 100%;
-  justify-content: center;
-  align-items: center;
-}
 
-/* 输入框容器：横向布局，输入框占满剩余空间 */
-.input-wrapper {
-  max-width: 1000px;
-  width: 100%;
-  background: #f8f9ff;
-  border-radius: 16px;
-  padding: 20px;
-  border: 1px solid #e8ecf4;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: 100%;
-}
-
-.input-wrapper:focus-within {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-  transform: translateY(-1px);
-}
-
-/* 输入框：占满宽度，减少内边距 */
-.chat-input {
-  background: transparent;
-  flex: 1;
-}
-
-.chat-input :deep(.el-textarea__inner) {
-  background: transparent;
-  border: none;
-  padding: 0;
-  font-size: 16px;
-  line-height: 1.6;
-  resize: none;
-  height: 100% !important;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  color: #1a1a2a;
-}
-
-.chat-input :deep(.el-textarea__inner):focus {
-  box-shadow: none;
-}
-
-/* 操作栏：数据库选择器 + 发送按钮 横向排列，紧凑布局 */
-.input-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-top: auto;
-}
-
-/* 数据源选择器：紧凑样式 */
-.datasource-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  max-width: 320px;
-}
-
-.selector-icon {
-  color: #4f46e5;
-  font-size: 20px;
-}
-
-.datasource-select {
-  flex: 1;
-}
-
-.datasource-select :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  border: 1px solid #e8ecf4;
-  background: #fff;
-  transition: all 0.3s ease;
-  padding: 6px 12px;
-}
-
-.datasource-select :deep(.el-input__wrapper):hover,
-.datasource-select :deep(.el-input__wrapper.is-focus) {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-  transform: translateY(-1px);
-}
-
-.datasource-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.datasource-name {
-  font-weight: 500;
-  color: #1a1a2a;
-  font-size: 14px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.datasource-type {
-  font-size: 12px;
-  color: #6b7280;
-  background: #f3f4f6;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-/* 发送按钮：紧凑样式 */
-.send-btn {
-  min-width: 96px;
-  height: 40px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 16px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  border: none;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.send-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
-  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
-}
-
-.send-btn:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
-  box-shadow: none;
-}
 
 @keyframes slideInRight {
   from {
@@ -1555,6 +1417,59 @@ onBeforeUnmount(() => {
   40% {
     transform: scale(1);
   }
+}
+
+/* 输入框容器 */
+.input-container {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  z-index: 10;
+  position: relative;
+}
+
+/* 欢迎消息 */
+.welcome-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.welcome-icon {
+  font-size: 24px;
+  color: #4f46e5;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.welcome-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* 居中输入框容器 */
+.centered-input-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  z-index: 10;
+  position: relative;
 }
 
 /* 滚动条样式：更细、更柔和 */
