@@ -52,7 +52,6 @@
                   <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
                   <div v-else class="conversation-last-message empty">暂无消息</div>
                 </div>
-                <div class="conversation-time">{{ formatTime(conversation.updated_at) }}</div>
                 <div class="conversation-menu">
                   <el-dropdown @command="(command) => handleConversationMenu(command, conversation.conversation_id)">
                     <el-button type="text" class="menu-btn">
@@ -715,7 +714,7 @@ onBeforeUnmount(() => {
 
 /* 左侧对话列表 */
 .conversation-list {
-  width: 320px;
+  width: 280px;
   flex-shrink: 0;
   background: white;
   display: flex;
@@ -886,8 +885,6 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   padding: 12px;
   transition: all 0.3s ease;
-  min-width: 280px;
-  flex-shrink: 0;
   background: white;
 }
 
@@ -903,8 +900,8 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   background: white;
   border: 1px dashed #e0e6ff;
-  min-width: 260px;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .new-chat-button:hover {
@@ -954,11 +951,11 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   position: relative;
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   background: white;
   border: 1px solid transparent;
-  min-width: 280px;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .conversation-item:hover {
@@ -975,9 +972,9 @@ onBeforeUnmount(() => {
 
 .conversation-content {
   flex: 1;
-  margin-right: 36px;
-  flex-shrink: 0;
-  min-width: 200px;
+  margin-right: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .conversation-title {
@@ -1016,10 +1013,12 @@ onBeforeUnmount(() => {
 }
 
 .conversation-menu {
-  position: absolute;
-  top: 10px;
-  right: 8px;
+  flex-shrink: 0;
   z-index: 10;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .menu-btn {
@@ -1083,6 +1082,7 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   position: relative;
   z-index: 5;
+  align-items: center;
 }
 
 /* 聊天头部：固定高度，减少内边距 */
@@ -1096,6 +1096,9 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   height: 92px;
   transition: padding-left 0.3s ease;
+  width: 100%;
+  max-width: 1000px;
+  transition: all 0.3s ease;
 }
 
 .header-left {
@@ -1163,6 +1166,9 @@ onBeforeUnmount(() => {
   gap: 20px;
   background: #fafbfc;
   min-height: 0;
+  max-width: 1000px;
+  width: 100%;
+  transition: width 0.3s ease;
 }
 
 /* 加载消息：紧凑样式 */
@@ -1231,10 +1237,15 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 16px;
   height: 180px;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
 }
 
 /* 输入框容器：横向布局，输入框占满剩余空间 */
 .input-wrapper {
+  max-width: 1000px;
+  width: 100%;
   background: #f8f9ff;
   border-radius: 16px;
   padding: 20px;

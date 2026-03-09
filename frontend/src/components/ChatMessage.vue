@@ -310,6 +310,7 @@ const copySql = () => {
   padding: 12px 0;
   animation: fadeIn 0.4s ease-in;
   transition: all 0.3s ease;
+  align-items: flex-start;
 }
 
 @keyframes fadeIn {
@@ -374,12 +375,11 @@ const copySql = () => {
 
 .message-content {
   flex: 1;
-  max-width: 75%;
+  max-width: 90%;
   position: relative;
 }
 
 .user-message .message-content {
-  text-align: right;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -391,6 +391,7 @@ const copySql = () => {
   align-items: center;
   margin-bottom: 12px;
   font-size: 14px;
+  width: 100%;
 }
 
 .user-message .message-header {
