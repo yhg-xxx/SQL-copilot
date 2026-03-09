@@ -64,10 +64,10 @@
                   <el-empty description="暂无数据可生成图表" :image-size="60" />
                 </div>
               </template>
-              <!-- SQL语句 -->
+              <!-- SQL 语句 -->
               <template v-else>
                 <div class="sql-with-copy">
-                  <pre class="inline-sql-message">{{ message.sql }}</pre>
+                  <pre class="inline-sql-message"><code v-html="highlightedSql"></code></pre>
                   <el-button 
                     type="primary" 
                     size="small" 
@@ -104,6 +104,11 @@ import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { User, ChatDotRound, Warning, Document, Coin, Grid, TrendCharts, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import hljs from 'highlight.js/lib/core'
+import sql from 'highlight.js/lib/languages/sql'
+import 'highlight.js/styles/atom-one-light.css'
+
+hljs.registerLanguage('sql', sql)
 
 const props = defineProps({
   message: {
@@ -270,12 +275,19 @@ const formattedSummary = computed(() => {
     .replace(/^#\s+(.+)$/gm, '<h1 style="font-size: 18px; font-weight: 600; color: #1a1a2e; margin: 8px 0 6px 0;">$1</h1>')
     .replace(/^##\s+(.+)$/gm, '<h2 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 6px 0 4px 0;">$1</h2>')
     .replace(/^###\s+(.+)$/gm, '<h3 style="font-size: 14px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>')
+    .replace(/^####\s+(.+)$/gm, '<h4 style="font-size: 13px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h4>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
 })
 
-// 复制SQL语句
+// 高亮 SQL 代码
+const highlightedSql = computed(() => {
+  if (!props.message.sql) return ''
+  return hljs.highlight(props.message.sql, { language: 'sql' }).value
+})
+
+// 复制 SQL 语句
 const copySql = () => {
   if (props.message.sql) {
     navigator.clipboard.writeText(props.message.sql)
@@ -672,8 +684,7 @@ const copySql = () => {
 }
 
 .inline-sql-message {
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-  color: #e8e8e8;
+  background: #fafbfc;
   padding: 20px;
   border-radius: 12px;
   font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -681,9 +692,18 @@ const copySql = () => {
   white-space: pre-wrap;
   word-wrap: break-word;
   line-height: 1.6;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #e2e8f0;
   margin: 0;
   position: relative;
+}
+
+.inline-sql-message code {
+  font-family: inherit;
+}
+
+.inline-sql-message .hljs {
+  background: transparent;
+  padding: 0;
 }
 
 .copy-btn {

@@ -1,5 +1,6 @@
 import logging
 import json
+import sqlparse
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.multi_agent.state.agent_state import AgentState, OptimizationResult
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
@@ -44,6 +45,7 @@ def generate_optimization_suggestions(sql, db_info, user_query):
 - 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
+- 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
 
 请只返回 JSON 格式的结果，不要包含其他文字。
 
@@ -130,6 +132,7 @@ def generate_comment_from_functional_description(func_desc):
     comment += f"-- 数据类型：{func_desc.get('data_type', '未知')}\n"
     comment += f"-- 查询目的：{func_desc.get('query_purpose', '未知')}\n"
     comment += f"-- 核心逻辑：{func_desc.get('core_logic', '未知')}\n"
+    comment += ""  # 添加一个空行，使注释与 SQL 主体分离更清晰
     return comment
 
 
@@ -180,14 +183,18 @@ def execution_optimizer(state: AgentState) -> AgentState:
         natural_language_comment = generate_comment_from_functional_description(functional_description)
         logger.info(f"生成的功能说明注释: {natural_language_comment[:200]}...")
         
-        # 4. 生成最终优化后的SQL
+        # 4. 生成最终优化后的 SQL
         if llm_result.get("optimized") and llm_result.get("optimized_sql"):
             optimized_sql = llm_result.get("optimized_sql")
+            # 使用 sqlparse 格式化 SQL
+            optimized_sql = sqlparse.format(optimized_sql, reindent=True, keyword_case='upper')
             # 添加注释
             optimized_sql = f"{optimized_sql}\n{natural_language_comment}"
         else:
-            # 如果LLM没有返回优化后的SQL，使用原始SQL并添加注释
-            optimized_sql = f"{generated_sql}\n{natural_language_comment}"
+            # 如果 LLM 没有返回优化后的 SQL，使用原始 SQL 并添加注释
+            # 先格式化原始 SQL
+            formatted_sql = sqlparse.format(generated_sql, reindent=True, keyword_case='upper')
+            optimized_sql = f"{formatted_sql}\n{natural_language_comment}"
         
         # 5. 构建优化结果
         suggestions = llm_result.get("suggestions", [])
