@@ -5,9 +5,11 @@
       <div class="conversation-list" :class="{ 'collapsed': sidebarCollapsed }">
         <!-- 顶部搜索和新对话按钮 -->
         <div class="conversation-header">
-          <h2 v-if="!sidebarCollapsed">对话</h2>
+          <div class="brand-logo" v-if="!sidebarCollapsed">
+            <span class="brand-text">数据灵犀</span>
+          </div>
           <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
-            <el-icon><ArrowLeft /></el-icon>
+            <div class="ds-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.67272 0.522827C10.8339 0.522827 11.76 0.522701 12.4963 0.60248C13.2453 0.683644 13.8789 0.854235 14.4264 1.25196C14.7504 1.48738 15.0355 1.77246 15.2709 2.09648C15.6686 2.64392 15.8392 3.27756 15.9204 4.02653C16.0002 4.76289 16 5.68894 16 6.85013V9.14985C16 10.311 16.0002 11.2371 15.9204 11.9734C15.8392 12.7224 15.6686 13.3561 15.2709 13.9035C15.0355 14.2275 14.7504 14.5126 14.4264 14.748C13.8789 15.1457 13.2453 15.3163 12.4963 15.3975C11.76 15.4773 10.8339 15.4772 9.67272 15.4772H6.3273C5.16611 15.4772 4.24006 15.4773 3.50371 15.3975C2.75474 15.3163 2.1211 15.1457 1.57366 14.748C1.24963 14.5126 0.964549 14.2275 0.729131 13.9035C0.331407 13.3561 0.160817 12.7224 0.0796529 11.9734C-0.000126137 11.2371 1.25338e-09 10.311 1.25338e-09 9.14985V6.85013C1.25329e-09 5.68894 -0.000126137 4.76289 0.0796529 4.02653C0.160817 3.27756 0.331407 2.64392 0.729131 2.09648C0.964549 1.77246 1.24963 1.48738 1.57366 1.25196C2.1211 0.854235 2.75474 0.683644 3.50371 0.60248C4.24006 0.522701 5.16611 0.522827 6.3273 0.522827H9.67272ZM5.54303 1.88714V14.1118C5.78636 14.1128 6.04709 14.1169 6.3273 14.1169H9.67272C10.8639 14.1169 11.7032 14.1164 12.3493 14.0465C12.9824 13.9779 13.3497 13.8494 13.6268 13.6482C13.8354 13.4966 14.0195 13.3125 14.1711 13.1039C14.3723 12.8268 14.5007 12.4595 14.5693 11.8264C14.6393 11.1803 14.6398 10.341 14.6398 9.14985V6.85013C14.6398 5.65895 14.6393 4.81965 14.5693 4.17359C14.5007 3.54047 14.3723 3.17317 14.1711 2.89608C14.0195 2.68746 13.8354 2.50335 13.6268 2.35178C13.3497 2.15059 12.9824 2.02211 12.3493 1.95352C11.7032 1.88356 10.8639 1.88305 9.67272 1.88305H6.3273C6.04709 1.88305 5.78636 1.88618 5.54303 1.88714ZM4.1828 1.91165C3.99125 1.92158 3.8148 1.93575 3.65076 1.95352C3.01764 2.02211 2.65034 2.15059 2.37325 2.35178C2.16463 2.50335 1.98052 2.68746 1.82895 2.89608C1.62776 3.17317 1.49928 3.54047 1.43069 4.17359C1.36074 4.81965 1.36023 5.65895 1.36023 6.85013V9.14985C1.36023 10.341 1.36074 11.1803 1.43069 11.8264C1.49928 12.4595 1.62776 12.8268 1.82895 13.1039C1.98052 13.3125 2.16463 13.4966 2.37325 13.6482C2.65034 13.8494 3.01764 13.9779 3.65076 14.0465C3.81478 14.0642 3.99127 14.0774 4.1828 14.0873V1.91165Z" fill="currentColor"></path></svg></div>
           </el-button>
         </div>
 
@@ -48,22 +50,38 @@
                 @click="selectConversation(conversation)"
               >
                 <div class="conversation-content">
-                  <div class="conversation-title">{{ conversation.title }}</div>
+                  <!-- 非编辑模式 -->
+                  <div v-if="!editingConversationId || editingConversationId !== conversation.conversation_id" class="conversation-title">{{ conversation.title }}</div>
+                  <!-- 编辑模式 -->
+                  <div v-else class="conversation-title-edit">
+                    <el-input
+                      v-model="editingTitle"
+                      size="small"
+                      @keyup.enter="saveRename(conversation.conversation_id)"
+                      @blur="saveRename(conversation.conversation_id)"
+                      ref="renameInput"
+                      class="title-input"
+                    />
+                  </div>
                   <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
                   <div v-else class="conversation-last-message empty">暂无消息</div>
                 </div>
-                <div class="conversation-menu">
-                  <el-dropdown @command="(command) => handleConversationMenu(command, conversation.conversation_id)">
-                    <el-button type="text" class="menu-btn">
+                <div class="conversation-menu" @click.stop>
+                  <el-dropdown trigger="click" @command="(command) => handleConversationMenu(command, conversation.conversation_id)" @click.stop>
+                    <el-button type="text" class="menu-btn" @click.stop>
                       <el-icon><More /></el-icon>
                     </el-button>
                     <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="delete" type="danger">
-                          <el-icon class="menu-icon"><Delete /></el-icon>
-                          删除
-                        </el-dropdown-item>
-                      </el-dropdown-menu>
+                      <el-dropdown-menu class="custom-dropdown-menu">
+                      <el-dropdown-item command="rename" @click.stop class="custom-dropdown-item">
+                        <el-icon class="menu-icon"><Edit /></el-icon>
+                        重命名
+                      </el-dropdown-item>
+                      <el-dropdown-item command="delete" type="danger" @click.stop class="custom-dropdown-item">
+                        <el-icon class="menu-icon"><Delete /></el-icon>
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
                     </template>
                   </el-dropdown>
                 </div>
@@ -85,7 +103,7 @@
         <!-- 侧边栏切换按钮 -->
         <div class="sidebar-toggle-container">
           <el-button @click="toggleSidebar" type="text" class="sidebar-open-btn" v-if="sidebarCollapsed">
-            <el-icon><ArrowRight /></el-icon>
+            <div class="ds-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.67272 0.522827C10.8339 0.522827 11.76 0.522701 12.4963 0.60248C13.2453 0.683644 13.8789 0.854235 14.4264 1.25196C14.7504 1.48738 15.0355 1.77246 15.2709 2.09648C15.6686 2.64392 15.8392 3.27756 15.9204 4.02653C16.0002 4.76289 16 5.68894 16 6.85013V9.14985C16 10.311 16.0002 11.2371 15.9204 11.9734C15.8392 12.7224 15.6686 13.3561 15.2709 13.9035C15.0355 14.2275 14.7504 14.5126 14.4264 14.748C13.8789 15.1457 13.2453 15.3163 12.4963 15.3975C11.76 15.4773 10.8339 15.4772 9.67272 15.4772H6.3273C5.16611 15.4772 4.24006 15.4773 3.50371 15.3975C2.75474 15.3163 2.1211 15.1457 1.57366 14.748C1.24963 14.5126 0.964549 14.2275 0.729131 13.9035C0.331407 13.3561 0.160817 12.7224 0.0796529 11.9734C-0.000126137 11.2371 1.25338e-09 10.311 1.25338e-09 9.14985V6.85013C1.25329e-09 5.68894 -0.000126137 4.76289 0.0796529 4.02653C0.160817 3.27756 0.331407 2.64392 0.729131 2.09648C0.964549 1.77246 1.24963 1.48738 1.57366 1.25196C2.1211 0.854235 2.75474 0.683644 3.50371 0.60248C4.24006 0.522701 5.16611 0.522827 6.3273 0.522827H9.67272ZM5.54303 1.88714V14.1118C5.78636 14.1128 6.04709 14.1169 6.3273 14.1169H9.67272C10.8639 14.1169 11.7032 14.1164 12.3493 14.0465C12.9824 13.9779 13.3497 13.8494 13.6268 13.6482C13.8354 13.4966 14.0195 13.3125 14.1711 13.1039C14.3723 12.8268 14.5007 12.4595 14.5693 11.8264C14.6393 11.1803 14.6398 10.341 14.6398 9.14985V6.85013C14.6398 5.65895 14.6393 4.81965 14.5693 4.17359C14.5007 3.54047 14.3723 3.17317 14.1711 2.89608C14.0195 2.68746 13.8354 2.50335 13.6268 2.35178C13.3497 2.15059 12.9824 2.02211 12.3493 1.95352C11.7032 1.88356 10.8639 1.88305 9.67272 1.88305H6.3273C6.04709 1.88305 5.78636 1.88618 5.54303 1.88714ZM4.1828 1.91165C3.99125 1.92158 3.8148 1.93575 3.65076 1.95352C3.01764 2.02211 2.65034 2.15059 2.37325 2.35178C2.16463 2.50335 1.98052 2.68746 1.82895 2.89608C1.62776 3.17317 1.49928 3.54047 1.43069 4.17359C1.36074 4.81965 1.36023 5.65895 1.36023 6.85013V9.14985C1.36023 10.341 1.36074 11.1803 1.43069 11.8264C1.49928 12.4595 1.62776 12.8268 1.82895 13.1039C1.98052 13.3125 2.16463 13.4966 2.37325 13.6482C2.65034 13.8494 3.01764 13.9779 3.65076 14.0465C3.81478 14.0642 3.99127 14.0774 4.1828 14.0873V1.91165Z" fill="currentColor"></path></svg></div>
           </el-button>
         </div>
 
@@ -183,8 +201,7 @@ import {
   ChatLineSquare,
   More,
   Search,
-  ArrowLeft,
-  ArrowRight
+  Edit
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 
@@ -197,8 +214,12 @@ const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
 
+// 编辑状态
+const editingConversationId = ref(null)
+const editingTitle = ref('')
+const renameInput = ref(null)
+
 // 滚动状态跟踪
-const userIsScrolling = ref(false)
 const shouldAutoScroll = ref(true)
 
 // 侧边栏状态
@@ -566,28 +587,75 @@ const truncateMessage = (message, maxLength = 30) => {
   return message.substring(0, maxLength) + '...'
 }
 
-// 辅助方法：格式化时间
-const formatTime = (timeString) => {
-  const date = new Date(timeString)
-  const now = new Date()
-  const diffTime = now - date
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) {
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  } else if (diffDays === 1) {
-    return '昨天'
-  } else if (diffDays < 7) {
-    return `${diffDays}天前`
-  } else {
-    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-  }
-}
-
 // 处理对话菜单
 const handleConversationMenu = (command, conversationId) => {
   if (command === 'delete') {
     confirmDeleteConversation(conversationId)
+  } else if (command === 'rename') {
+    startRename(conversationId)
+  }
+}
+
+// 开始重命名
+const startRename = (conversationId) => {
+  // 找到对应的对话
+  const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
+  if (!conversation) return
+  
+  // 进入编辑模式
+  editingConversationId.value = conversationId
+  editingTitle.value = conversation.title
+  
+  // 延迟聚焦输入框，确保 DOM 已更新
+  setTimeout(() => {
+    if (renameInput.value) {
+      renameInput.value.focus()
+      // 选中所有文本
+      const input = renameInput.value.input
+      if (input) {
+        input.select()
+      }
+    }
+  }, 100)
+}
+
+// 保存重命名
+const saveRename = async (conversationId) => {
+  if (!editingConversationId.value || editingConversationId.value !== conversationId) return
+  
+  const newTitle = editingTitle.value.trim()
+  if (!newTitle) {
+    // 如果输入为空，恢复原标题
+    const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
+    if (conversation) {
+      editingTitle.value = conversation.title
+    }
+    editingConversationId.value = null
+    return
+  }
+  
+  try {
+    const token = localStorage.getItem('token')
+    await axios.put(`http://localhost:8000/conversations/${conversationId}`, {
+      title: newTitle
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    // 更新本地对话列表
+    const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
+    if (conversation) {
+      conversation.title = newTitle
+    }
+    
+    // 退出编辑模式
+    editingConversationId.value = null
+  } catch (error) {
+    console.error('重命名对话失败:', error)
+    ElMessage.error('重命名对话失败，请重试')
+    
+    // 退出编辑模式
+    editingConversationId.value = null
   }
 }
 
@@ -648,11 +716,7 @@ const handleScroll = () => {
   if (messagesContainer.value) {
     const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
     // 当用户滚动到距离底部50px以内时，重新启用自动滚动
-    if (scrollHeight - scrollTop - clientHeight < 50) {
-      shouldAutoScroll.value = true
-    } else {
-      shouldAutoScroll.value = false
-    }
+    shouldAutoScroll.value = scrollHeight - scrollTop - clientHeight < 50;
   }
 }
 
@@ -784,7 +848,7 @@ onBeforeUnmount(() => {
 }
 
 .conversation-header {
-  padding: 20px 12px;
+  padding: 20px 16px;
   border-bottom: 1px solid #e8ecf4;
   display: flex;
   justify-content: space-between;
@@ -816,6 +880,38 @@ onBeforeUnmount(() => {
 .conversation-list.collapsed .conversation-header {
   padding: 20px 8px;
   justify-content: center;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-text {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4a89dc, #6b9fde);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.brand-text::after {
+  content: '数据灵犀';
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #6b9fde, #4a89dc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.brand-logo:hover .brand-text::after {
+  opacity: 1;
 }
 
 .conversation-header h2 {
@@ -938,7 +1034,7 @@ onBeforeUnmount(() => {
   color: #9ca3af;
   margin: 16px 0 8px 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
@@ -951,7 +1047,7 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   background: white;
   border: 1px solid transparent;
   flex-shrink: 0;
@@ -988,6 +1084,32 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
 }
 
+.conversation-title-edit {
+  margin-bottom: 4px;
+}
+
+.title-input {
+  width: 100%;
+}
+
+.title-input :deep(.el-input__wrapper) {
+  border-radius: 4px;
+  border: 1px solid #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  padding: 0 12px;
+  height: 24px;
+}
+
+.title-input :deep(.el-input__inner) {
+  font-weight: 500;
+  font-size: 14px;
+  color: #1a1a2a;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 24px;
+  padding: 0;
+  height: 24px;
+}
+
 .conversation-last-message {
   font-size: 12px;
   color: #6b7280;
@@ -1019,6 +1141,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   height: 100%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.conversation-item:hover .conversation-menu {
+  opacity: 1;
 }
 
 .menu-btn {
@@ -1038,6 +1166,29 @@ onBeforeUnmount(() => {
 .menu-icon {
   margin-right: 4px;
   font-size: 14px;
+}
+
+/* 自定义下拉菜单样式 */
+.custom-dropdown-menu {
+  min-width: 120px;
+  padding: 8px 0;
+}
+
+.custom-dropdown-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  height: auto;
+  min-height: 36px;
+}
+
+.custom-dropdown-item:hover {
+  background: #f0f4ff;
+}
+
+.custom-dropdown-item .menu-icon {
+  font-size: 16px;
+  margin-right: 8px;
 }
 
 /* 空状态 */
@@ -1095,7 +1246,6 @@ onBeforeUnmount(() => {
   align-items: center;
   flex-shrink: 0;
   height: 92px;
-  transition: padding-left 0.3s ease;
   width: 100%;
   max-width: 1000px;
   transition: all 0.3s ease;
