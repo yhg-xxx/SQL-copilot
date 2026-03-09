@@ -22,64 +22,11 @@
               <span v-if="message.isStreaming" class="typing-cursor">|</span>
             </div>
             <div class="summary-content" v-html="formattedSummary"></div>
-            <!-- 数据展示区域：始终显示切换按钮 -->
-            <div class="summary-data-table">
-              <div class="data-table-header">
-                <el-icon><Grid /></el-icon>
-                <span>{{ dataViewLabels[dataViewMode] }}</span>
-                <el-button-group size="small" class="switch-btn-group">
-                  <el-button :type="dataViewMode === 'table' ? 'primary' : 'default'" @click="dataViewMode = 'table'">
-                    <el-icon><Grid /></el-icon>
-                  </el-button>
-                  <el-button :type="dataViewMode === 'chart' ? 'primary' : 'default'" @click="dataViewMode = 'chart'">
-                    <el-icon><TrendCharts /></el-icon>
-                  </el-button>
-                  <el-button :type="dataViewMode === 'sql' ? 'primary' : 'default'" @click="dataViewMode = 'sql'">
-                    <el-icon><Coin /></el-icon>
-                  </el-button>
-                </el-button-group>
-              </div>
-              <!-- 数据表格 -->
-              <template v-if="dataViewMode === 'table'">
-                <el-table v-if="message.queryData && message.queryData.length > 0" :data="message.queryData" stripe border max-height="300" style="width: 100%; margin-top: 12px;" class="data-table">
-                  <el-table-column v-for="col in queryColumns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
-                </el-table>
-                <div v-else class="empty-data">
-                  <el-empty description="暂无数据" :image-size="60" />
-                </div>
-              </template>
-              <!-- 图表 -->
-              <template v-else-if="dataViewMode === 'chart'">
-                <div v-if="message.queryData && message.queryData.length > 0" class="chart-container">
-                  <div class="chart-type-selector">
-                    <el-radio-group v-model="chartType" size="small">
-                      <el-radio-button label="bar">柱状图</el-radio-button>
-                      <el-radio-button label="pie">饼图</el-radio-button>
-                      <el-radio-button label="line">折线图</el-radio-button>
-                    </el-radio-group>
-                  </div>
-                  <div ref="chartRef" class="chart-area"></div>
-                </div>
-                <div v-else class="empty-data">
-                  <el-empty description="暂无数据可生成图表" :image-size="60" />
-                </div>
-              </template>
-              <!-- SQL 语句 -->
-              <template v-else>
-                <div class="sql-with-copy">
-                  <pre class="inline-sql-message"><code v-html="highlightedSql"></code></pre>
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    class="copy-btn"
-                    @click="copySql"
-                  >
-                    <el-icon><DocumentCopy /></el-icon>
-                    复制
-                  </el-button>
-                </div>
-              </template>
-            </div>
+            <!-- 数据展示区域：使用新组件 -->
+            <DataDisplay
+              :query-data="message.queryData"
+              :sql="message.sql"
+            />
           </div>
         </template>
         
@@ -100,15 +47,14 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
-import { User, ChatDotRound, Warning, Document, Coin, Grid, TrendCharts, DocumentCopy } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
-import hljs from 'highlight.js/lib/core'
-import sql from 'highlight.js/lib/languages/sql'
-import 'highlight.js/styles/atom-one-light.css'
-
-hljs.registerLanguage('sql', sql)
+import { computed } from 'vue'
+import {
+  User,
+  ChatDotRound,
+  Warning,
+  Document
+} from '@element-plus/icons-vue'
+import DataDisplay from './DataDisplay.vue'
 
 const props = defineProps({
   message: {
@@ -119,145 +65,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
-})
-
-// 当前显示视图: 'sql' 或 'summary'
-const activeView = ref('sql')
-
-// 数据展示模式: 'table' | 'chart' | 'sql'
-const dataViewMode = ref('table')
-const dataViewLabels = {
-  table: '数据详情',
-  chart: '数据图表',
-  sql: 'SQL语句'
-}
-
-// 图表相关
-const chartType = ref('bar')
-const chartRef = ref(null)
-let chartInstance = null
-
-// 当总结开始流式输出时，自动切换到总结视图
-watch(() => props.message.summary, (newVal, oldVal) => {
-  if (newVal && !oldVal) {
-    activeView.value = 'summary'
-  }
-})
-
-// 监听图表模式和类型变化，渲染图表
-watch([dataViewMode, chartType], async ([mode]) => {
-  if (mode === 'chart') {
-    await nextTick()
-    renderChart()
-  }
-}, { immediate: false })
-
-// 监听数据变化
-watch(() => props.message.queryData, () => {
-  if (dataViewMode.value === 'chart') {
-    nextTick(() => renderChart())
-  }
-}, { deep: true })
-
-// 渲染图表
-const renderChart = () => {
-  if (!chartRef.value || !props.message.queryData || props.message.queryData.length === 0) return
-  
-  // 销毁旧实例
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
-  
-  chartInstance = echarts.init(chartRef.value)
-  
-  const data = props.message.queryData
-  const columns = Object.keys(data[0])
-  
-  // 智能选择维度和数值列
-  let labelColumn = columns[0]
-  let valueColumn = columns.find(col => {
-    const val = data[0][col]
-    return typeof val === 'number' || !isNaN(Number(val))
-  }) || columns[1] || columns[0]
-  
-  const labels = data.map(row => String(row[labelColumn]))
-  const values = data.map(row => Number(row[valueColumn]) || 0)
-  
-  let option = {}
-  
-  if (chartType.value === 'bar') {
-    option = {
-      tooltip: { trigger: 'axis' },
-      xAxis: {
-        type: 'category',
-        data: labels,
-        axisLabel: { rotate: labels.length > 5 ? 30 : 0, fontSize: 11 }
-      },
-      yAxis: { type: 'value' },
-      series: [{
-        name: valueColumn,
-        type: 'bar',
-        data: values,
-        itemStyle: {
-          color: '#4f46e5'
-        }
-      }],
-      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true }
-    }
-  } else if (chartType.value === 'pie') {
-    option = {
-      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-      series: [{
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderRadius: 4 },
-        label: { show: true, fontSize: 11 },
-        data: labels.map((label, i) => ({
-          name: label,
-          value: values[i]
-        }))
-      }]
-    }
-  } else if (chartType.value === 'line') {
-    option = {
-      tooltip: { trigger: 'axis' },
-      xAxis: {
-        type: 'category',
-        data: labels,
-        axisLabel: { rotate: labels.length > 5 ? 30 : 0, fontSize: 11 }
-      },
-      yAxis: { type: 'value' },
-      series: [{
-        name: valueColumn,
-        type: 'line',
-        data: values,
-        smooth: true,
-        areaStyle: {
-          color: 'rgba(79, 70, 229, 0.3)'
-        },
-        lineStyle: { color: '#4f46e5', width: 2 },
-        itemStyle: { color: '#4f46e5' }
-      }],
-      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true }
-    }
-  }
-  
-  chartInstance.setOption(option)
-}
-
-// 组件销毁时清理图表
-onBeforeUnmount(() => {
-  if (chartInstance) {
-    chartInstance.dispose()
-    chartInstance = null
-  }
-})
-
-// 获取查询结果的列名
-const queryColumns = computed(() => {
-  if (!props.message.queryData || props.message.queryData.length === 0) return []
-  return Object.keys(props.message.queryData[0])
 })
 
 // 格式化主内容
@@ -280,26 +87,6 @@ const formattedSummary = computed(() => {
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
 })
-
-// 高亮 SQL 代码
-const highlightedSql = computed(() => {
-  if (!props.message.sql) return ''
-  return hljs.highlight(props.message.sql, { language: 'sql' }).value
-})
-
-// 复制 SQL 语句
-const copySql = () => {
-  if (props.message.sql) {
-    navigator.clipboard.writeText(props.message.sql)
-      .then(() => {
-        ElMessage.success('SQL 已复制到剪贴板')
-      })
-      .catch(err => {
-        console.error('复制失败:', err)
-        ElMessage.error('复制失败，请手动复制')
-      })
-  }
-}
 </script>
 
 <style scoped>
@@ -624,203 +411,6 @@ const copySql = () => {
   color: #1a1a2e;
   font-size: 16px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-/* 总结中的数据表格 */
-.summary-data-table {
-  margin-top: 20px;
-  padding: 16px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e0e6ff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.summary-data-table:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.data-table-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  color: #1a1a2e;
-  font-size: 14px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.data-table-header .switch-btn {
-  margin-left: auto;
-}
-
-/* 数据表格样式 */
-.data-table {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.data-table:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* SQL带复制按钮样式 */
-.sql-with-copy {
-  position: relative;
-  margin: 16px 0 0 0;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-}
-
-.sql-with-copy:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  transform: translateY(-1px);
-}
-
-.inline-sql-message {
-  background: #fafbfc;
-  padding: 20px;
-  border-radius: 12px;
-  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.6;
-  border: 1px solid #e2e8f0;
-  margin: 0;
-  position: relative;
-}
-
-.inline-sql-message code {
-  font-family: inherit;
-}
-
-.inline-sql-message .hljs {
-  background: transparent;
-  padding: 0;
-}
-
-.copy-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 10;
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(26, 26, 46, 0.9);
-  border: none;
-  color: white;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(26, 26, 46, 0.3);
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.copy-btn:hover {
-  background: rgba(26, 26, 46, 1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 26, 46, 0.4);
-}
-
-/* 切换按钮组 */
-.switch-btn-group {
-  margin-left: auto;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.switch-btn-group:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.switch-btn-group :deep(.el-button) {
-  transition: all 0.3s ease;
-  border-radius: 0;
-}
-
-.switch-btn-group :deep(.el-button:hover) {
-  background: #f0f4ff;
-}
-
-.switch-btn-group :deep(.el-button--primary) {
-  background: #1a1a2e;
-  border-color: #1a1a2e;
-}
-
-.switch-btn-group :deep(.el-button--primary:hover) {
-  background: #0f3460;
-  border-color: #0f3460;
-}
-
-/* 图表容器 */
-.chart-container {
-  margin-top: 16px;
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.chart-container:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
-}
-
-.chart-type-selector {
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.chart-type-selector :deep(.el-radio-button__inner) {
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.chart-type-selector :deep(.el-radio-button__orig-radio:checked + .el-radio-button__inner) {
-  background: #4f46e5;
-  border-color: #4f46e5;
-}
-
-.chart-area {
-  width: 100%;
-  height: 300px;
-  background: #fafbfc;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.chart-area:hover {
-  border-color: #4f46e5;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
-}
-
-/* 空数据状态 */
-.empty-data {
-  margin-top: 16px;
-  padding: 30px;
-  background: #fafbfc;
-  border-radius: 12px;
-  text-align: center;
-  border: 1px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.empty-data:hover {
-  border-color: #1a1a2e;
-  box-shadow: 0 2px 8px rgba(26, 26, 46, 0.1);
 }
 
 .summary-content {
