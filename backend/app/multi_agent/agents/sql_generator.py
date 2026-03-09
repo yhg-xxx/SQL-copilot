@@ -8,7 +8,7 @@ from app.multi_agent.state.agent_state import AgentState
 from app.utils.llm_util import get_llm
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
-from app.multi_agent.agents.history_retriever import retrieve_similar_history_examples, format_examples_for_prompt
+from app.multi_agent.RAG.history_retriever import retrieve_similar_history_examples, format_examples_for_prompt
 
 logger = logging.getLogger(__name__)
 

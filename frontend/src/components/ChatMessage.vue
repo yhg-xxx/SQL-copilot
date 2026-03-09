@@ -19,7 +19,6 @@
             <div class="summary-header">
               <el-icon><Document /></el-icon>
               <span>对话总结</span>
-              <span v-if="message.isStreaming" class="typing-cursor">|</span>
             </div>
             <div class="summary-content" v-html="formattedSummary"></div>
             <!-- 数据展示区域：使用新组件 -->
@@ -430,24 +429,7 @@ const formattedSummary = computed(() => {
   font-weight: 600;
 }
 
-.typing-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1.2em;
-  background-color: #1a1a2e;
-  animation: blink 1s infinite;
-  margin-left: 4px;
-  vertical-align: text-bottom;
-}
 
-@keyframes blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {

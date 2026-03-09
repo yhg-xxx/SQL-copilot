@@ -77,8 +77,16 @@ def sql_executor(state: AgentState) -> AgentState:
 
         datasource_config = {}
         if datasource_id:
-            datasource_config = get_datasource_config(datasource_id)
-            logger.info(f"获取到的数据源配置: {datasource_config}")
+            # 首先检查 state 中是否已有缓存的 datasource_config
+            datasource_config = state.get("datasource_config")
+            
+            if datasource_config is None:
+                # 如果没有缓存，从数据库获取并保存到 state
+                datasource_config = get_datasource_config(datasource_id)
+                state["datasource_config"] = datasource_config
+                logger.info(f"从数据库获取数据源配置并缓存: {datasource_config}")
+            else:
+                logger.info(f"使用缓存的数据源配置: {datasource_config}")
 
         if datasource_config:
             required_config_fields = ["host", "username", "password", "database"]

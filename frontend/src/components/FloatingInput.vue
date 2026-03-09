@@ -43,7 +43,7 @@
           type="primary"
           :loading="loading"
           class="send-btn"
-          :disabled="!inputMessage.trim() || !localSelectedDatasource.value"
+          :disabled="!inputMessage.trim() || !localSelectedDatasource"
         >
           <el-icon v-if="!loading"><ArrowUp /></el-icon>
           发送

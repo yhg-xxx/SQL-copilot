@@ -82,7 +82,7 @@ class MultiAgent:
         # 初始化状态 - 确保始终执行
         initial_state = AgentState(
             user_query=query,
-            attempts=0,
+            fix_attempts=0,
             datasource_id=datasource_id,
             user_id=user_id,
             chat_history=chat_history

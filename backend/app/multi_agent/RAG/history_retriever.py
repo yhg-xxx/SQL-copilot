@@ -6,7 +6,7 @@
 import logging
 from typing import List, Dict, Any, Optional
 
-from app.multi_agent.agents.vector_store import get_vector_store
+from app.multi_agent.RAG.vector_store import get_vector_store
 
 logger = logging.getLogger(__name__)
 

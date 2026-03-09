@@ -65,7 +65,6 @@ class AgentState(TypedDict):
     final_sql: Optional[str]  # 最终可执行的 SQL 语句
     execution_result: Optional[ExecutionResult]  # SQL 执行结果
     sql_execution_result: Optional[Dict[str, Any]]  # SQL 语句执行后返回的数据结果（包含列和数据）
-    attempts: int  # 修复尝试次数
     datasource_id: Optional[int]  # 数据源 ID
     user_id: Optional[int]  # 用户 ID
     error_message: Optional[str]  # 错误信息
@@ -76,3 +75,5 @@ class AgentState(TypedDict):
     was_fixed: bool # 是否修复成功
     fix_explanation: Optional[str] # 修复描述
     retrieved_examples: Optional[List[Dict[str, Any]]] # RAG检索到的历史示例
+    db_errors:Optional[List[Dict[str, Any]]]  # 数据库验证返回的错误
+    datasource_config: Optional[Dict[str, Any]]  # 数据源连接配置（缓存，避免重复查询数据库）

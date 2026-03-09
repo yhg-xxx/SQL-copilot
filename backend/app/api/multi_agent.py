@@ -9,7 +9,7 @@ from app.models.user_qa_record import UserQARecord
 from app.models.conversation import UserConversation
 from app.utils.title_generator import generate_conversation_title
 from app.multi_agent.agents.conversation_summarizer import stream_conversation_summary
-from app.multi_agent.agents.history_retriever import save_query_to_vector_store
+from app.multi_agent.RAG.history_retriever import save_query_to_vector_store
 import uuid
 import json
 from typing import AsyncGenerator

@@ -172,8 +172,6 @@ import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
 import {
   Delete,
   ChatDotRound,
-  DataAnalysis,
-  ArrowUp,
   Plus,
   ChatLineSquare,
   More,
@@ -468,21 +466,19 @@ const loadConversations = async () => {
 
 // 创建新对话
 const createNewConversation = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.post('http://localhost:8000/conversations', {
-      title: '新对话'
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    const newConversation = response.data
-    conversations.value.unshift(newConversation)
-    await selectConversation(newConversation)
-    ElMessage.success('新对话创建成功')
-  } catch (error) {
-    console.error('创建对话失败:', error)
-    ElMessage.error('创建对话失败')
+  // 检查是否已处于默认页面（没有选中的对话且消息为空或只有欢迎消息）
+  const hasRealMessages = messages.value.some(m => !m.isWelcome)
+  const inExistingConversation = selectedConversationId.value !== null
+
+  if (hasRealMessages || inExistingConversation) {
+    // 用户处于某个已存在的对话界面，执行页面跳转至默认页面
+    messages.value = []
+    selectedConversationId.value = null
+    currentResult.value = null
+
+  } else {
+    // 用户已处于默认页面，显示提示信息
+    ElMessage.info('已是最新对话')
   }
 }
 
@@ -1444,7 +1440,6 @@ onBeforeUnmount(() => {
 
 .welcome-icon {
   font-size: 24px;
-  color: #4f46e5;
   background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
   border-radius: 50%;
   width: 48px;
