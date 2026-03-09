@@ -171,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
@@ -197,6 +197,10 @@ const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
+
+// 滚动状态跟踪
+const userIsScrolling = ref(false)
+const shouldAutoScroll = ref(true)
 
 // 侧边栏状态
 const sidebarCollapsed = ref(false)
@@ -261,7 +265,7 @@ const formatDateGroup = (timeString) => {
 
 const scrollToBottom = async () => {
   await nextTick()
-  if (messagesContainer.value) {
+  if (messagesContainer.value && shouldAutoScroll.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
 }
@@ -288,7 +292,12 @@ const sendMessage = async () => {
   })
   inputMessage.value = ''
   loading.value = true
-  await scrollToBottom()
+  
+  // 发送消息时强制滚动到底部，确保用户消息可见
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
 
   const token = localStorage.getItem('token')
 
@@ -349,6 +358,9 @@ const sendMessage = async () => {
             const data = JSON.parse(line.slice(6))
 
             if (data.type === 'sql_result') {
+              // 收到SQL结果，隐藏加载提示
+              loading.value = false
+              
               // 收到SQL结果
               sqlResult = data.data
               currentResult.value = sqlResult
@@ -632,6 +644,19 @@ const confirmDeleteConversation = (conversationId) => {
   })
 }
 
+// 滚动事件处理
+const handleScroll = () => {
+  if (messagesContainer.value) {
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+    // 当用户滚动到距离底部50px以内时，重新启用自动滚动
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      shouldAutoScroll.value = true
+    } else {
+      shouldAutoScroll.value = false
+    }
+  }
+}
+
 onMounted(() => {
   loadDatasources()
   loadConversations()
@@ -641,6 +666,18 @@ onMounted(() => {
     timestamp: new Date().toLocaleTimeString(),
     isWelcome: true
   })
+  
+  // 添加滚动事件监听
+  if (messagesContainer.value) {
+    messagesContainer.value.addEventListener('scroll', handleScroll)
+  }
+})
+
+onBeforeUnmount(() => {
+  // 移除滚动事件监听
+  if (messagesContainer.value) {
+    messagesContainer.value.removeEventListener('scroll', handleScroll)
+  }
 })
 </script>
 
