@@ -3,13 +3,13 @@ import json
 import sqlparse
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.multi_agent.state.agent_state import AgentState, OptimizationResult
-from app.multi_agent.agents.schema_utils import format_schema_for_prompt
+
 from app.utils.llm_util import get_llm
 
 logger = logging.getLogger(__name__)
 
 
-def generate_optimization_suggestions(sql, db_info, user_query):
+def generate_optimization_suggestions(sql, schema_text, user_query):
     """使用大模型生成SQL优化建议"""
     try:
         logger.info("开始生成 SQL 优化建议和功能说明")
@@ -17,7 +17,7 @@ def generate_optimization_suggestions(sql, db_info, user_query):
         logger.info(f"用户原始查询: {user_query}")
 
         # 准备表结构信息
-        schema_text = format_schema_for_prompt(db_info) if db_info else ""
+        schema_text = schema_text or ""
 
         system_prompt = f"""你是一个专业的 SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
@@ -46,6 +46,7 @@ def generate_optimization_suggestions(sql, db_info, user_query):
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
 - 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
+- 特别注意：针对 SQL Server 数据库，当使用 GROUP BY 子句时，SELECT 列表中的所有非聚合列必须包含在 GROUP BY 子句中，即使这些列在功能上依赖于主键
 
 请只返回 JSON 格式的结果，不要包含其他文字。
 
@@ -152,7 +153,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
         generated_sql = state.get("generated_sql", "")
         validation_result = state.get("validation_result")
         user_query = state.get("user_query", "")
-        db_info = state.get("db_info", {})
+        schema_text = state.get("db_info", "")
         
         if not generated_sql or generated_sql == "No SQL query generated":
             optimization_result = OptimizationResult(
@@ -175,7 +176,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
 
 
         # 2. 使用大模型同时生成优化建议和功能说明
-        llm_result = generate_optimization_suggestions(generated_sql, db_info, user_query)
+        llm_result = generate_optimization_suggestions(generated_sql, schema_text, user_query)
         logger.info(f"LLM 分析结果: {llm_result}")
         
         # 3. 提取功能说明并生成注释

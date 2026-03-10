@@ -19,11 +19,11 @@
         <div class="datasource-selector">
           <el-icon class="selector-icon"><DataAnalysis /></el-icon>
           <el-select
-            v-model="localSelectedDatasource"
+            v-model="selectedDatasourceModel"
             placeholder="选择数据源"
             size="small"
             class="datasource-select"
-            @change="(value) => emit('update:selectedDatasource', value)"
+            @change="handleDatasourceChange"
           >
             <el-option
               v-for="datasource in datasources"
@@ -43,7 +43,7 @@
           type="primary"
           :loading="loading"
           class="send-btn"
-          :disabled="!inputMessage.trim() || !localSelectedDatasource"
+          :disabled="!inputMessage.trim() || !selectedDatasourceModel"
         >
           <el-icon v-if="!loading"><ArrowUp /></el-icon>
           发送
@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import { ref, computed, defineProps, defineEmits, watch } from 'vue'
 import { DataAnalysis, ArrowUp } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -75,16 +75,21 @@ const props = defineProps({
 const emit = defineEmits(['send', 'update:selectedDatasource'])
 
 const inputMessage = ref('')
-const localSelectedDatasource = ref(props.selectedDatasource)
 
-// 监听 props.selectedDatasource 的变化
-watch(() => props.selectedDatasource, (newValue) => {
-  localSelectedDatasource.value = newValue
+// 使用 computed 实现双向绑定
+const selectedDatasourceModel = computed({
+  get: () => props.selectedDatasource,
+  set: (value) => emit('update:selectedDatasource', value)
 })
+
+// 处理数据源选择变化
+const handleDatasourceChange = (value) => {
+  emit('update:selectedDatasource', value)
+}
 
 const handleSend = () => {
   const message = inputMessage.value.trim()
-  if (message && localSelectedDatasource.value) {
+  if (message && props.selectedDatasource) {
     emit('send', message)
     inputMessage.value = ''
   }

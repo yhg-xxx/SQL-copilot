@@ -157,12 +157,12 @@ def sql_generator(state: AgentState) -> AgentState | None:
             except Exception as e:
                 logger.warning(f"获取数据源类型失败: {e}")
 
-        # 将表结构存入 state，供后续智能体使用
-        state["db_info"] = schema
-        state["db_type"] = db_type
-
         # 格式化表结构信息
         schema_text = format_schema_for_prompt(schema)
+        
+        # 将格式化后的表结构存入 state，供后续智能体使用
+        state["db_info"] = schema_text
+        state["db_type"] = db_type
 
         # ========== 优化后的对话历史处理 ==========
         # 格式化对话历史 - 使用更清晰的时序标记

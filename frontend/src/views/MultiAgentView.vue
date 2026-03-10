@@ -140,8 +140,7 @@
             <FloatingInput
               :loading="loading"
               :datasources="datasources"
-              :selectedDatasource="selectedDatasource"
-              @update:selectedDatasource="(value) => selectedDatasource.value = value"
+              v-model:selectedDatasource="selectedDatasource"
               @send="handleSendMessage"
             />
           </div>
@@ -152,8 +151,7 @@
           <FloatingInput
             :loading="loading"
             :datasources="datasources"
-            :selectedDatasource="selectedDatasource"
-            @update:selectedDatasource="(value) => selectedDatasource.value = value"
+            v-model:selectedDatasource="selectedDatasource"
             @send="handleSendMessage"
           />
         </div>
@@ -274,6 +272,10 @@ const handleSendMessage = async (message) => {
     ElMessage.warning('请先选择数据源')
     return
   }
+  
+  // 保存当前选中的数据源ID
+  const currentDatasourceId = selectedDatasource.value
+  
   // 如果没有选中的对话，自动创建一个新对话
   if (!selectedConversationId.value) {
     try {
@@ -289,6 +291,9 @@ const handleSendMessage = async (message) => {
       selectedConversationId.value = newConversation.conversation_id
       // 清空欢迎消息
       messages.value = []
+      
+      // 确保数据源选择保持一致
+      selectedDatasource.value = currentDatasourceId
     } catch (error) {
       console.error('创建对话失败:', error)
       ElMessage.error('创建对话失败，请重试')
@@ -322,7 +327,7 @@ const handleSendMessage = async (message) => {
       },
       body: JSON.stringify({
         query: message,
-        datasource_id: selectedDatasource.value,
+        datasource_id: currentDatasourceId,
         chat_id: selectedConversationId.value
       })
     })

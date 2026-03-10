@@ -6,7 +6,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.multi_agent.state.agent_state import AgentState, ValidationResult
 from app.multi_agent.agents.datasource_utils import get_datasource_config
-from app.multi_agent.agents.schema_utils import format_schema_for_prompt
+
 from app.multi_agent.agents.db_verifier_executor import get_db_verifier_executor
 from app.utils.llm_util import get_llm
 
@@ -53,13 +53,13 @@ def validate_sql_with_database(state: AgentState, datasource_config: Dict[str, A
     return result
 
 
-def validate_and_fix_with_llm(state: AgentState, datasource_schema: Dict[str, Any]) -> Dict[str, Any]:
+def validate_and_fix_with_llm(state: AgentState, schema_text: str) -> Dict[str, Any]:
     """
     单次验证修复智能体：一次性完成SQL验证和修复
 
     Args:
         state: 智能体状态
-        datasource_schema: 数据库表结构信息
+        schema_text: 数据库表结构信息（已格式化）
 
     Returns:
         验证修复结果字典
@@ -85,7 +85,7 @@ def validate_and_fix_with_llm(state: AgentState, datasource_schema: Dict[str, An
             result["errors"].append("SQL 语句为空")
             return result
 
-        schema_text = format_schema_for_prompt(datasource_schema) if datasource_schema else ""
+        schema_text = schema_text or ""
 
         db_errors_text = ""
         if db_errors:
@@ -197,17 +197,20 @@ def syntax_validator(state: AgentState) -> AgentState:
             state["validation_result"] = validation_result
             return state
 
-        datasource_schema = state.get("db_info", {})
+        schema_text = state.get("db_info", "")
 
-        if not datasource_schema and datasource_id:
+        if not schema_text and datasource_id:
             try:
+                from .sql_generator import get_datasource_schema
                 datasource_schema = get_datasource_schema(datasource_id)
-                logger.info(f"从数据库获取到数据源表结构，表数量: {len(datasource_schema)}")
+                from .schema_utils import format_schema_for_prompt
+                schema_text = format_schema_for_prompt(datasource_schema)
+                logger.info(f"从数据库获取到数据源表结构并格式化")
             except ImportError as e:
                 logger.warning(f"无法导入 get_datasource_schema: {e}")
-                datasource_schema = {}
-        elif datasource_schema:
-            logger.info(f"使用 state 中的数据源表结构，表数量: {len(datasource_schema)}")
+                schema_text = ""
+        elif schema_text:
+            logger.info(f"使用 state 中的数据源表结构（已格式化）")
 
         for attempt in range(fix_attempts, max_fix_attempts + 1):
             logger.info(f"验证修复尝试 {attempt + 1}/{max_fix_attempts + 1}")
@@ -224,7 +227,7 @@ def syntax_validator(state: AgentState) -> AgentState:
                 current_state = state.copy()
                 current_state["generated_sql"] = generated_sql
 
-                llm_result = validate_and_fix_with_llm(current_state, datasource_schema)
+                llm_result = validate_and_fix_with_llm(current_state, schema_text)
                 all_errors.extend(llm_result.get("errors", []))
                 all_warnings.extend(llm_result.get("warnings", []))
                 llm_validation_passed = llm_result.get("llm_validation_passed", False)

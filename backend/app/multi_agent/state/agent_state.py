@@ -56,7 +56,7 @@ class AgentState(TypedDict):
     多智能体系统状态定义
     """
     user_query: str  # 用户输入的自然语言查询
-    db_info: Optional[Dict]  # 数据库表结构信息
+    db_info: Optional[str]  # 数据库表结构信息（已格式化）
     generated_sql: Optional[str]  # 初始生成的 SQL 语句
     validated_sql: Optional[str]  # 语法验证成功后的 SQL 语句（未优化，用于RAG检索）
     validation_result: Optional[ValidationResult]  # SQL 语法验证结果
