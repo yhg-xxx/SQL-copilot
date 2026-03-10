@@ -9,7 +9,6 @@
     <div class="message-content">
       <div class="message-header">
         <span class="message-author">{{ isUser ? '我' : 'SQL 助手' }}</span>
-        <span class="message-time">{{ message.timestamp }}</span>
       </div>
       <div class="message-body">
         <!-- 有SQL和总结时 -->
@@ -173,7 +172,7 @@ const formattedSummary = computed(() => {
 
 .message-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 12px;
   font-size: 14px;
@@ -181,7 +180,7 @@ const formattedSummary = computed(() => {
 }
 
 .user-message .message-header {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
 .message-author {
@@ -189,19 +188,6 @@ const formattedSummary = computed(() => {
   color: #1a1a2a;
   font-size: 15px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.message-time {
-  color: #8b95a5;
-  font-size: 13px;
-  font-weight: 400;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  margin-left: 12px;
-}
-
-.user-message .message-time {
-  margin-left: 0;
-  margin-right: 12px;
 }
 
 .message-body {

@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 import logging
 
@@ -41,15 +41,18 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
     # 获取当前用户ID
     user_id = int(current_user.get("sub"))
 
-    # 检查是否已存在同名数据源（幂等性处理）
+    # 检查是否已存在同名数据源
     existing_datasource = db.query(Datasource).filter(
         Datasource.name == datasource.name,
         Datasource.create_by == user_id
     ).first()
     
     if existing_datasource:
-        # 返回已存在的数据源，实现幂等性
-        return existing_datasource
+        # 返回错误，不允许创建同名数据源
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="该数据源的名称已存在，请选择其他名称"
+        )
 
     # 构建配置信息
     config_dict = {
@@ -682,6 +685,23 @@ async def test_datasource_connection(datasource: DatasourceCreate):
         return {"status": "Success", "message": "Connection test successful"}
     except Exception as e:
         return {"status": "Failed", "message": str(e)}
+
+
+# 检查数据源名称是否已存在
+@router.post("/check-name")
+async def check_datasource_name(name: str = Body(...), id: int = Body(None), db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    user_id = int(current_user.get("sub"))
+    query = db.query(Datasource).filter(
+        Datasource.name == name,
+        Datasource.create_by == user_id
+    )
+    
+    # 如果是编辑模式，排除当前数据源
+    if id:
+        query = query.filter(Datasource.id != id)
+    
+    existing_datasource = query.first()
+    return {"exists": existing_datasource is not None}
 
 
 # 根据配置获取表列表

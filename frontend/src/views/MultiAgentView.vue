@@ -106,43 +106,45 @@
 
         <!-- 聊天消息区域（仅内部滚动） -->
         <div class="chat-messages" ref="messagesContainer">
-          <!-- 普通消息 -->
-          <ChatMessage
-            v-for="(message, index) in messages.filter(m => !m.isWelcome)"
-            :key="index"
-            :message="message"
-            :is-user="message.role === 'user'"
-          />
-          
-          <!-- 加载消息 -->
-          <div v-if="loading" class="loading-message">
-            <div class="loading-avatar">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
-            <div class="loading-content">
-              <div class="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <span class="loading-text">正在生成 SQL...</span>
-            </div>
-          </div>
-          
-          <!-- 欢迎提示 -->
-          <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="welcome-message">
-            <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
-            <span class="welcome-text">今天有什么可以帮到您？</span>
-          </div>
-          
-          <!-- 输入框区域 -->
-          <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="centered-input-container">
-            <FloatingInput
-              :loading="loading"
-              :datasources="datasources"
-              v-model:selectedDatasource="selectedDatasource"
-              @send="handleSendMessage"
+          <div class="chat-messages-content">
+            <!-- 普通消息 -->
+            <ChatMessage
+              v-for="(message, index) in messages.filter(m => !m.isWelcome)"
+              :key="index"
+              :message="message"
+              :is-user="message.role === 'user'"
             />
+            
+            <!-- 加载消息 -->
+            <div v-if="loading" class="loading-message">
+              <div class="loading-avatar">
+                <el-icon><ChatDotRound /></el-icon>
+              </div>
+              <div class="loading-content">
+                <div class="loading-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span class="loading-text">正在生成 SQL...</span>
+              </div>
+            </div>
+            
+            <!-- 欢迎提示 -->
+            <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="welcome-message">
+              <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
+              <span class="welcome-text">今天有什么可以帮到您？</span>
+            </div>
+            
+            <!-- 输入框区域 -->
+            <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="centered-input-container">
+              <FloatingInput
+                :loading="loading"
+                :datasources="datasources"
+                v-model:selectedDatasource="selectedDatasource"
+                @send="handleSendMessage"
+              />
+            </div>
           </div>
         </div>
 
@@ -1223,7 +1225,6 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   position: relative;
   z-index: 5;
-  align-items: center;
 }
 
 /* 聊天头部：固定高度，减少内边距 */
@@ -1301,32 +1302,38 @@ onBeforeUnmount(() => {
   flex: 1;
   padding: 24px 28px 60px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   background: white;
   min-height: 0;
-  max-width: 1000px;
   width: 100%;
   transition: width 0.3s ease;
   z-index: 1;
 }
 
+/* 聊天消息内容：限制最大宽度，居中显示 */
+.chat-messages-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
 /* 无消息时的布局 */
-.chat-messages:empty {
+.chat-messages-content:empty {
   justify-content: center;
   align-items: center;
   padding: 24px;
 }
 
 /* 有欢迎消息时的布局 */
-.chat-messages:not(:empty) {
+.chat-messages-content:not(:empty) {
   justify-content: center;
   align-items: center;
 }
 
 /* 有消息时的布局 */
-.chat-messages:not(:empty):has(.chat-message) {
+.chat-messages-content:not(:empty):has(.chat-message) {
   justify-content: flex-start;
   align-items: stretch;
 }
@@ -1423,13 +1430,18 @@ onBeforeUnmount(() => {
 /* 输入框容器 */
 .input-container {
   width: 100%;
-  max-width: 1000px;
   display: flex;
   justify-content: center;
   align-items: center;
   transition: all 0.3s ease;
   z-index: 10;
   position: relative;
+}
+
+/* 输入框内容：限制最大宽度 */
+.input-container > * {
+  max-width: 1000px;
+  width: 100%;
 }
 
 /* 欢迎消息 */

@@ -506,11 +506,40 @@ const buildConfiguration = () => {
   };
 };
 
+const checkDatasourceName = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post('http://localhost:8000/datasource/check-name', {
+      name: formData.name,
+      id: props.datasource?.id
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const exists = response.data?.exists || false;
+    
+    if (exists) {
+      ElMessage.error('数据源名称已存在');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('检查数据源名称失败:', error);
+    ElMessage.error('检查数据源名称失败');
+    return false;
+  }
+};
+
 const handleNext = async () => {
   if (!formRef.value) return;
   
   await formRef.value.validate(async (valid) => {
     if (!valid) return;
+    
+    // 检查数据源名称是否已存在
+    const nameValid = await checkDatasourceName();
+    if (!nameValid) return;
+    
     await testConnection();
     if (tableList.value.length > 0) {
       currentStep.value = 2;
