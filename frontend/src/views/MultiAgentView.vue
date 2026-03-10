@@ -7,98 +7,9 @@
         :selected-conversation-id="selectedConversationId"
         @toggle-sidebar="toggleSidebar"
         @select-conversation="selectConversation"
+        @create-conversation="handleCreateConversation"
         @update:selectedConversationId="(id) => selectedConversationId = id"
       >
-        <!-- 顶部搜索和新对话按钮 -->
-        <div class="conversation-header">
-          <div class="brand-logo" v-if="!sidebarCollapsed">
-            <span class="brand-text">数据灵犀</span>
-          </div>
-          <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
-            <div class="ds-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.67272 0.522827C10.8339 0.522827 11.76 0.522701 12.4963 0.60248C13.2453 0.683644 13.8789 0.854235 14.4264 1.25196C14.7504 1.48738 15.0355 1.77246 15.2709 2.09648C15.6686 2.64392 15.8392 3.27756 15.9204 4.02653C16.0002 4.76289 16 5.68894 16 6.85013V9.14985C16 10.311 16.0002 11.2371 15.9204 11.9734C15.8392 12.7224 15.6686 13.3561 15.2709 13.9035C15.0355 14.2275 14.7504 14.5126 14.4264 14.748C13.8789 15.1457 13.2453 15.3163 12.4963 15.3975C11.76 15.4773 10.8339 15.4772 9.67272 15.4772H6.3273C5.16611 15.4772 4.24006 15.4773 3.50371 15.3975C2.75474 15.3163 2.1211 15.1457 1.57366 14.748C1.24963 14.5126 0.964549 14.2275 0.729131 13.9035C0.331407 13.3561 0.160817 12.7224 0.0796529 11.9734C-0.000126137 11.2371 1.25338e-09 10.311 1.25338e-09 9.14985V6.85013C1.25329e-09 5.68894 -0.000126137 4.76289 0.0796529 4.02653C0.160817 3.27756 0.331407 2.64392 0.729131 2.09648C0.964549 1.77246 1.24963 1.48738 1.57366 1.25196C2.1211 0.854235 2.75474 0.683644 3.50371 0.60248C4.24006 0.522701 5.16611 0.522827 6.3273 0.522827H9.67272ZM5.54303 1.88714V14.1118C5.78636 14.1128 6.04709 14.1169 6.3273 14.1169H9.67272C10.8639 14.1169 11.7032 14.1164 12.3493 14.0465C12.9824 13.9779 13.3497 13.8494 13.6268 13.6482C13.8354 13.4966 14.0195 13.3125 14.1711 13.1039C14.3723 12.8268 14.5007 12.4595 14.5693 11.8264C14.6393 11.1803 14.6398 10.341 14.6398 9.14985V6.85013C14.6398 5.65895 14.6393 4.81965 14.5693 4.17359C14.5007 3.54047 14.3723 3.17317 14.1711 2.89608C14.0195 2.68746 13.8354 2.50335 13.6268 2.35178C13.3497 2.15059 12.9824 2.02211 12.3493 1.95352C11.7032 1.88356 10.8639 1.88305 9.67272 1.88305H6.3273C6.04709 1.88305 5.78636 1.88618 5.54303 1.88714ZM4.1828 1.91165C3.99125 1.92158 3.8148 1.93575 3.65076 1.95352C3.01764 2.02211 2.65034 2.15059 2.37325 2.35178C2.16463 2.50335 1.98052 2.68746 1.82895 2.89608C1.62776 3.17317 1.49928 3.54047 1.43069 4.17359C1.36074 4.81965 1.36023 5.65895 1.36023 6.85013V9.14985C1.36023 10.341 1.36074 11.1803 1.43069 11.8264C1.49928 12.4595 1.62776 12.8268 1.82895 13.1039C1.98052 13.3125 2.16463 13.4966 2.37325 13.6482C2.65034 13.8494 3.01764 13.9779 3.65076 14.0465C3.81478 14.0642 3.99127 14.0774 4.1828 14.0873V1.91165Z" fill="currentColor"></path></svg></div>
-          </el-button>
-        </div>
-
-        <!-- 搜索框 -->
-        <div class="search-container">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索对话"
-            size="small"
-            class="search-input"
-          >
-            <template #prefix>
-              <el-icon class="search-icon"><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
-
-        <!-- 对话列表 -->
-        <div class="conversation-items">
-          <!-- 新对话按钮 -->
-          <div class="new-chat-button" @click="createNewConversation">
-            <el-icon class="new-chat-icon"><Plus /></el-icon>
-            <span>开启新对话</span>
-          </div>
-
-          <!-- 时间分组的对话列表 -->
-          <template v-if="groupedConversations.length > 0">
-            <div v-for="(group, index) in groupedConversations" :key="index">
-              <div class="time-group-header">{{ group.date }}</div>
-              <div
-                v-for="conversation in group.conversations"
-                :key="conversation.conversation_id"
-                class="conversation-item"
-                :class="{ active: selectedConversationId === conversation.conversation_id }"
-                @click="selectConversation(conversation)"
-              >
-                <div class="conversation-content">
-                  <!-- 非编辑模式 -->
-                  <div v-if="!editingConversationId || editingConversationId !== conversation.conversation_id" class="conversation-title">{{ conversation.title }}</div>
-                  <!-- 编辑模式 -->
-                  <div v-else class="conversation-title-edit">
-                    <el-input
-                      v-model="editingTitle"
-                      size="small"
-                      @keyup.enter="saveRename(conversation.conversation_id)"
-                      @blur="saveRename(conversation.conversation_id)"
-                      ref="renameInput"
-                      class="title-input"
-                    />
-                  </div>
-                  <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
-                  <div v-else class="conversation-last-message empty">暂无消息</div>
-                </div>
-                <div class="conversation-menu" @click.stop>
-                  <el-dropdown trigger="click" @command="(command) => handleConversationMenu(command, conversation.conversation_id)" @click.stop>
-                    <el-button type="text" class="menu-btn" @click.stop>
-                      <el-icon><More /></el-icon>
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu class="custom-dropdown-menu">
-                      <el-dropdown-item command="rename" @click.stop class="custom-dropdown-item">
-                        <el-icon class="menu-icon"><Edit /></el-icon>
-                        重命名
-                      </el-dropdown-item>
-                      <el-dropdown-item command="delete" type="danger" @click.stop class="custom-dropdown-item">
-                        <el-icon class="menu-icon"><Delete /></el-icon>
-                        删除
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- 空状态 -->
-          <div v-else class="empty-conversations">
-            <el-icon class="empty-icon"><ChatLineSquare /></el-icon>
-            <p>暂无对话</p>
-            <p class="empty-hint">点击上方按钮创建新对话</p>
-          </div>
-        </div>
       </ConversationList>
 
       <!-- 中间聊天区域 -->
@@ -171,10 +82,10 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage, ElNotification, ElInput } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import {
   ChatDotRound
 } from '@element-plus/icons-vue'
@@ -235,7 +146,6 @@ const handleSendMessage = async (message) => {
       })
       
       const newConversation = response.data
-      conversations.value.unshift(newConversation)
       selectedConversationId.value = newConversation.conversation_id
       // 保存对话ID到localStorage，实现页面刷新后保持对话状态
       localStorage.setItem('selectedConversationId', newConversation.conversation_id)
@@ -405,20 +315,6 @@ const loadDatasources = async () => {
   }
 }
 
-// 加载对话列表
-const loadConversations = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('http://localhost:8000/conversations', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    conversations.value = response.data.conversations
-  } catch (error) {
-    console.error('获取对话列表失败:', error)
-    ElMessage.error('获取对话列表失败')
-  }
-}
-
 // 加载对话历史记录
 const loadConversationHistory = async (conversationId) => {
   try {
@@ -500,6 +396,29 @@ const selectConversation = async (conversation) => {
   localStorage.setItem('selectedConversationId', conversation.conversation_id)
   // 加载对话历史记录
   await loadConversationHistory(conversation.conversation_id)
+}
+
+// 处理创建新对话
+const handleCreateConversation = () => {
+  // 检查是否已处于初始对话页面
+  const hasMessages = messages.value.filter(m => !m.isWelcome).length > 0
+  const isInitialState = !selectedConversationId.value && !hasMessages
+  
+  if (isInitialState) {
+    // 已是初始页面，显示提示
+    ElMessage.info('已是最新对话')
+  } else {
+    // 导航至初始页面
+    selectedConversationId.value = null
+    messages.value = [{
+      role: 'assistant',
+      content: '今天有什么可以帮到你？',
+      timestamp: new Date().toLocaleTimeString(),
+      isWelcome: true
+    }]
+    // 从localStorage中移除选中的对话ID
+    localStorage.removeItem('selectedConversationId')
+  }
 }
 
 // 滚动事件处理
@@ -721,6 +640,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  min-height: 100%;
 }
 
 /* 无消息时的布局 */
@@ -730,10 +650,22 @@ onBeforeUnmount(() => {
   padding: 24px;
 }
 
-/* 有欢迎消息时的布局 */
-.chat-messages-content:not(:empty) {
+/* 新对话页面的布局 */
+.chat-messages-content:has(.welcome-message) {
   justify-content: center;
+  min-height: 100%;
+}
+
+.chat-messages-content:has(.welcome-message) .welcome-message {
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.centered-input-container {
+  margin-top: 0;
 }
 
 /* 有消息时的布局 */

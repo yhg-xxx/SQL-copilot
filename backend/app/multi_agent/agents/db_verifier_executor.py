@@ -298,21 +298,40 @@ class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
             cursor = None
             try:
                 cursor = connection.cursor()
+                # 移除 SQL 语句中的注释
+                def remove_comments(sql):
+                    import re
+                    # 移除 -- 注释
+                    sql = re.sub(r'--.*$', '', sql, flags=re.MULTILINE)
+                    # 移除 /* */ 注释
+                    sql = re.sub(r'/\*[\s\S]*?\*/', '', sql)
+                    # 移除多余的空白字符
+                    sql = ' '.join(sql.split())
+                    return sql
+                
                 clean_sql = sql.strip().rstrip(';')
-                explain_sql = f"SET SHOWPLAN_XML ON; {clean_sql}; SET SHOWPLAN_XML OFF;"
+                # 移除注释
+                clean_sql_no_comments = remove_comments(clean_sql)
+                explain_sql = f"SET SHOWPLAN_XML ON; {clean_sql_no_comments}; SET SHOWPLAN_XML OFF;"
                 logger.info(f"执行执行计划: {explain_sql}")
 
                 if "TOP" not in sql.upper() and "LIMIT" not in sql.upper():
                     if "ORDER BY" in sql.upper():
-                        if clean_sql.upper().startswith("SELECT"):
-                            modified_subquery = clean_sql[:6] + " TOP 100 PERCENT " + clean_sql[6:]
+                        if clean_sql_no_comments.upper().startswith("SELECT"):
+                            # 检查是否包含 DISTINCT
+                            if "SELECT DISTINCT" in clean_sql_no_comments.upper():
+                                # 在 DISTINCT 后面添加 TOP 100 PERCENT
+                                modified_subquery = clean_sql_no_comments.replace("SELECT DISTINCT", "SELECT DISTINCT TOP 100 PERCENT", 1)
+                            else:
+                                # 在 SELECT 后面添加 TOP 100 PERCENT
+                                modified_subquery = clean_sql_no_comments[:6] + " TOP 100 PERCENT " + clean_sql_no_comments[6:]
                         else:
-                            modified_subquery = clean_sql
+                            modified_subquery = clean_sql_no_comments
                         validation_sql = f"SELECT TOP 10 * FROM ({modified_subquery}) AS subq"
                     else:
-                        validation_sql = f"SELECT TOP 10 * FROM ({clean_sql}) AS subq"
+                        validation_sql = f"SELECT TOP 10 * FROM ({clean_sql_no_comments}) AS subq"
                 else:
-                    validation_sql = clean_sql
+                    validation_sql = clean_sql_no_comments
                 cursor.execute(validation_sql)
                 if cursor.description:
                     cursor.fetchall()
@@ -359,15 +378,37 @@ class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
             cursor = None
             try:
                 cursor = connection.cursor()
+                # 移除 SQL 语句中的注释
+                def remove_comments(sql):
+                    import re
+                    # 移除 -- 注释
+                    sql = re.sub(r'--.*$', '', sql, flags=re.MULTILINE)
+                    # 移除 /* */ 注释
+                    sql = re.sub(r'/\*[\s\S]*?\*/', '', sql)
+                    # 移除多余的空白字符
+                    sql = ' '.join(sql.split())
+                    return sql
+                
                 clean_sql = sql.strip().rstrip(';')
+                # 移除注释
+                clean_sql_no_comments = remove_comments(clean_sql)
 
                 if "TOP" not in sql.upper() and "LIMIT" not in sql.upper():
                     if "ORDER BY" in sql.upper():
-                        execution_sql = clean_sql
+                        if clean_sql_no_comments.upper().startswith("SELECT"):
+                            # 检查是否包含 DISTINCT
+                            if "SELECT DISTINCT" in clean_sql_no_comments.upper():
+                                # 在 DISTINCT 后面添加 TOP 1000
+                                execution_sql = clean_sql_no_comments.replace("SELECT DISTINCT", "SELECT DISTINCT TOP 1000", 1)
+                            else:
+                                # 在 SELECT 后面添加 TOP 1000
+                                execution_sql = clean_sql_no_comments[:6] + " TOP 1000 " + clean_sql_no_comments[6:]
+                        else:
+                            execution_sql = clean_sql_no_comments
                     else:
-                        execution_sql = f"SELECT TOP 1000 * FROM ({clean_sql}) AS subq"
+                        execution_sql = f"SELECT TOP 1000 * FROM ({clean_sql_no_comments}) AS subq"
                 else:
-                    execution_sql = clean_sql
+                    execution_sql = clean_sql_no_comments
 
                 logger.info(f"执行 SQL: {execution_sql}")
                 cursor.execute(execution_sql)

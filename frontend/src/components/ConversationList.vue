@@ -63,7 +63,7 @@
             <div class="conversation-menu" @click.stop>
               <el-dropdown trigger="click" @command="(command) => handleConversationMenu(command, conversation.conversation_id)" @click.stop>
                 <el-button type="text" class="menu-btn" @click.stop>
-                  <el-icon><More /></el-icon>
+                  <div class="ds-icon" style="font-size: 16px; width: 16px; height: 16px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5514 8C4.5514 8.63513 4.03653 9.15 3.4014 9.15C2.76628 9.15 2.2514 8.63513 2.2514 8C2.2514 7.36487 2.76628 6.85 3.4014 6.85C4.03653 6.85 4.5514 7.36487 4.5514 8Z" fill="currentColor"></path><path d="M9.14754 8C9.14754 8.63513 8.63267 9.15 7.99754 9.15C7.36242 9.15 6.84754 8.63513 6.84754 8C6.84754 7.36487 7.36242 6.85 7.99754 6.85C8.63267 6.85 9.14754 7.36487 9.14754 8Z" fill="currentColor"></path><path d="M13.7486 8C13.7486 8.63513 13.2337 9.15 12.5986 9.15C11.9634 9.15 11.4486 8.63513 11.4486 8C11.4486 7.36487 11.9634 6.85 12.5986 6.85C13.2337 6.85 13.7486 7.36487 13.7486 8Z" fill="currentColor"></path></svg></div>
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu class="custom-dropdown-menu">
@@ -94,8 +94,8 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits, watch } from 'vue'
-import { Delete, Plus, ChatLineSquare, More, Search, Edit } from '@element-plus/icons-vue'
+import { ref, computed, defineProps, defineEmits } from 'vue'
+import { Delete, Plus, ChatLineSquare, Search, Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
@@ -180,24 +180,8 @@ const toggleSidebar = () => {
 }
 
 // 创建新对话
-const createNewConversation = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.post('http://localhost:8000/conversations', {
-      title: '新对话'
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    const newConversation = response.data
-    conversations.value.unshift(newConversation)
-    emit('select-conversation', newConversation)
-    emit('update:selectedConversationId', newConversation.conversation_id)
-    ElMessage.success('新对话创建成功')
-  } catch (error) {
-    console.error('创建对话失败:', error)
-    ElMessage.error('创建对话失败')
-  }
+const createNewConversation = () => {
+  emit('create-conversation')
 }
 
 // 选择对话
@@ -336,7 +320,6 @@ loadConversations()
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  overflow-x: hidden;
   border-right: 1px solid #e8ecf4;
   transition: width 0.3s ease;
   will-change: width;
@@ -412,10 +395,25 @@ loadConversations()
 }
 
 .brand-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a2a;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4a89dc, #6b9fde);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.brand-text::after {
+  content: '数据灵犀';
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #6b9fde, #4a89dc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 /* 搜索框容器 */
@@ -517,7 +515,7 @@ loadConversations()
   color: #9ca3af;
   margin: 16px 0 8px 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
@@ -530,7 +528,7 @@ loadConversations()
   transition: all 0.3s ease;
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   background: white;
   border: 1px solid transparent;
   flex-shrink: 0;
@@ -602,6 +600,12 @@ loadConversations()
   display: flex;
   align-items: center;
   height: 100%;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.conversation-item:hover .conversation-menu {
+  opacity: 1;
 }
 
 .menu-btn {
@@ -610,6 +614,9 @@ loadConversations()
   font-size: 14px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-btn:hover {

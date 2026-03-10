@@ -188,17 +188,6 @@ def sql_generator(state: AgentState) -> AgentState | None:
         logger.info(f"数据源ID: {datasource_id}")
         logger.info(f"聊天历史长度: {len(chat_history)}")
 
-        # 特别打印最近两轮的详细信息
-        if len(chat_history) >= 2:
-            logger.info("最近两轮对话详情:")
-            for i in range(-2, 0):
-                idx = len(chat_history) + i
-                item = chat_history[idx]
-                role = item.get("role", "unknown")
-                content_preview = str(item.get("content", ""))[:200] + (
-                    "..." if len(str(item.get("content", ""))) > 200 else "")
-                logger.info(f"  第{idx + 1}轮 [{role}]: {content_preview}")
-
         for i, item in enumerate(chat_history):
             role = item.get("role", "unknown")
             content_preview = str(item.get("content", ""))[:200] + (
@@ -276,6 +265,35 @@ JSON 格式：
 8. 对于复杂查询，选择最优的执行计划
 9. 参考对话历史，理解用户的上下文需求
 10. 确保生成的 SQL 符合 {db_type_display} 数据库的语法规范"""
+
+        # 针对 SQL Server 的特殊语法要求
+        if db_type.lower() in ['sqlserver', 'sql_server', 'mssql']:
+            system_prompt += """
+
+        ===== SQL Server 特殊语法要求 =====
+        重要：SQL Server 对标识符有严格的语法规则，必须遵守：
+
+        1. 中文别名必须加方括号：
+           - 错误：SELECT name AS 姓名
+           - 正确：SELECT name AS [姓名]
+
+        2. 包含空格或特殊字符的标识符必须加方括号：
+           - 错误：SELECT user name FROM table
+           - 正确：SELECT [user name] FROM [table]
+
+        3. 字符串常量使用单引号，N 前缀表示 Unicode：
+           - 正确：WHERE name = N'中文值'
+           - 正确：WHERE name = 'English'
+
+        4. 日期时间常量使用单引号：
+           - 正确：WHERE create_time >= '2024-01-01'
+
+        5. TOP 子句语法（如果使用）：
+           - 正确：SELECT TOP 10 * FROM table
+
+        6. 避免使用 MySQL 特有的语法（如 LIMIT、反引号 `）
+        ====================================
+        """
 
         # 构建用户提示
         if is_modification and len(chat_history) > 0:

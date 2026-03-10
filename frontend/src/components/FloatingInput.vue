@@ -1,62 +1,60 @@
 <template>
-  <div class="floating-input-container">
-    <div class="floating-input-wrapper">
-      <!-- 输入框 -->
-      <el-input
-        v-model="inputMessage"
-        type="textarea"
-        placeholder="给 SQL 助手发送消息"
-        :rows="1"
-        resize="none"
-        @keyup.enter.exact="handleSend"
-        :disabled="loading"
-        class="chat-input"
-      ></el-input>
+  <div class="floating-input-wrapper">
+    <!-- 输入框 -->
+    <el-input
+      v-model="inputMessage"
+      type="textarea"
+      placeholder="输入您的查询，例如：查询所有用户信息"
+      :rows="1"
+      resize="none"
+      @keyup.enter.exact="handleSend"
+      :disabled="loading"
+      class="chat-input"
+    ></el-input>
 
-      <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
-      <div class="input-actions">
-        <!-- 数据库选择器 -->
-        <div class="datasource-selector">
-          <el-select
-            v-model="selectedDatasourceModel"
-            placeholder="选择数据源"
-            size="small"
-            class="datasource-select"
-            @change="handleDatasourceChange"
-            :style="{
-              '--el-select-border-color': 'transparent',
-              '--el-select-focus-border-color': 'transparent',
-              '--el-select-hover-border-color': 'transparent',
-              '--el-input-border-color': 'transparent',
-              '--el-input-focus-border-color': 'transparent',
-              '--el-input-hover-border-color': 'transparent'
-            }"
-          >
-            <el-option
-              v-for="datasource in datasources"
-              :key="datasource.id"
-              :label="datasource.name"
-              :value="datasource.id"
-            >
-              <div class="datasource-option">
-                <span class="datasource-name">{{ datasource.name }}</span>
-                <span class="datasource-type">{{ datasource.type }}</span>
-              </div>
-            </el-option>
-          </el-select>
-        </div>
-        
-        <!-- 发送按钮 -->
-        <el-button
-          @click="handleSend"
-          type="primary"
-          :loading="loading"
-          class="send-btn"
-          :disabled="!inputMessage.trim() || !selectedDatasourceModel"
+    <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
+    <div class="input-actions">
+      <!-- 数据库选择器 -->
+      <div class="datasource-selector">
+        <el-select
+          v-model="selectedDatasourceModel"
+          placeholder="选择数据源"
+          size="small"
+          class="datasource-select"
+          @change="handleDatasourceChange"
+          :style="{
+            '--el-select-border-color': 'transparent',
+            '--el-select-focus-border-color': 'transparent',
+            '--el-select-hover-border-color': 'transparent',
+            '--el-input-border-color': 'transparent',
+            '--el-input-focus-border-color': 'transparent',
+            '--el-input-hover-border-color': 'transparent'
+          }"
         >
-          <el-icon v-if="!loading"><ArrowUp /></el-icon>
-        </el-button>
+          <el-option
+            v-for="datasource in datasources"
+            :key="datasource.id"
+            :label="datasource.name"
+            :value="datasource.id"
+          >
+            <div class="datasource-option">
+              <span class="datasource-name">{{ datasource.name }}</span>
+              <span class="datasource-type">{{ datasource.type }}</span>
+            </div>
+          </el-option>
+        </el-select>
       </div>
+      
+      <!-- 发送按钮 -->
+      <el-button
+        @click="handleSend"
+        type="primary"
+        :loading="loading"
+        class="send-btn"
+        :disabled="!inputMessage.trim() || !selectedDatasourceModel"
+      >
+        <el-icon v-if="!loading"><ArrowUp /></el-icon>
+      </el-button>
     </div>
   </div>
 </template>
@@ -105,16 +103,6 @@ const handleSend = () => {
 </script>
 
 <style scoped>
-.floating-input-container {
-  position: relative;
-  width: 100%;
-  max-width: 1000px;
-  padding: 0 28px;
-  margin-top: 24px;
-  margin-bottom: 30px;
-  z-index: 1000;
-}
-
 .floating-input-wrapper {
   background: white;
   border-radius: 12px;
@@ -125,6 +113,11 @@ const handleSend = () => {
   flex-direction: column;
   gap: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  margin-bottom: 30px;
+  z-index: 1000;
 }
 
 .floating-input-wrapper:hover {

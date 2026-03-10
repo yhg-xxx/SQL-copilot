@@ -58,22 +58,26 @@ class MultiAgent:
                         UserQARecord.conversation_id == chat_id
                     ).order_by(UserQARecord.create_time.asc()).all()
 
-                    # 格式化历史记录
+                    # 格式化历史记录 - 只保留最近 5 轮
+                    formatted_history = []
                     for record in history:
                         if record.question:
-                            chat_history.append({
+                            formatted_history.append({
                                 "role": "user",
                                 "content": record.question,
                                 "timestamp": record.create_time
                             })
-                        if record.to2_answer:
-                            chat_history.append({
+                        if record.sql_statement:
+                            formatted_history.append({
                                 "role": "assistant",
-                                "content": record.to2_answer,
+                                "content": record.sql_statement,
                                 "timestamp": record.create_time,
                                 "sql": record.sql_statement
                             })
-                    logger.info(f"获取到 {len(chat_history)} 条对话历史记录")
+                    
+                    # 只保留最近 5 轮对话（10 条记录）
+                    chat_history = formatted_history[-10:] if len(formatted_history) > 10 else formatted_history
+                    logger.info(f"获取到 {len(chat_history)} 条对话历史记录（最近 5 轮）")
                 finally:
                     db.close()
             except Exception as e:
