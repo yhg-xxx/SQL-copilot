@@ -2,7 +2,13 @@
   <div class="multi-agent-view">
     <div class="content-container" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
       <!-- 左侧对话列表 -->
-      <div class="conversation-list" :class="{ 'collapsed': sidebarCollapsed }">
+      <ConversationList
+        :sidebar-collapsed="sidebarCollapsed"
+        :selected-conversation-id="selectedConversationId"
+        @toggle-sidebar="toggleSidebar"
+        @select-conversation="selectConversation"
+        @update:selectedConversationId="(id) => selectedConversationId = id"
+      >
         <!-- 顶部搜索和新对话按钮 -->
         <div class="conversation-header">
           <div class="brand-logo" v-if="!sidebarCollapsed">
@@ -93,7 +99,7 @@
             <p class="empty-hint">点击上方按钮创建新对话</p>
           </div>
         </div>
-      </div>
+      </ConversationList>
 
       <!-- 中间聊天区域 -->
       <div class="chat-container">
@@ -168,18 +174,13 @@
 import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage, ElNotification, ElInput, ElMessageBox } from 'element-plus'
+import { ElMessage, ElNotification, ElInput } from 'element-plus'
 import {
-  Delete,
-  ChatDotRound,
-  Plus,
-  ChatLineSquare,
-  More,
-  Search,
-  Edit
+  ChatDotRound
 } from '@element-plus/icons-vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 import FloatingInput from '@/components/FloatingInput.vue'
+import ConversationList from '@/components/ConversationList.vue'
 
 const router = useRouter()
 const messages = ref([])
@@ -188,11 +189,6 @@ const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
-
-// 编辑状态
-const editingConversationId = ref(null)
-const editingTitle = ref('')
-const renameInput = ref(null)
 
 // 滚动状态跟踪
 const shouldAutoScroll = ref(true)
@@ -206,57 +202,7 @@ const toggleSidebar = () => {
 }
 
 // 对话相关状态
-const conversations = ref([])
 const selectedConversationId = ref(null)
-const searchQuery = ref('')
-
-// 分组后的对话列表
-const groupedConversations = computed(() => {
-  // 过滤搜索结果
-  const filteredConversations = conversations.value.filter(conv =>
-    conv.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    (conv.last_message && conv.last_message.toLowerCase().includes(searchQuery.value.toLowerCase()))
-  )
-
-  // 按日期分组
-  const groups = {}
-  filteredConversations.forEach(conv => {
-    const date = formatDateGroup(conv.updated_at)
-    if (!groups[date]) {
-      groups[date] = { date, conversations: [] }
-    }
-    groups[date].conversations.push(conv)
-  })
-
-  // 转换为数组并按日期排序
-  return Object.values(groups).sort((a, b) => {
-    // 特殊处理今天和昨天
-    if (a.date === '今天') return -1
-    if (b.date === '今天') return 1
-    if (a.date === '昨天') return -1
-    if (b.date === '昨天') return 1
-    // 其他日期按时间排序
-    return new Date(b.conversations[0].updated_at) - new Date(a.conversations[0].updated_at)
-  })
-})
-
-// 格式化日期分组
-const formatDateGroup = (timeString) => {
-  const date = new Date(timeString)
-  const now = new Date()
-  const diffTime = now - date
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) {
-    return '今天'
-  } else if (diffDays === 1) {
-    return '昨天'
-  } else if (diffDays < 7) {
-    return `${diffDays}天前`
-  } else {
-    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-  }
-}
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -291,6 +237,8 @@ const handleSendMessage = async (message) => {
       const newConversation = response.data
       conversations.value.unshift(newConversation)
       selectedConversationId.value = newConversation.conversation_id
+      // 保存对话ID到localStorage，实现页面刷新后保持对话状态
+      localStorage.setItem('selectedConversationId', newConversation.conversation_id)
       // 清空欢迎消息
       messages.value = []
       
@@ -471,24 +419,6 @@ const loadConversations = async () => {
   }
 }
 
-// 创建新对话
-const createNewConversation = async () => {
-  // 检查是否已处于默认页面（没有选中的对话且消息为空或只有欢迎消息）
-  const hasRealMessages = messages.value.some(m => !m.isWelcome)
-  const inExistingConversation = selectedConversationId.value !== null
-
-  if (hasRealMessages || inExistingConversation) {
-    // 用户处于某个已存在的对话界面，执行页面跳转至默认页面
-    messages.value = []
-    selectedConversationId.value = null
-    currentResult.value = null
-
-  } else {
-    // 用户已处于默认页面，显示提示信息
-    ElMessage.info('已是最新对话')
-  }
-}
-
 // 加载对话历史记录
 const loadConversationHistory = async (conversationId) => {
   try {
@@ -558,9 +488,6 @@ const updateConversationLastMessage = async (conversationId, lastMessage) => {
     }, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    
-    // 重新加载对话列表
-    await loadConversations()
   } catch (error) {
     console.error('更新对话最后一条消息失败:', error)
   }
@@ -569,138 +496,10 @@ const updateConversationLastMessage = async (conversationId, lastMessage) => {
 // 选择对话
 const selectConversation = async (conversation) => {
   selectedConversationId.value = conversation.conversation_id
+  // 保存对话ID到localStorage，实现页面刷新后保持对话状态
+  localStorage.setItem('selectedConversationId', conversation.conversation_id)
   // 加载对话历史记录
   await loadConversationHistory(conversation.conversation_id)
-}
-
-// 辅助方法：截断消息
-const truncateMessage = (message, maxLength = 30) => {
-  if (message.length <= maxLength) return message
-  return message.substring(0, maxLength) + '...'
-}
-
-// 处理对话菜单
-const handleConversationMenu = (command, conversationId) => {
-  if (command === 'delete') {
-    confirmDeleteConversation(conversationId)
-  } else if (command === 'rename') {
-    startRename(conversationId)
-  }
-}
-
-// 开始重命名
-const startRename = (conversationId) => {
-  // 找到对应的对话
-  const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
-  if (!conversation) return
-  
-  // 进入编辑模式
-  editingConversationId.value = conversationId
-  editingTitle.value = conversation.title
-  
-  // 延迟聚焦输入框，确保 DOM 已更新
-  setTimeout(() => {
-    if (renameInput.value) {
-      renameInput.value.focus()
-      // 选中所有文本
-      const input = renameInput.value.input
-      if (input) {
-        input.select()
-      }
-    }
-  }, 100)
-}
-
-// 保存重命名
-const saveRename = async (conversationId) => {
-  if (!editingConversationId.value || editingConversationId.value !== conversationId) return
-  
-  const newTitle = editingTitle.value.trim()
-  if (!newTitle) {
-    // 如果输入为空，恢复原标题
-    const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
-    if (conversation) {
-      editingTitle.value = conversation.title
-    }
-    editingConversationId.value = null
-    return
-  }
-  
-  try {
-    const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/conversations/${conversationId}`, {
-      title: newTitle
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    // 更新本地对话列表
-    const conversation = conversations.value.find(conv => conv.conversation_id === conversationId)
-    if (conversation) {
-      conversation.title = newTitle
-    }
-    
-    // 退出编辑模式
-    editingConversationId.value = null
-  } catch (error) {
-    console.error('重命名对话失败:', error)
-    ElMessage.error('重命名对话失败，请重试')
-    
-    // 退出编辑模式
-    editingConversationId.value = null
-  }
-}
-
-// 确认删除对话
-const confirmDeleteConversation = (conversationId) => {
-  ElMessageBox.confirm(
-    '确定要删除这个对话吗？删除后将无法恢复',
-    '确认删除',
-    {
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-      confirmButtonClass: 'el-button--danger',
-      customClass: 'delete-dialog'
-    }
-  ).then(async () => {
-    try {
-      const token = localStorage.getItem('token')
-      await axios.delete(`http://localhost:8000/conversations/${conversationId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      
-      // 从列表中移除对话
-      conversations.value = conversations.value.filter(
-        conv => conv.conversation_id !== conversationId
-      )
-      
-      // 如果删除的是当前选中的对话，清空消息并选择第一个对话
-      if (selectedConversationId.value === conversationId) {
-        messages.value = []
-        currentResult.value = null
-        if (conversations.value.length > 0) {
-          await selectConversation(conversations.value[0])
-        } else {
-          selectedConversationId.value = null
-          // 显示欢迎消息
-          messages.value.push({
-            role: 'assistant',
-            content: '你好！我是多智能体 SQL 助手。请输入您的自然语言查询，我会帮您生成相应的 SQL 语句。',
-            timestamp: new Date().toLocaleTimeString(),
-            isWelcome: true
-          })
-        }
-      }
-      
-      ElMessage.success('对话删除成功')
-    } catch (error) {
-      console.error('删除对话失败:', error)
-      ElMessage.error('删除对话失败，请重试')
-    }
-  }).catch(() => {
-    // 取消删除
-  })
 }
 
 // 滚动事件处理
@@ -712,15 +511,35 @@ const handleScroll = () => {
   }
 }
 
-onMounted(() => {
-  loadDatasources()
-  loadConversations()
-  messages.value.push({
-    role: 'assistant',
-    content: '今天有什么可以帮到你？',
-    timestamp: new Date().toLocaleTimeString(),
-    isWelcome: true
-  })
+onMounted(async () => {
+  await loadDatasources()
+  
+  // 检查localStorage中是否存在选中的对话ID，实现页面刷新后保持对话状态
+  const savedConversationId = localStorage.getItem('selectedConversationId')
+  if (savedConversationId) {
+    try {
+      // 加载对话历史记录
+      await loadConversationHistory(savedConversationId)
+      selectedConversationId.value = savedConversationId
+    } catch (error) {
+      console.error('恢复对话状态失败:', error)
+      // 如果恢复失败，显示欢迎消息
+      messages.value.push({
+        role: 'assistant',
+        content: '今天有什么可以帮到你？',
+        timestamp: new Date().toLocaleTimeString(),
+        isWelcome: true
+      })
+    }
+  } else {
+    // 显示欢迎消息
+    messages.value.push({
+      role: 'assistant',
+      content: '今天有什么可以帮到你？',
+      timestamp: new Date().toLocaleTimeString(),
+      isWelcome: true
+    })
+  }
   
   // 添加滚动事件监听
   if (messagesContainer.value) {
@@ -768,47 +587,6 @@ onBeforeUnmount(() => {
   background: white;
 }
 
-/* 左侧对话列表 */
-.conversation-list {
-  width: 280px;
-  flex-shrink: 0;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-right: 1px solid #e8ecf4;
-  transition: width 0.3s ease;
-  will-change: width;
-  min-width: 0;
-}
-
-/* 侧边栏收起状态 */
-.conversation-list.collapsed {
-  width: 0;
-  border-right: none;
-  overflow: hidden;
-  min-width: 0;
-}
-
-/* 侧边栏收起时隐藏所有内容 */
-.conversation-list.collapsed .conversation-header,
-.conversation-list.collapsed .search-container,
-.conversation-list.collapsed .conversation-items {
-  opacity: 0;
-  transform: translateX(-20px);
-  pointer-events: none;
-  transition: all 0.3s ease;
-}
-
-/* 侧边栏内容正常状态 */
-.conversation-header,
-.search-container,
-.conversation-items {
-  transition: all 0.3s ease;
-  opacity: 1;
-  transform: translateX(0);
-}
-
 /* 侧边栏打开按钮样式 */
 .sidebar-open-btn {
   width: 36px;
@@ -837,380 +615,6 @@ onBeforeUnmount(() => {
 /* 内容容器收起侧边栏状态 */
 .content-container.sidebar-collapsed {
   /* 收起侧边栏时的样式 */
-}
-
-.conversation-header {
-  padding: 20px 16px;
-  border-bottom: 1px solid #e8ecf4;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-/* 侧边栏切换按钮 */
-.sidebar-toggle-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-
-.sidebar-toggle-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
-  transform: scale(1.05);
-}
-
-/* 侧边栏收起时的头部样式 */
-.conversation-list.collapsed .conversation-header {
-  padding: 20px 8px;
-  justify-content: center;
-}
-
-.brand-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.brand-text {
-  font-size: 24px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #4a89dc, #6b9fde);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 2px;
-  position: relative;
-}
-
-.brand-text::after {
-  content: '数据灵犀';
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: linear-gradient(135deg, #6b9fde, #4a89dc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.brand-logo:hover .brand-text::after {
-  opacity: 1;
-}
-
-.conversation-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a2a;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.new-conversation-btn {
-  min-width: 80px;
-  height: 32px;
-  font-size: 13px;
-  border-radius: 8px;
-  background: #4f46e5;
-  border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-}
-
-.new-conversation-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
-  background: #4338ca;
-}
-
-/* 搜索框容器 */
-.search-container {
-  padding: 12px 20px;
-  border-bottom: 1px solid #e8ecf4;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-.search-input {
-  width: 100%;
-}
-
-.search-input :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  border: 1px solid #e8ecf4;
-  background: white;
-  transition: all 0.3s ease;
-  padding: 4px 12px;
-}
-
-.search-input :deep(.el-input__wrapper):hover,
-.search-input :deep(.el-input__wrapper.is-focus) {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-}
-
-.search-icon {
-  color: #9ca3af;
-  font-size: 16px;
-}
-
-/* 侧边栏收起时隐藏搜索框 */
-.conversation-list.collapsed .search-container {
-  display: none;
-}
-
-/* 对话列表 */
-.conversation-items {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  transition: all 0.3s ease;
-  background: white;
-}
-
-/* 新对话按钮 */
-.new-chat-button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-  border: 1px dashed #e0e6ff;
-  flex-shrink: 0;
-  width: 100%;
-}
-
-.new-chat-button:hover {
-  background: #f0f4ff;
-  border-color: #4f46e5;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
-}
-
-.new-chat-icon {
-  font-size: 18px;
-  color: #4f46e5;
-  flex-shrink: 0;
-}
-
-.new-chat-button span {
-  font-size: 14px;
-  font-weight: 500;
-  color: #4f46e5;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-/* 侧边栏收起时隐藏对话列表内容 */
-.conversation-list.collapsed .conversation-items {
-  display: none;
-}
-
-/* 时间分组标题 */
-.time-group-header {
-  font-size: 12px;
-  font-weight: 600;
-  color: #9ca3af;
-  margin: 16px 0 8px 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-/* 对话项 */
-.conversation-item {
-  padding: 14px 16px;
-  border-radius: 10px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 1px solid transparent;
-  flex-shrink: 0;
-  width: 100%;
-}
-
-.conversation-item:hover {
-  background: #f9fafb;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.conversation-item.active {
-  background: #f0f4ff;
-  border: 1px solid #e0e7ff;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
-}
-
-.conversation-content {
-  flex: 1;
-  margin-right: 16px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.conversation-title {
-  font-weight: 500;
-  font-size: 14px;
-  color: #1a1a2a;
-  margin-bottom: 4px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.conversation-title-edit {
-  margin-bottom: 4px;
-}
-
-.title-input {
-  width: 100%;
-}
-
-.title-input :deep(.el-input__wrapper) {
-  border-radius: 4px;
-  border: 1px solid #4f46e5;
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-  padding: 0 12px;
-  height: 24px;
-}
-
-.title-input :deep(.el-input__inner) {
-  font-weight: 500;
-  font-size: 14px;
-  color: #1a1a2a;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  line-height: 24px;
-  padding: 0;
-  height: 24px;
-}
-
-.conversation-last-message {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 4px;
-  line-height: 1.4;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.conversation-last-message.empty {
-  color: #9ca3af;
-  font-style: italic;
-}
-
-.conversation-time {
-  font-size: 11px;
-  color: #9ca3af;
-  position: absolute;
-  top: 14px;
-  right: 40px;
-}
-
-.conversation-menu {
-  flex-shrink: 0;
-  z-index: 10;
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.conversation-item:hover .conversation-menu {
-  opacity: 1;
-}
-
-.menu-btn {
-  padding: 4px;
-  color: #6b7280;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.menu-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
-  transform: scale(1.05);
-}
-
-.menu-icon {
-  margin-right: 4px;
-  font-size: 14px;
-}
-
-/* 自定义下拉菜单样式 */
-.custom-dropdown-menu {
-  min-width: 120px;
-  padding: 8px 0;
-}
-
-.custom-dropdown-item {
-  padding: 10px 16px;
-  font-size: 14px;
-  line-height: 1.4;
-  height: auto;
-  min-height: 36px;
-}
-
-.custom-dropdown-item:hover {
-  background: #f0f4ff;
-}
-
-.custom-dropdown-item .menu-icon {
-  font-size: 16px;
-  margin-right: 8px;
-}
-
-/* 空状态 */
-.empty-conversations {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #6b7280;
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #d1d5db;
-}
-
-.empty-conversations p {
-  margin: 6px 0;
-  font-size: 14px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.empty-hint {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 8px;
 }
 
 /* 中间聊天容器：占满剩余空间，内部滚动 */
@@ -1575,52 +979,5 @@ onBeforeUnmount(() => {
   }
 }
 
-/* 删除对话框样式 */
-.delete-dialog {
-  width: 400px !important;
-  border-radius: 16px !important;
-  overflow: hidden;
-}
 
-.delete-dialog .el-message-box__content {
-  padding: 24px 0;
-  font-size: 16px;
-  line-height: 1.6;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.delete-dialog .el-message-box__btns {
-  margin-top: 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 0 24px 24px 24px;
-}
-
-.delete-dialog .el-button--danger {
-  background-color: #ef4444;
-  border-color: #ef4444;
-  color: white;
-  padding: 8px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.delete-dialog .el-button--danger:hover {
-  background-color: #dc2626;
-  border-color: #dc2626;
-  transform: translateY(-1px);
-}
-
-.delete-dialog .el-button--default {
-  padding: 8px 24px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.delete-dialog .el-button--default:hover {
-  transform: translateY(-1px);
-}
 </style>
