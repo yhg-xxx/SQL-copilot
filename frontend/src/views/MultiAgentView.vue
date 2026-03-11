@@ -31,6 +31,7 @@
               :key="index"
               :message="message"
               :is-user="message.role === 'user'"
+              @regenerate="handleRegenerate(index)"
             />
             
             <!-- 加载消息 -->
@@ -467,6 +468,55 @@ const handleCreateConversation = () => {
     // 从localStorage中移除选中的对话ID
     localStorage.removeItem('selectedConversationId')
   }
+}
+
+// 处理重新生成
+const handleRegenerate = async (index) => {
+  // 获取非欢迎消息的列表
+  const nonWelcomeMessages = messages.value.filter(m => !m.isWelcome)
+  
+  // 只有最新一条助手消息才能重新生成
+  if (index !== nonWelcomeMessages.length - 1) {
+    ElMessage.info('只能重新生成最新的回复')
+    return
+  }
+  
+  // 确保当前消息是助手消息
+  if (nonWelcomeMessages[index].role !== 'assistant') {
+    ElMessage.info('只能重新生成助手的回复')
+    return
+  }
+  
+  // 找到对应的用户消息（应该是前一条）
+  if (index - 1 < 0 || nonWelcomeMessages[index - 1].role !== 'user') {
+    ElMessage.error('找不到对应的用户消息')
+    return
+  }
+  
+  const userMessage = nonWelcomeMessages[index - 1]
+  const userMessageIndex = messages.value.findIndex(msg => msg === userMessage)
+  
+  // 删除最新的助手消息和对应的用户消息
+  messages.value = messages.value.filter((msg, msgIndex) => {
+    const filteredIndex = messages.value.slice().filter(m => !m.isWelcome).findIndex(m => m === msg)
+    return filteredIndex !== index && filteredIndex !== index - 1
+  })
+  
+  // 调用后端API删除最新的助手回复记录
+  if (selectedConversationId.value) {
+    try {
+      const token = localStorage.getItem('token')
+      await axios.delete(`http://localhost:8000/conversations/${selectedConversationId.value}/last-assistant`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    } catch (error) {
+      console.error('删除后端记录失败:', error)
+      // 即使后端删除失败，也继续重新生成
+    }
+  }
+  
+  // 重新发送用户消息
+  handleSendMessage(userMessage.content)
 }
 
 // 滚动事件处理

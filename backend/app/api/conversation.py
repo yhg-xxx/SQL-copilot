@@ -203,3 +203,41 @@ async def delete_conversation(
     db.commit()
     
     return {"message": "Conversation deleted successfully"}
+
+# 删除最新的助手回复记录
+@router.delete("/{conversation_id}/last-assistant")
+async def delete_last_assistant_message(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # 查询对话是否存在
+    conversation = db.query(UserConversation).filter(
+        UserConversation.conversation_id == conversation_id,
+        UserConversation.user_id == int(current_user["sub"])
+    ).first()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # 查询最新的助手回复记录
+    # 助手回复记录是指包含to2_answer或sql_statement的记录
+    last_assistant_record = db.query(UserQARecord).filter(
+        UserQARecord.conversation_id == conversation_id,
+        (UserQARecord.to2_answer.isnot(None) | UserQARecord.sql_statement.isnot(None))
+    ).order_by(UserQARecord.create_time.desc()).first()
+    
+    if not last_assistant_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No assistant message found"
+        )
+    
+    # 删除该记录
+    db.delete(last_assistant_record)
+    db.commit()
+    
+    return {"message": "Last assistant message deleted successfully"}

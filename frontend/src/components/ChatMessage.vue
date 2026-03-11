@@ -64,6 +64,13 @@
             </el-dropdown>
           </div>
         </div>
+        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px;">
+          <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_" @click="handleRegenerate">
+            <div class="ToolbarCopy_icon__5Odjl">
+              <el-icon><RefreshRight /></el-icon>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -76,7 +83,8 @@ import {
   ChatDotRound,
   Warning,
   Document,
-  CopyDocument
+  CopyDocument,
+  RefreshRight
 } from '@element-plus/icons-vue'
 import DataDisplay from './DataDisplay.vue'
 import { ElMessage } from 'element-plus'
@@ -143,6 +151,11 @@ const copyMessage = (format = 'plain') => {
         ElMessage.error('复制失败，请手动复制')
       })
   }
+}
+
+// 重新生成
+const handleRegenerate = () => {
+  emit('regenerate')
 }
 </script>
 
@@ -480,13 +493,14 @@ const copyMessage = (format = 'plain') => {
 .agent-chat__toolbar__right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
   margin-top: 12px;
   padding-left: 0;
   transition: all 0.3s ease;
 }
 
-.agent-chat__question-toolbar__copy-wrapper {
+.agent-chat__question-toolbar__copy-wrapper,
+.agent-chat__question-toolbar__regenerate-wrapper {
   position: relative;
 }
 
@@ -494,8 +508,8 @@ const copyMessage = (format = 'plain') => {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 12px;
-  border-radius: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
   transition: all 0.3s ease;
   background: transparent;
   border: 1px solid transparent;
