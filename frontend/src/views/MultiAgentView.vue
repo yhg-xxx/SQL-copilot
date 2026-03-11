@@ -3,6 +3,7 @@
     <div class="content-container" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
       <!-- 左侧对话列表 -->
       <ConversationList
+        ref="conversationListRef"
         :sidebar-collapsed="sidebarCollapsed"
         :selected-conversation-id="selectedConversationId"
         @toggle-sidebar="toggleSidebar"
@@ -114,6 +115,7 @@ const toggleSidebar = () => {
 
 // 对话相关状态
 const selectedConversationId = ref(null)
+const conversationListRef = ref(null)
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -154,6 +156,11 @@ const handleSendMessage = async (message) => {
       
       // 确保数据源选择保持一致
       selectedDatasource.value = currentDatasourceId
+      
+      // 刷新对话列表，确保新对话显示在列表中
+      if (conversationListRef.value) {
+        conversationListRef.value.refreshConversations()
+      }
     } catch (error) {
       console.error('创建对话失败:', error)
       ElMessage.error('创建对话失败，请重试')
@@ -275,6 +282,11 @@ const handleSendMessage = async (message) => {
             } else if (data.type === 'done') {
               messages.value[assistantMessageIndex].isStreaming = false
               loading.value = false
+              
+              // 流式输出完成后，再次刷新对话列表以显示更新后的标题
+              if (conversationListRef.value) {
+                conversationListRef.value.refreshConversations()
+              }
             }
           } catch (e) {
             console.error('解析SSE数据失败:', e, line)

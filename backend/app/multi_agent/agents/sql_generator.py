@@ -8,7 +8,6 @@ from app.multi_agent.state.agent_state import AgentState
 from app.utils.llm_util import get_llm
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
-from app.multi_agent.RAG.history_retriever import retrieve_similar_history_examples, format_examples_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -119,23 +118,8 @@ def sql_generator(state: AgentState) -> AgentState | None:
             state["error_message"] = "用户查询为空"
             return state
 
-        # ========== RAG 历史查询检索 ==========
-        logger.info("开始检索历史查询示例...")
-        retrieved_examples = retrieve_similar_history_examples(
-            question=user_query,
-            datasource_id=datasource_id,
-            user_id=user_id,
-            top_k=3,
-            max_history_days=30
-        )
-        state["retrieved_examples"] = retrieved_examples
-        logger.info(f"检索到 {len(retrieved_examples)} 个历史示例")
-
-        # 格式化历史示例为提示词
-        examples_text = format_examples_for_prompt(retrieved_examples)
-        if examples_text:
-            logger.info("历史示例格式化为提示词成功")
-        # ==========================================
+        # 历史示例功能已移除
+        examples_text = ""
 
         # 获取数据源表结构
         schema = {}
@@ -225,8 +209,6 @@ def sql_generator(state: AgentState) -> AgentState | None:
 重要：当前数据库类型是 {db_type_display}，请生成符合该数据库语法规范的 SQL 语句！
 
 {schema_text}
-
-{examples_text}
 
 {history_text}
 

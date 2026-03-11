@@ -114,7 +114,8 @@ const emit = defineEmits([
   'toggle-sidebar',
   'select-conversation',
   'create-conversation',
-  'update:selectedConversationId'
+  'update:selectedConversationId',
+  'refresh-conversations'
 ])
 
 // 编辑状态
@@ -309,6 +310,16 @@ const loadConversations = async () => {
 
 // 组件挂载时加载对话列表
 loadConversations()
+
+// 暴露加载对话列表的方法给父组件
+const refreshConversations = () => {
+  loadConversations()
+}
+
+// 暴露方法给父组件
+defineExpose({
+  refreshConversations
+})
 </script>
 
 <style scoped>
