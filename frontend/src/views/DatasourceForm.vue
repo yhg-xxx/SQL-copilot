@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    :title="isEdit ? '编辑数据源' : '新建数据源'"
+    :title="isEdit ? '编辑数据源' : (props.isBatchImport ? '批量导入数据源' : '新建数据源')"
     width="700px"
     :close-on-click-modal="false"
     class="datasource-form-dialog"
@@ -9,7 +9,15 @@
   >
     <el-steps :active="currentStep - 1" finish-status="success" class="steps-wrapper">
       <el-step title="连接配置" description="配置数据库连接信息" />
-      <el-step title="选择表" description="选择需要管理的表" />
+      <el-step 
+        v-if="!props.isBatchImport" 
+        title="选择表" 
+        description="选择需要管理的表" 
+      />
+      <template v-else>
+        <el-step title="选择数据库" description="选择需要导入的数据库" />
+        <el-step title="配置数据源" description="为每个数据库配置名称" />
+      </template>
     </el-steps>
 
     <el-form
@@ -20,10 +28,10 @@
       class="form-content"
     >
       <div v-show="currentStep === 1" class="step-content">
-        <el-form-item label="数据源名称" prop="name">
+        <el-form-item v-if="!props.isBatchImport" label="数据源名称" prop="name">
           <el-input v-model="formData.name" placeholder="例如：主业务库" clearable />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item v-if="!props.isBatchImport" label="描述">
           <el-input
             v-model="formData.description"
             type="textarea"
@@ -89,7 +97,7 @@
           </el-col>
         </el-row>
 
-        <el-row :gutter="24">
+        <el-row v-if="!props.isBatchImport" :gutter="24">
           <el-col :span="12">
             <el-form-item v-if="!showOracleMode" label="数据库名" prop="database">
               <el-input v-model="formData.database" placeholder="请输入数据库名" clearable />
@@ -146,7 +154,8 @@
         </div>
       </div>
 
-      <div v-show="currentStep === 2" class="step-content">
+      <!-- 单个创建：选择表 -->
+      <div v-show="currentStep === 2 && !props.isBatchImport" class="step-content">
         <div class="table-selection-header">
           <div class="selection-info">
             <div>
@@ -193,7 +202,72 @@
             <el-icon class="is-loading"><Loading /></el-icon>
             <span>加载更多表中...</span>
           </div>
+        </div>
+      </div>
 
+      <!-- 批量导入：第二步 - 选择数据库 -->
+      <div v-show="currentStep === 2 && props.isBatchImport" class="step-content">
+        <div class="table-selection-header">
+          <div class="selection-info">
+            <div>
+              已选择 <span class="highlight">{{ selectedDatabases.length }}</span> / {{ databaseList.length }} 个数据库
+            </div>
+          </div>
+          <div class="header-actions">
+            <el-button size="small" @click="handleSelectAllDatabases">
+              {{ isAllDatabasesSelected ? '取消全选' : '全选' }}
+            </el-button>
+          </div>
+        </div>
+
+        <div v-loading="databaseListLoading" class="table-list-wrapper">
+          <el-checkbox-group v-model="selectedDatabases">
+            <el-row :gutter="12">
+              <el-col :span="12" v-for="db in databaseList" :key="db.databaseName">
+                <div class="table-item">
+                  <el-checkbox :value="db.databaseName" style="width: 100%">
+                    <div class="checkbox-content">
+                      <span class="table-name">{{ db.databaseName }}</span>
+                    </div>
+                  </el-checkbox>
+                </div>
+              </el-col>
+            </el-row>
+          </el-checkbox-group>
+          <el-empty v-if="databaseList.length === 0" description="未找到数据库" />
+        </div>
+      </div>
+
+      <!-- 批量导入：第三步 - 配置数据源 -->
+      <div v-show="currentStep === 3 && props.isBatchImport" class="step-content">
+        <div class="database-config-header">
+          <div class="selection-info">
+            <div>
+              共 {{ databaseConfigs.length }} 个数据源待配置
+            </div>
+          </div>
+        </div>
+
+        <div class="database-config-list">
+          <div v-for="(config, index) in databaseConfigs" :key="index" class="database-config-item">
+            <div class="config-item-header">
+              <span class="config-db-name">数据库: {{ config.database }}</span>
+            </div>
+            <el-form :model="config" label-width="100px" size="small">
+              <el-form-item label="数据源名称">
+                <el-input v-model="config.name" placeholder="输入数据源名称" />
+              </el-form-item>
+              <el-form-item label="描述">
+                <el-input
+                  v-model="config.description"
+                  type="textarea"
+                  placeholder="请输入描述（可选）"
+                  :rows="1"
+                  clearable
+                />
+              </el-form-item>
+            </el-form>
+          </div>
           <div v-if="!canLoadMore && tableList.length > 0" class="load-complete">
             <span class="tip-text">已显示全部 {{ tableList.length }} 张表</span>
           </div>
@@ -204,15 +278,32 @@
     <template #footer>
       <div class="modal-actions">
         <div class="left">
-          <el-button v-if="currentStep === 1" :loading="testing" @click="testConnection">
+          <el-button v-if="currentStep === 1 && !props.isBatchImport" :loading="testing" @click="testConnection">
             测试连接
           </el-button>
         </div>
         <div class="right">
           <el-button @click="handleClose">取消</el-button>
-          <el-button v-if="currentStep === 2" @click="handlePrev">上一步</el-button>
-          <el-button v-if="currentStep === 1" type="primary" @click="handleNext">下一步</el-button>
-          <el-button v-if="currentStep === 2" type="primary" :loading="loading" :disabled="loading" @click="handleSave">
+          <el-button 
+            v-if="(currentStep === 2 && !props.isBatchImport) || (currentStep > 1 && props.isBatchImport)" 
+            @click="handlePrev"
+          >
+            上一步
+          </el-button>
+          <el-button 
+            v-if="(currentStep === 1) || (currentStep === 2 && props.isBatchImport)" 
+            type="primary" 
+            @click="handleNext"
+          >
+            下一步
+          </el-button>
+          <el-button 
+            v-if="(currentStep === 2 && !props.isBatchImport) || (currentStep === 3 && props.isBatchImport)" 
+            type="primary" 
+            :loading="loading" 
+            :disabled="loading" 
+            @click="handleSave"
+          >
             保存
           </el-button>
         </div>
@@ -267,6 +358,10 @@ const props = defineProps({
   datasource: {
     type: Object,
     default: null
+  },
+  isBatchImport: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -306,28 +401,35 @@ const formData = reactive({
   driver: 'thin'
 });
 
-const rules = {
-  name: [
-    { required: true, message: '请输入数据源名称', trigger: 'blur' },
-    { min: 1, max: 50, message: '名称长度在1-50个字符', trigger: 'blur' }
-  ],
-  type: [
-    { required: true, message: '请选择数据源类型', trigger: 'change' }
-  ],
-  host: [
-    { required: true, message: '请输入主机地址', trigger: 'blur' }
-  ],
-  port: [
-    { required: true, message: '请输入端口号', trigger: 'blur' },
-    { type: 'number', min: 1, max: 65535, message: '端口号范围1-65535', trigger: 'blur' }
-  ],
-  database: [
-    { required: true, message: '请输入数据库名', trigger: 'blur' }
-  ],
-  dbSchema: [
-    { required: true, message: '请输入Schema', trigger: 'blur' }
-  ]
-};
+const rules = computed(() => {
+  const baseRules = {
+    type: [
+      { required: true, message: '请选择数据源类型', trigger: 'change' }
+    ],
+    host: [
+      { required: true, message: '请输入主机地址', trigger: 'blur' }
+    ],
+    port: [
+      { required: true, message: '请输入端口号', trigger: 'blur' },
+      { type: 'number', min: 1, max: 65535, message: '端口号范围1-65535', trigger: 'blur' }
+    ]
+  };
+  
+  if (!props.isBatchImport) {
+    baseRules.name = [
+      { required: true, message: '请输入数据源名称', trigger: 'blur' },
+      { min: 1, max: 50, message: '名称长度在1-50个字符', trigger: 'blur' }
+    ];
+    baseRules.database = [
+      { required: true, message: '请输入数据库名', trigger: 'blur' }
+    ];
+    baseRules.dbSchema = [
+      { required: true, message: '请输入Schema', trigger: 'blur' }
+    ];
+  }
+  
+  return baseRules;
+});
 
 const showSchema = computed(() => needSchemaTypes.includes(formData.type));
 const showOracleMode = computed(() => formData.type === 'oracle');
@@ -355,6 +457,12 @@ const pageSize = ref(50);
 const isLoadingMore = ref(false);
 const hasMoreTables = ref(true);
 const isSelectAll = ref(false);
+
+// 批量导入相关状态
+const databaseList = ref([]);
+const selectedDatabases = ref([]);
+const databaseListLoading = ref(false);
+const databaseConfigs = ref([]);
 
 const initForm = async () => {
   if (props.datasource) {
@@ -411,6 +519,11 @@ const initForm = async () => {
   hasMoreTables.value = true;
   isLoadingMore.value = false;
   isSelectAll.value = false;
+  // 批量导入相关状态重置
+  databaseList.value = [];
+  selectedDatabases.value = [];
+  databaseListLoading.value = false;
+  databaseConfigs.value = [];
 };
 
 const testConnection = async () => {
@@ -452,6 +565,30 @@ const testConnection = async () => {
     ElMessage.error('测试连接失败');
   } finally {
     testing.value = false;
+  }
+};
+
+const fetchDatabaseList = async () => {
+  databaseListLoading.value = true;
+  try {
+    const config = buildConfiguration();
+    const token = localStorage.getItem('token');
+    const response = await axios.post('http://localhost:8000/datasource/fetch-databases', {
+      type: formData.type,
+      configuration: JSON.stringify(config)
+    }, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    databaseList.value = response.data || [];
+    if (databaseList.value.length > 0) {
+      ElMessage.success(`成功获取 ${databaseList.value.length} 个数据库`);
+    }
+  } catch (error) {
+    console.error('获取数据库列表失败:', error);
+    ElMessage.error('获取数据库列表失败');
+  } finally {
+    databaseListLoading.value = false;
   }
 };
 
@@ -533,22 +670,85 @@ const checkDatasourceName = async () => {
 const handleNext = async () => {
   if (!formRef.value) return;
   
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return;
-    
-    // 检查数据源名称是否已存在
-    const nameValid = await checkDatasourceName();
-    if (!nameValid) return;
-    
-    await testConnection();
-    if (tableList.value.length > 0) {
-      currentStep.value = 2;
+  if (props.isBatchImport) {
+    if (currentStep.value === 1) {
+      // 第一步：验证连接并获取数据库列表
+      await formRef.value.validate(async (valid) => {
+        if (!valid) return;
+        
+        testing.value = true;
+        try {
+          const config = buildConfiguration();
+          const token = localStorage.getItem('token');
+          const response = await axios.post('http://localhost:8000/datasource/test-connection', {
+            name: 'test',
+            type: formData.type,
+            type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+            host: config.host,
+            port: String(config.port),
+            database: config.database || '',
+            username: config.username,
+            password: config.password
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (response.data.status === 'Success') {
+            ElMessage.success('连接成功');
+            await fetchDatabaseList();
+            if (databaseList.value.length > 0) {
+              currentStep.value = 2;
+            }
+          } else {
+            ElMessage.error(response.data.message || '连接失败');
+          }
+        } catch (error) {
+          console.error('测试连接失败:', error);
+          ElMessage.error('测试连接失败');
+        } finally {
+          testing.value = false;
+        }
+      });
+    } else if (currentStep.value === 2) {
+      // 第二步：检查是否选择了数据库，然后进入第三步配置
+      if (selectedDatabases.value.length === 0) {
+        ElMessage.warning('请至少选择一个数据库');
+        return;
+      }
+      // 初始化数据库配置
+      databaseConfigs.value = selectedDatabases.value.map(dbName => ({
+        database: dbName,
+        name: dbName,
+        description: '',
+        tables: null
+      }));
+      currentStep.value = 3;
     }
-  });
+  } else {
+    // 原有单个创建流程
+    await formRef.value.validate(async (valid) => {
+      if (!valid) return;
+      
+      // 检查数据源名称是否已存在
+      const nameValid = await checkDatasourceName();
+      if (!nameValid) return;
+      
+      await testConnection();
+      if (tableList.value.length > 0) {
+        currentStep.value = 2;
+      }
+    });
+  }
 };
 
 const handlePrev = () => {
-  currentStep.value = 1;
+  if (props.isBatchImport) {
+    if (currentStep.value > 1) {
+      currentStep.value--;
+    }
+  } else {
+    currentStep.value = 1;
+  }
 };
 
 
@@ -623,6 +823,19 @@ const isAllSelected = computed(() => {
   return tableList.value.every(table => selectedTables.value.includes(table.tableName));
 });
 
+const isAllDatabasesSelected = computed(() => {
+  if (databaseList.value.length === 0) return false;
+  return databaseList.value.every(db => selectedDatabases.value.includes(db.databaseName));
+});
+
+const handleSelectAllDatabases = () => {
+  if (isAllDatabasesSelected.value) {
+    selectedDatabases.value = [];
+  } else {
+    selectedDatabases.value = databaseList.value.map(db => db.databaseName);
+  }
+};
+
 watch(selectedTables, (newSelected) => {
   isSelectAll.value = newSelected.length === tableList.value.length;
 }, { deep: true });
@@ -630,72 +843,116 @@ watch(selectedTables, (newSelected) => {
 const handleSave = debounce(async () => {
   if (loading.value) return;
 
-  if (selectedTables.value.length === 0) {
-    ElMessage.warning('请至少选择一个表');
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const config = buildConfiguration();
-
-    const tables = selectedTables.value.map(tableName => {
-      const table = tableList.value.find(t => t.tableName === tableName);
-      return {
-        table_name: tableName,
-        table_comment: table?.tableComment || ''
-      };
-    });
-
-    const requestData = {
-      name: formData.name,
-      description: formData.description,
-      type: formData.type,
-      type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
-      host: config.host,
-      port: String(config.port),
-      database: config.database,
-      username: config.username,
-      password: config.password,
-      tables
-    };
-
-    const token = localStorage.getItem('token');
-    let response;
-    let dsId = props.datasource?.id;
-
-    if (props.datasource?.id) {
-      response = await axios.put(`http://localhost:8000/datasource/update/${props.datasource.id}`, requestData, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } else {
-      response = await axios.post('http://localhost:8000/datasource/create', requestData, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  if (props.isBatchImport) {
+    // 批量导入模式
+    if (databaseConfigs.value.length === 0) {
+      ElMessage.warning('请至少配置一个数据源');
+      return;
     }
 
-    dsId = response.data?.id || dsId;
+    // 验证每个配置都有名称
+    for (const config of databaseConfigs.value) {
+      if (!config.name || config.name.trim() === '') {
+        ElMessage.warning('请为每个数据源填写名称');
+        return;
+      }
+    }
 
+    loading.value = true;
     try {
-      await axios.post(`http://localhost:8000/datasource/${dsId}/sync-tables`, {
-        tables,
-        selectAll: isSelectAll.value
-      }, {
+      const token = localStorage.getItem('token');
+      const requestData = {
+        type: formData.type,
+        type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+        host: formData.host,
+        port: String(formData.port),
+        username: formData.username,
+        password: formData.password,
+        databases: databaseConfigs.value
+      };
+
+      await axios.post('http://localhost:8000/datasource/batch-create', requestData, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-    } catch (syncErr) {
-      console.error('同步表列表失败:', syncErr);
-      ElMessage.warning('数据源已保存，但同步表列表时出现错误，请稍后手动同步');
+
+      ElMessage.success(`成功批量导入 ${databaseConfigs.value.length} 个数据源`);
+      emit('success');
+      handleClose();
+    } catch (error) {
+      console.error('批量导入数据源失败:', error);
+      ElMessage.error(error.response?.data?.detail || '批量导入数据源失败');
+    } finally {
+      loading.value = false;
+    }
+  } else {
+    // 单个创建模式
+    if (selectedTables.value.length === 0) {
+      ElMessage.warning('请至少选择一个表');
+      return;
     }
 
-    ElMessage.success(props.datasource?.id ? '更新成功' : '创建成功');
-    emit('success');
-    handleClose();
-  } catch (error) {
-    console.error('保存数据源失败:', error);
-    ElMessage.error('保存数据源失败');
-  } finally {
-    loading.value = false;
+    loading.value = true;
+    try {
+      const config = buildConfiguration();
+
+      const tables = selectedTables.value.map(tableName => {
+        const table = tableList.value.find(t => t.tableName === tableName);
+        return {
+          table_name: tableName,
+          table_comment: table?.tableComment || ''
+        };
+      });
+
+      const requestData = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+        host: config.host,
+        port: String(config.port),
+        database: config.database,
+        username: config.username,
+        password: config.password,
+        tables
+      };
+
+      const token = localStorage.getItem('token');
+      let response;
+      let dsId = props.datasource?.id;
+
+      if (props.datasource?.id) {
+        response = await axios.put(`http://localhost:8000/datasource/update/${props.datasource.id}`, requestData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } else {
+        response = await axios.post('http://localhost:8000/datasource/create', requestData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+
+      dsId = response.data?.id || dsId;
+
+      try {
+        await axios.post(`http://localhost:8000/datasource/${dsId}/sync-tables`, {
+          tables,
+          selectAll: isSelectAll.value
+        }, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (syncErr) {
+        console.error('同步表列表失败:', syncErr);
+        ElMessage.warning('数据源已保存，但同步表列表时出现错误，请稍后手动同步');
+      }
+
+      ElMessage.success(props.datasource?.id ? '更新成功' : '创建成功');
+      emit('success');
+      handleClose();
+    } catch (error) {
+      console.error('保存数据源失败:', error);
+      ElMessage.error('保存数据源失败');
+    } finally {
+      loading.value = false;
+    }
   }
 }, 1000);
 
@@ -884,5 +1141,42 @@ watch(() => props.show, (newVal) => {
 .right {
   display: flex;
   gap: 12px;
+}
+
+/* 批量导入样式 */
+.database-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.database-config-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.database-config-item {
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.config-item-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.config-db-name {
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
 }
 </style>

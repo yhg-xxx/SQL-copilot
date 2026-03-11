@@ -2,6 +2,27 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
+# 数据库信息模型
+class DatabaseInfo(BaseModel):
+    databaseName: str
+
+# 单个数据库批量导入配置
+class SingleDatabaseImport(BaseModel):
+    database: str
+    name: str
+    description: Optional[str] = None
+    tables: Optional[List[dict]] = None
+
+# 批量创建数据源请求模型
+class BatchDatasourceCreate(BaseModel):
+    type: str
+    type_name: Optional[str] = None
+    host: str
+    port: str
+    username: str
+    password: str
+    databases: List[SingleDatabaseImport]
+
 # 数据源请求模型
 class DatasourceCreate(BaseModel):
     name: str
@@ -10,7 +31,7 @@ class DatasourceCreate(BaseModel):
     type_name: Optional[str] = None
     host: str
     port: str
-    database: str
+    database: Optional[str] = None
     username: str
     password: str
     tables: Optional[List[dict]] = None

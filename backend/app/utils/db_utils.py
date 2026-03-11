@@ -20,6 +20,10 @@ class BaseDatabaseHandler:
         """测试数据库连接"""
         raise NotImplementedError
 
+    def get_databases(self):
+        """获取数据库列表，返回 [{'databaseName': name}]"""
+        raise NotImplementedError
+
     def get_tables(self):
         """获取表列表，返回 [{'tableName': name, 'tableComment': comment}]"""
         raise NotImplementedError
@@ -40,6 +44,31 @@ class BaseDatabaseHandler:
 class MySQLHandler(BaseDatabaseHandler):
     """MySQL数据库处理器"""
 
+    def get_databases(self):
+        databases = []
+        connection = None
+        try:
+            connection = pymysql.connect(
+                host=self.config['host'],
+                port=int(self.config.get('port', 3306)),
+                user=self.config['username'],
+                password=self.config['password'],
+                charset='utf8mb4'
+            )
+            with connection.cursor() as cursor:
+                cursor.execute("SHOW DATABASES")
+                all_databases = cursor.fetchall()
+                
+                system_databases = ['information_schema', 'mysql', 'performance_schema', 'sys']
+                for db in all_databases:
+                    db_name = db[0]
+                    if db_name not in system_databases:
+                        databases.append({'databaseName': db_name})
+            return databases
+        finally:
+            if connection:
+                connection.close()
+
     def test_connection(self):
         connection = None
         try:
@@ -48,7 +77,7 @@ class MySQLHandler(BaseDatabaseHandler):
                 port=int(self.config.get('port', 3306)),
                 user=self.config['username'],
                 password=self.config['password'],
-                database=self.config['database'],
+                database=self.config.get('database'),
                 charset='utf8mb4',
                 connect_timeout=10
             )
@@ -202,7 +231,8 @@ class MySQLHandler(BaseDatabaseHandler):
 class PostgreSQLHandler(BaseDatabaseHandler):
     """PostgreSQL数据库处理器"""
 
-    def test_connection(self):
+    def get_databases(self):
+        databases = []
         connection = None
         try:
             connection = psycopg2.connect(
@@ -210,7 +240,35 @@ class PostgreSQLHandler(BaseDatabaseHandler):
                 port=int(self.config.get('port', 5432)),
                 user=self.config['username'],
                 password=self.config['password'],
-                dbname=self.config['database'],
+                dbname='postgres',
+                connect_timeout=10
+            )
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT datname 
+                    FROM pg_database 
+                    WHERE datistemplate = false
+                    ORDER BY datname
+                """)
+                all_databases = cursor.fetchall()
+                
+                for db in all_databases:
+                    databases.append({'databaseName': db[0]})
+            return databases
+        finally:
+            if connection:
+                connection.close()
+
+    def test_connection(self):
+        connection = None
+        try:
+            dbname = self.config.get('database', 'postgres')
+            connection = psycopg2.connect(
+                host=self.config['host'],
+                port=int(self.config.get('port', 5432)),
+                user=self.config['username'],
+                password=self.config['password'],
+                dbname=dbname,
                 connect_timeout=10
             )
             return True
@@ -378,13 +436,43 @@ class PostgreSQLHandler(BaseDatabaseHandler):
 class SQLServerHandler(BaseDatabaseHandler):
     """SQL Server数据库处理器"""
 
-    def test_connection(self):
+    def get_databases(self):
+        databases = []
         connection = None
         try:
             conn_str = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
                 f"SERVER={self.config['host']},{self.config.get('port', 1433)};"
-                f"DATABASE={self.config['database']};"
+                f"DATABASE=master;"
+                f"UID={self.config['username']};"
+                f"PWD={self.config['password']};"
+                f"TrustServerCertificate=yes;"
+            )
+            connection = pyodbc.connect(conn_str)
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT name 
+                    FROM sys.databases 
+                    WHERE database_id > 4
+                    ORDER BY name
+                """)
+                all_databases = cursor.fetchall()
+                
+                for db in all_databases:
+                    databases.append({'databaseName': db[0]})
+            return databases
+        finally:
+            if connection:
+                connection.close()
+
+    def test_connection(self):
+        connection = None
+        try:
+            database = self.config.get('database', 'master')
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={self.config['host']},{self.config.get('port', 1433)};"
+                f"DATABASE={database};"
                 f"UID={self.config['username']};"
                 f"PWD={self.config['password']};"
                 f"TrustServerCertificate=yes;"
@@ -578,6 +666,40 @@ class SQLServerHandler(BaseDatabaseHandler):
 
 class OracleHandler(BaseDatabaseHandler):
     """Oracle数据库处理器"""
+
+    def get_databases(self):
+        databases = []
+        connection = None
+        try:
+            try:
+                oracle_client_lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                if oracle_client_lib_dir:
+                    oracledb.init_oracle_client(lib_dir=oracle_client_lib_dir)
+                else:
+                    oracledb.init_oracle_client()
+            except Exception as init_error:
+                logger.warning("无法初始化Oracle客户端，将使用Thin模式: %s", init_error)
+            
+            dsn = build_oracle_dsn(self.config)
+            connection = oracledb.connect(
+                user=self.config['username'],
+                password=self.config['password'],
+                dsn=dsn
+            )
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT username 
+                    FROM all_users 
+                    ORDER BY username
+                """)
+                all_databases = cursor.fetchall()
+                
+                for db in all_databases:
+                    databases.append({'databaseName': db[0]})
+            return databases
+        finally:
+            if connection:
+                connection.close()
 
     def test_connection(self):
         connection = None
@@ -870,7 +992,10 @@ def build_oracle_dsn(config: Dict[str, Any]) -> str:
     host = config['host']
     port = int(config.get('port', 1521))
     mode = config.get('mode', 'service_name')
-    db = config['database']
+    db = config.get('database')
+    
+    if not db:
+        return f"{host}:{port}"
     
     if mode == 'service_name':
         return f"{host}:{port}/{db}"

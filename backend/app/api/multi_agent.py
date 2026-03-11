@@ -158,6 +158,9 @@ async def multi_agent_query_stream(
                         conversation.title = new_title
                         db.commit()
                         db.refresh(conversation)
+                        
+                        # 发送标题更新事件给前端
+                        yield f"data: {json.dumps({'type': 'title_update', 'title': new_title}, ensure_ascii=False)}\n\n"
                 except Exception as e:
                     import logging
                     logging.error(f"更新问答记录失败: {e}")

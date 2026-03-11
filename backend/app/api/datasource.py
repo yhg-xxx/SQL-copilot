@@ -6,7 +6,10 @@ import logging
 
 from app.database.db import get_db
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
-from app.schemas.datasource import DatasourceCreate, DatasourceUpdate, DatasourceResponse
+from app.schemas.datasource import (
+    DatasourceCreate, DatasourceUpdate, DatasourceResponse,
+    DatabaseInfo, BatchDatasourceCreate
+)
 from app.utils.dependencies import get_current_user
 from app.utils.db_utils import get_database_handler
 from typing import List
@@ -52,6 +55,13 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="该数据源的名称已存在，请选择其他名称"
+        )
+    
+    # 检查数据库名是否提供
+    if not datasource.database:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请提供数据库名"
         )
 
     # 构建配置信息
@@ -671,16 +681,16 @@ async def get_table_data(datasource_id: int, table_name: str, limit: int = 100, 
 
 # 测试数据源连接
 @router.post("/test-connection")
-async def test_datasource_connection(datasource: DatasourceCreate):
+async def test_datasource_connection(datasource: dict = Body(...)):
     try:
         config_dict = {
-            "host": datasource.host,
-            "port": datasource.port,
-            "database": datasource.database,
-            "username": datasource.username,
-            "password": datasource.password
+            "host": datasource.get("host"),
+            "port": datasource.get("port"),
+            "database": datasource.get("database"),
+            "username": datasource.get("username"),
+            "password": datasource.get("password")
         }
-        handler = get_database_handler(datasource.type, config_dict)
+        handler = get_database_handler(datasource.get("type"), config_dict)
         handler.test_connection()
         return {"status": "Success", "message": "Connection test successful"}
     except Exception as e:
@@ -808,4 +818,188 @@ async def get_datasource_table_info(datasource_id: int, db: Session = Depends(ge
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get table info: {str(e)}"
+        )
+
+
+# 根据配置获取数据库列表
+@router.post("/fetch-databases", response_model=List[DatabaseInfo])
+async def fetch_databases_by_config(datasource_config: dict):
+    try:
+        type = datasource_config.get('type')
+        configuration = datasource_config.get('configuration')
+        config = json.loads(configuration) if isinstance(configuration, str) else configuration
+
+        handler = get_database_handler(type, config)
+        databases = handler.get_databases()
+        return databases
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch databases: {str(e)}"
+        )
+
+
+# 批量创建数据源
+@router.post("/batch-create", response_model=List[DatasourceResponse])
+async def batch_create_datasources(batch_data: BatchDatasourceCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    user_id = int(current_user.get("sub"))
+    created_datasources = []
+    
+    # 检查是否有重复的数据源名称
+    datasource_names = [db_import.name for db_import in batch_data.databases]
+    if len(datasource_names) != len(set(datasource_names)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="存在重复的数据源名称，请修改后重试"
+        )
+    
+    # 检查数据源名称是否已存在
+    for db_import in batch_data.databases:
+        existing_datasource = db.query(Datasource).filter(
+            Datasource.name == db_import.name,
+            Datasource.create_by == user_id
+        ).first()
+        if existing_datasource:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"数据源名称 '{db_import.name}' 已存在，请选择其他名称"
+            )
+    
+    try:
+        for db_import in batch_data.databases:
+            # 构建配置信息
+            config_dict = {
+                "host": batch_data.host,
+                "port": batch_data.port,
+                "database": db_import.database,
+                "username": batch_data.username,
+                "password": batch_data.password
+            }
+            configuration = json.dumps(config_dict)
+            
+            # 测试连接状态
+            connection_status = "Success"
+            try:
+                handler = get_database_handler(batch_data.type, config_dict)
+                handler.test_connection()
+            except Exception:
+                connection_status = "Failed"
+            
+            # 计算表数量
+            num = "0/0"
+            selected_tables_list = []
+            
+            if connection_status == "Success":
+                try:
+                    handler = get_database_handler(batch_data.type, config_dict)
+                    all_tables_info = handler.get_tables()
+                    all_table_names = [t['tableName'] for t in all_tables_info]
+                    total_tables = len(all_table_names)
+                    
+                    # 确定选中的表
+                    if db_import.tables and len(db_import.tables) > 0:
+                        selected_table_names = []
+                        for table in db_import.tables:
+                            table_name = table.get('table_name')
+                            if table_name:
+                                selected_table_names.append(table_name)
+                        selected_tables = len(selected_table_names)
+                        selected_tables_list = selected_table_names
+                    else:
+                        # 如果没有选择表，则默认选择所有表
+                        selected_table_names = all_table_names
+                        selected_tables = total_tables
+                        selected_tables_list = selected_table_names
+                    
+                    if not selected_tables_list:
+                        num = "0/0"
+                    else:
+                        num = f"{selected_tables}/{total_tables}"
+                except Exception as e:
+                    logger.error(f"获取表信息失败: {str(e)}")
+                    num = "0/0"
+            
+            # 创建数据源实例
+            new_datasource = Datasource(
+                name=db_import.name,
+                description=db_import.description or '',
+                type=batch_data.type,
+                type_name=batch_data.type_name or batch_data.type,
+                configuration=configuration,
+                create_by=user_id,
+                status=connection_status,
+                num=num
+            )
+            
+            db.add(new_datasource)
+            db.flush()
+            
+            # 同步表信息和字段信息
+            if connection_status == "Success" and selected_tables_list:
+                try:
+                    handler = get_database_handler(batch_data.type, config_dict)
+                    for table_name in selected_tables_list:
+                        # 获取表注释
+                        table_comment = handler.get_table_comment(table_name)
+                        
+                        # 创建表信息
+                        new_table = DatasourceTable(
+                            ds_id=new_datasource.id,
+                            checked=True,
+                            table_name=table_name,
+                            table_comment=table_comment,
+                            custom_comment=None,
+                            embedding=None
+                        )
+                        db.add(new_table)
+                        db.flush()
+                        
+                        # 获取字段信息
+                        fields = handler.get_table_fields(table_name)
+                        
+                        # 获取索引信息
+                        indexes = handler.get_table_indexes(table_name)
+                        
+                        # 创建字段信息
+                        for field in fields:
+                            is_indexed = False
+                            index_name = None
+                            index_type = None
+                            
+                            for index in indexes:
+                                if index['column_name'] == field['field_name']:
+                                    is_indexed = True
+                                    index_name = index['index_name']
+                                    index_type = index['index_type']
+                                    break
+                            
+                            new_field = DatasourceField(
+                                ds_id=new_datasource.id,
+                                table_id=new_table.id,
+                                checked=True,
+                                field_name=field['field_name'],
+                                field_type=field['field_type'],
+                                field_comment=field['field_comment'],
+                                custom_comment=None,
+                                field_index=field['field_index'],
+                                is_indexed=is_indexed,
+                                index_name=index_name,
+                                index_type=index_type
+                            )
+                            db.add(new_field)
+                except Exception as e:
+                    logger.error(f"同步表和字段信息失败: {str(e)}")
+            
+            db.refresh(new_datasource)
+            created_datasources.append(new_datasource)
+        
+        # 统一提交所有更改
+        db.commit()
+        return created_datasources
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"批量创建数据源失败: {str(e)}"
         )

@@ -1,9 +1,9 @@
 import logging
 import json
 from typing import Dict, Any
-from .sql_generator import get_datasource_schema
 from langchain_core.messages import SystemMessage, HumanMessage
-
+from .sql_generator import get_datasource_schema
+from .schema_utils import format_schema_for_prompt
 from app.multi_agent.state.agent_state import AgentState, ValidationResult
 from app.multi_agent.agents.datasource_utils import get_datasource_config
 
@@ -201,9 +201,7 @@ def syntax_validator(state: AgentState) -> AgentState:
 
         if not schema_text and datasource_id:
             try:
-                from .sql_generator import get_datasource_schema
                 datasource_schema = get_datasource_schema(datasource_id)
-                from .schema_utils import format_schema_for_prompt
                 schema_text = format_schema_for_prompt(datasource_schema)
                 logger.info(f"从数据库获取到数据源表结构并格式化")
             except ImportError as e:

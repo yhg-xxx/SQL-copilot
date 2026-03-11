@@ -279,6 +279,11 @@ const handleSendMessage = async (message) => {
               messages.value[assistantMessageIndex].content = `发生错误: ${data.content}`
               messages.value[assistantMessageIndex].success = false
               ElMessage.error(data.content)
+            } else if (data.type === 'title_update') {
+              // 接收到标题更新事件，实时更新对话列表中的标题
+              if (conversationListRef.value) {
+                conversationListRef.value.refreshConversations()
+              }
             } else if (data.type === 'done') {
               messages.value[assistantMessageIndex].isStreaming = false
               loading.value = false
@@ -371,6 +376,9 @@ const loadConversationHistory = async (conversationId) => {
     }
     
     currentResult.value = null
+    
+    // 确保DOM更新后滚动到底部
+    await nextTick()
     await scrollToBottom()
   } catch (error) {
     console.error('加载对话历史失败:', error)
@@ -383,6 +391,10 @@ const loadConversationHistory = async (conversationId) => {
       timestamp: new Date().toLocaleTimeString(),
       isWelcome: true
     })
+    
+    // 错误情况下也确保滚动到底部
+    await nextTick()
+    await scrollToBottom()
   }
 }
 
@@ -561,75 +573,12 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 5;
 }
-
-/* 聊天头部：固定高度，减少内边距 */
-.chat-header {
-  background: white;
-  padding: 20px 28px 20px 60px;
-  border-bottom: 1px solid #e8ecf4;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  height: 92px;
-  width: 100%;
-  max-width: 1000px;
-  transition: all 0.3s ease;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
-  transition: all 0.3s ease;
-}
-
-.header-icon:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
-}
-
 .header-text h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #1a1a2a;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.subtitle {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: #6b7280;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.clear-btn {
-  color: #6b7280;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.clear-btn:hover {
-  color: #ef4444;
-  background: #fee2e2;
-  transform: translateY(-1px);
 }
 
 /* 聊天消息区域：仅内部滚动，占满剩余高度 */
@@ -862,13 +811,6 @@ onBeforeUnmount(() => {
     flex-direction: column;
   }
 
-  .conversation-list {
-    width: 100%;
-    height: 30vh;
-    margin-bottom: 0;
-    border-radius: 16px;
-  }
-
   .chat-container {
     flex: 1;
     min-height: 30vh;
@@ -882,44 +824,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .chat-header,
-  .chat-input-area {
-    padding: 16px 20px;
-  }
-
   .chat-messages {
     padding: 16px 20px;
   }
 
-  .input-wrapper {
-    padding: 16px;
-  }
-
-  .header-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-
   .header-text h2 {
     font-size: 18px;
-  }
-
-  .subtitle {
-    font-size: 13px;
-  }
-
-  .input-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .datasource-selector {
-    max-width: 100%;
-  }
-
-  .send-btn {
-    width: 100%;
   }
 }
 

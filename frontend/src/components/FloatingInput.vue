@@ -107,7 +107,7 @@ const handleSend = () => {
   background: white;
   border-radius: 12px;
   padding: 12px;
-  border: none;
+  border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;

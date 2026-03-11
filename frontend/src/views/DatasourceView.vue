@@ -34,6 +34,10 @@
             <el-icon><Refresh /></el-icon>
             刷新
           </el-button>
+          <el-button class="batch-import-btn glass-btn" @click="openBatchImportDialog">
+            <el-icon><Upload /></el-icon>
+            批量导入
+          </el-button>
           <el-button type="primary" class="create-btn" @click="openCreateDialog">
             <el-icon><Plus /></el-icon>
             新建数据源
@@ -105,6 +109,7 @@
     <DatasourceForm
       v-model:show="dialogVisible"
       :datasource="currentDatasource"
+      :is-batch-import="isBatchImportMode"
       @success="handleFormSuccess"
     />
   </div>
@@ -115,7 +120,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { ArrowLeft, Search, Refresh, Plus } from '@element-plus/icons-vue';
+import { ArrowLeft, Search, Refresh, Plus, Upload } from '@element-plus/icons-vue';
 import DatasourceForm from '@/views/DatasourceForm.vue';
 
 const router = useRouter();
@@ -182,13 +187,22 @@ fetchDatasourceList();
 
 const dialogVisible = ref(false);
 const currentDatasource = ref(null);
+const isBatchImportMode = ref(false);
 
 const openCreateDialog = () => {
+  isBatchImportMode.value = false;
+  currentDatasource.value = null;
+  dialogVisible.value = true;
+};
+
+const openBatchImportDialog = () => {
+  isBatchImportMode.value = true;
   currentDatasource.value = null;
   dialogVisible.value = true;
 };
 
 const openEditDialog = (datasource) => {
+  isBatchImportMode.value = false;
   currentDatasource.value = datasource;
   dialogVisible.value = true;
 };
@@ -394,6 +408,12 @@ const viewDatabase = (datasource) => {
 }
 
 .refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-import-btn {
   display: flex;
   align-items: center;
   gap: 6px;
