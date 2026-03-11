@@ -34,19 +34,21 @@
             />
             
             <!-- 加载消息 -->
-            <div v-if="loading" class="loading-message">
-              <div class="loading-avatar">
-                <el-icon><ChatDotRound /></el-icon>
-              </div>
-              <div class="loading-content">
-                <div class="loading-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+            <Transition name="fade-slide" appear>
+              <div v-if="loading" class="loading-message">
+                <div class="loading-avatar">
+                  <el-icon><ChatDotRound /></el-icon>
                 </div>
-                <span class="loading-text">正在生成 SQL...</span>
+                <div class="loading-content">
+                  <div class="step-indicator">
+                    <div class="step-dot"></div>
+                    <Transition name="text-switch" mode="out-in">
+                      <span class="loading-text" :key="currentStep">{{ currentStep || '处理中...' }}</span>
+                    </Transition>
+                  </div>
+                </div>
               </div>
-            </div>
+            </Transition>
             
             <!-- 欢迎提示 -->
             <div v-if="messages.filter(m => !m.isWelcome).length === 0 && !loading" class="welcome-message">
@@ -101,6 +103,7 @@ import ConversationList from '@/components/ConversationList.vue'
 const router = useRouter()
 const messages = ref([])
 const loading = ref(false)
+const currentStep = ref('')  // 当前执行步骤
 const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
 const currentResult = ref(null)
@@ -211,19 +214,8 @@ const handleSendMessage = async (message) => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
 
-    // 创建助手消息占位
-    let assistantMessageIndex = messages.value.length
-    messages.value.push({
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toLocaleTimeString(),
-      sql: null,
-      success: null,
-      summary: '',
-      queryData: [],
-      isStreaming: true
-    })
-
+    // 延迟创建助手消息，等收到结果再创建
+    let assistantMessageIndex = -1
     let sqlResult = null
 
     while (true) {
@@ -231,8 +223,11 @@ const handleSendMessage = async (message) => {
 
       if (done) {
         // 流结束，更新状态
-        messages.value[assistantMessageIndex].isStreaming = false
+        if (assistantMessageIndex >= 0) {
+          messages.value[assistantMessageIndex].isStreaming = false
+        }
         loading.value = false
+        currentStep.value = ''
         break
       }
 
@@ -244,24 +239,32 @@ const handleSendMessage = async (message) => {
           try {
             const data = JSON.parse(line.slice(6))
 
-            if (data.type === 'sql_result') {
-              // 收到SQL结果，隐藏加载提示
+            if (data.type === 'step') {
+              // 更新当前执行步骤
+              currentStep.value = data.step + '...'
+            } else if (data.type === 'sql_result') {
+              // 收到SQL结果，隐藏加载提示，清空步骤
               loading.value = false
+              currentStep.value = ''
               
               // 收到SQL结果
               sqlResult = data.data
               currentResult.value = sqlResult
 
-              messages.value[assistantMessageIndex].content = sqlResult.success
-                ? `生成成功！\n\n最终SQL:\n${sqlResult.final_sql}`
-                : `生成失败: ${sqlResult.error_message}`
-              messages.value[assistantMessageIndex].sql = sqlResult.final_sql
-              messages.value[assistantMessageIndex].success = sqlResult.success
-
-              // 提取查询结果数据用于表格显示
-              if (sqlResult.sql_execution_result && sqlResult.sql_execution_result.data) {
-                messages.value[assistantMessageIndex].queryData = sqlResult.sql_execution_result.data
-              }
+              // 现在才创建助手消息
+              assistantMessageIndex = messages.value.length
+              messages.value.push({
+                role: 'assistant',
+                content: sqlResult.success
+                  ? `生成成功！\n\n最终SQL:\n${sqlResult.final_sql}`
+                  : `生成失败: ${sqlResult.error_message}`,
+                timestamp: new Date().toLocaleTimeString(),
+                sql: sqlResult.final_sql,
+                success: sqlResult.success,
+                summary: '',
+                queryData: sqlResult.sql_execution_result?.data || [],
+                isStreaming: true
+              })
 
               if (sqlResult.success) {
                 ElNotification.success({ title: '成功', message: 'SQL 生成成功', duration: 2000 })
@@ -269,10 +272,23 @@ const handleSendMessage = async (message) => {
               } else {
                 ElNotification.error({ title: '失败', message: sqlResult.error_message, duration: 3000 })
               }
+              
+              await scrollToBottom()
             } else if (data.type === 'summary') {
               // 流式追加总结内容
               if (data.content) {
-                messages.value[assistantMessageIndex].summary += data.content
+                if (assistantMessageIndex === -1) {
+                  assistantMessageIndex = messages.value.length
+                  messages.value.push({
+                    role: 'assistant',
+                    content: '',
+                    timestamp: new Date().toLocaleTimeString(),
+                    summary: data.content,
+                    isStreaming: true
+                  })
+                } else {
+                  messages.value[assistantMessageIndex].summary += data.content
+                }
                 await scrollToBottom()
               }
             } else if (data.type === 'summary_data') {
@@ -290,8 +306,11 @@ const handleSendMessage = async (message) => {
                 conversationListRef.value.refreshConversations()
               }
             } else if (data.type === 'done') {
-              messages.value[assistantMessageIndex].isStreaming = false
+              if (assistantMessageIndex >= 0) {
+                messages.value[assistantMessageIndex].isStreaming = false
+              }
               loading.value = false
+              currentStep.value = ''
               
               // 流式输出完成后，再次刷新对话列表以显示更新后的标题
               if (conversationListRef.value) {
@@ -672,31 +691,51 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(224, 230, 255, 0.8);
 }
 
-.loading-dots span {
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-dot {
   width: 8px;
   height: 8px;
-  background: #4f46e5;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
   border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
-  display: inline-block;
-  margin: 0 2px;
+  animation: dotPulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-.loading-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.loading-dots span:nth-child(3) {
-  animation-delay: 0.4s;
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0);
+  }
 }
 
 .loading-text {
   font-size: 14px;
   color: #6b7280;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  animation: textFadeIn 0.3s ease-out;
 }
 
-
+@keyframes textFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
 @keyframes slideInRight {
   from {
@@ -838,5 +877,36 @@ onBeforeUnmount(() => {
   }
 }
 
+/* Vue Transition 动画 - 加载消息整体 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Vue Transition 动画 - 文字切换 */
+.text-switch-enter-active,
+.text-switch-leave-active {
+  transition: all 0.15s ease;
+}
+
+.text-switch-enter-from {
+  opacity: 0;
+  transform: translateX(-6px);
+}
+
+.text-switch-leave-to {
+  opacity: 0;
+  transform: translateX(6px);
+}
 
 </style>

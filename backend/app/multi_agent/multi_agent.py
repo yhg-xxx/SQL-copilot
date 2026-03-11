@@ -1,5 +1,6 @@
 import logging
-from typing import Any
+import asyncio
+from typing import Any, AsyncGenerator
 from langgraph.graph.state import CompiledStateGraph
 from app.multi_agent.analysis.graph import create_multi_agent_graph
 from app.multi_agent.state.agent_state import AgentState, ValidationResult, OptimizationResult, ExecutionResult, \
@@ -7,11 +8,20 @@ from app.multi_agent.state.agent_state import AgentState, ValidationResult, Opti
 
 logger = logging.getLogger(__name__)
 
+# 步骤名称映射
+STEP_NAMES = {
+    "database_selector": "数据库选择",
+    "sql_generator": "SQL 生成",
+    "syntax_validator": "语法验证",
+    "execution_optimizer": "执行优化",
+    "sql_executor": "SQL 执行",
+}
 
 class MultiAgent:
     """
     多智能体协作系统主类
     """
+    
 
     def __init__(self):
         self.running_tasks = {}
@@ -131,3 +141,148 @@ class MultiAgent:
 
         logger.info(f"多智能体系统执行完成: {result}")
         return result
+
+    @staticmethod
+    async def run_agent_stream(
+            query: str,
+            chat_id: str = None,
+            user_id: int = 1,
+            datasource_id: int = None,
+    ) -> AsyncGenerator[dict, None]:
+        """
+        流式运行多智能体系统，实时返回每个步骤的进度
+
+        Args:
+            query: 用户输入的自然语言查询
+            chat_id: 会话ID
+            user_id: 用户ID
+            datasource_id: 数据源ID
+
+        Yields:
+            包含步骤进度或最终结果的字典
+        """
+        logger.info(f"多智能体系统流式启动，查询: {query}")
+
+        # 获取对话历史
+        chat_history = []
+        if chat_id:
+            try:
+                from app.database.db import SessionLocal
+                from app.models.user_qa_record import UserQARecord
+                db = SessionLocal()
+                try:
+                    history = db.query(UserQARecord).filter(
+                        UserQARecord.conversation_id == chat_id
+                    ).order_by(UserQARecord.create_time.asc()).all()
+
+                    formatted_history = []
+                    for record in history:
+                        if record.question:
+                            formatted_history.append({
+                                "role": "user",
+                                "content": record.question,
+                                "timestamp": record.create_time
+                            })
+                        if record.sql_statement:
+                            formatted_history.append({
+                                "role": "assistant",
+                                "content": record.sql_statement,
+                                "timestamp": record.create_time,
+                                "sql": record.sql_statement
+                            })
+                    
+                    chat_history = formatted_history[-10:] if len(formatted_history) > 10 else formatted_history
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"获取对话历史失败: {e}")
+
+        # 初始化状态
+        initial_state = AgentState(
+            user_query=query,
+            fix_attempts=0,
+            datasource_id=datasource_id,
+            user_id=user_id,
+            chat_history=chat_history
+        )
+
+        graph: CompiledStateGraph = create_multi_agent_graph()
+        final_state = initial_state
+
+        # 定义步骤执行顺序
+        step_order = ["database_selector", "sql_generator", "syntax_validator", "execution_optimizer", "sql_executor"]
+        completed_steps = set()
+
+        try:
+            # 使用 astream 流式执行，获取每个步骤的进度
+            async for event in graph.astream(initial_state, stream_mode="updates"):
+                # event 格式: {node_name: state_update}
+                for node_name, state_update in event.items():
+                    # 找到当前步骤在顺序中的位置
+                    if node_name in step_order:
+                        current_idx = step_order.index(node_name)
+                        # 发送所有未发送的前置步骤（包括当前步骤）
+                        for i in range(current_idx + 1):
+                            step_node = step_order[i]
+                            if step_node not in completed_steps and step_node in STEP_NAMES:
+                                step_name = STEP_NAMES[step_node]
+                                logger.info(f"发送步骤进度: {step_name}")
+                                yield {
+                                    "type": "step",
+                                    "step": step_name,
+                                    "node": step_node
+                                }
+                                completed_steps.add(step_node)
+                                # 添加延迟确保前端能看到每个步骤
+                                await asyncio.sleep(0.5)
+                    
+                    # 更新最终状态
+                    if isinstance(state_update, dict):
+                        final_state = {**final_state, **state_update}
+        except Exception as e:
+            logger.error(f"图执行失败: {e}", exc_info=True)
+            final_state["error_message"] = f"执行失败: {str(e)}"
+
+        # 确保所有步骤都已发送（处理可能遗漏的步骤）
+        for step_node in step_order:
+            if step_node not in completed_steps and step_node in STEP_NAMES:
+                step_name = STEP_NAMES[step_node]
+                logger.info(f"补发步骤进度: {step_name}")
+                yield {
+                    "type": "step",
+                    "step": step_name,
+                    "node": step_node
+                }
+                completed_steps.add(step_node)
+                await asyncio.sleep(0.5)  # 增加到500ms让用户能看到
+
+        # 构建最终结果
+        result = {
+            "type": "result",
+            "success": final_state.get("error_message") is None,
+            "user_query": query,
+            "generated_sql": final_state.get("generated_sql"),
+            "validated_sql": final_state.get("validated_sql"),
+            "retrieved_examples": final_state.get("retrieved_examples"),
+            "final_sql": final_state.get("final_sql"),
+            "validation_result": (
+                final_state.get("validation_result").model_dump()
+                if final_state.get("validation_result")
+                else None
+            ),
+            "optimization_result": (
+                final_state.get("optimization_result").model_dump()
+                if final_state.get("optimization_result")
+                else None
+            ),
+            "execution_result": (
+                final_state.get("execution_result").model_dump()
+                if final_state.get("execution_result")
+                else None
+            ),
+            "sql_execution_result": final_state.get("sql_execution_result"),
+            "error_message": final_state.get("error_message"),
+        }
+
+        logger.info(f"多智能体系统流式执行完成")
+        yield result

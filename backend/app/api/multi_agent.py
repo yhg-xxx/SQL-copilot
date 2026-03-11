@@ -9,7 +9,7 @@ from app.models.user_qa_record import UserQARecord
 from app.models.conversation import UserConversation
 from app.utils.title_generator import generate_conversation_title
 from app.multi_agent.agents.conversation_summarizer import stream_conversation_summary
-# RAG功能已移除
+import logging
 import uuid
 import json
 from typing import AsyncGenerator
@@ -59,14 +59,6 @@ async def multi_agent_query_stream(
                 logging.error(f"创建问答记录失败: {e}")
         # ===========================================================
 
-        # 运行多智能体系统生成SQL
-        result = await multi_agent_instance.run_agent(
-            query=request.query,
-            datasource_id=request.datasource_id,
-            chat_id=request.chat_id,
-            user_id=user_id
-        )
-
         # 获取对话历史用于总结
         chat_history = []
         if request.chat_id:
@@ -100,8 +92,27 @@ async def multi_agent_query_stream(
         async def stream_generator() -> AsyncGenerator[str, None]:
             nonlocal summary_content_list, query_data_for_save
             
-            # 先发送SQL结果
-            yield f"data: {json.dumps({'type': 'sql_result', 'data': result}, ensure_ascii=False, default=str)}\n\n"
+            result = None
+            
+            # 流式运行多智能体系统，实时发送步骤进度
+            async for event in multi_agent_instance.run_agent_stream(
+                query=request.query,
+                datasource_id=request.datasource_id,
+                chat_id=request.chat_id,
+                user_id=user_id
+            ):
+                if event.get("type") == "step":
+                    # 发送步骤进度
+                    yield f"data: {json.dumps({'type': 'step', 'step': event.get('step')}, ensure_ascii=False)}\n\n"
+                elif event.get("type") == "result":
+                    # 保存最终结果
+                    result = event
+                    # 发送SQL结果
+                    yield f"data: {json.dumps({'type': 'sql_result', 'data': result}, ensure_ascii=False, default=str)}\n\n"
+            
+            if result is None:
+                yield f"data: {json.dumps({'type': 'error', 'content': '执行失败'}, ensure_ascii=False)}\n\n"
+                return
             
             # 然后流式输出对话总结
             if chat_history or result.get("sql_execution_result"):
