@@ -2,6 +2,7 @@ import logging
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from app.multi_agent.state.agent_state import AgentState
+from app.multi_agent.agents.database_selector import database_selector
 from app.multi_agent.agents.sql_generator import sql_generator
 from app.multi_agent.agents.syntax_validator import syntax_validator
 from app.multi_agent.agents.execution_optimizer import execution_optimizer
@@ -39,15 +40,17 @@ def create_multi_agent_graph():
     graph = StateGraph(AgentState)
 
     # 添加节点
+    graph.add_node("database_selector", database_selector)
     graph.add_node("sql_generator", sql_generator)
     graph.add_node("syntax_validator", syntax_validator)
     graph.add_node("execution_optimizer", execution_optimizer)
     graph.add_node("sql_executor", sql_executor)
 
     # 设置入口点
-    graph.set_entry_point("sql_generator")
+    graph.set_entry_point("database_selector")
 
     # 添加边
+    graph.add_edge("database_selector", "sql_generator")
     graph.add_edge("sql_generator", "syntax_validator")
 
     # 添加条件边：验证后决定是否继续优化

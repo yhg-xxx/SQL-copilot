@@ -40,6 +40,31 @@
         <el-icon class="error-icon"><Warning /></el-icon>
         <span>生成失败</span>
       </div>
+      <!-- 助手消息的工具栏 -->
+      <div v-if="!isUser" class="agent-chat__toolbar__right">
+        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px;">
+          <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_">
+            <div class="ToolbarCopy_icon__5Odjl" @click="copyMessage('plain')">
+              <el-icon><CopyDocument /></el-icon>
+            </div>
+            <el-dropdown trigger="click">
+              <div class="ToolbarCopy_arrowIconWrap__GR0vU">
+                <i class="ToolbarCopy_arrowIcon__hd9KH"></i>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="copyMessage('plain')">
+                    复制为纯文本
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="copyMessage('markdown')">
+                    复制为Markdown
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -50,9 +75,11 @@ import {
   User,
   ChatDotRound,
   Warning,
-  Document
+  Document,
+  CopyDocument
 } from '@element-plus/icons-vue'
 import DataDisplay from './DataDisplay.vue'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   message: {
@@ -64,6 +91,8 @@ const props = defineProps({
     default: false
   }
 })
+
+const emit = defineEmits(['regenerate'])
 
 // 格式化主内容
 const formattedContent = computed(() => {
@@ -85,6 +114,36 @@ const formattedSummary = computed(() => {
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
 })
+
+// 复制消息内容
+const copyMessage = (format = 'plain') => {
+  const content = props.message.summary || props.message.content || ''
+  if (content) {
+    let textToCopy = content
+    
+    // 如果是markdown格式，保持原样
+    // 如果是纯文本格式，移除markdown标记
+    if (format === 'plain') {
+      textToCopy = content
+        .replace(/^#\s+(.+)$/gm, '$1')
+        .replace(/^##\s+(.+)$/gm, '$1')
+        .replace(/^###\s+(.+)$/gm, '$1')
+        .replace(/^####\s+(.+)$/gm, '$1')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/<br>/g, '\n')
+        .replace(/<[^>]*>/g, '')
+    }
+    
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        ElMessage.success(`内容已复制为${format === 'plain' ? '纯文本' : 'Markdown'}格式`)
+      })
+      .catch(err => {
+        console.error('复制失败:', err)
+        ElMessage.error('复制失败，请手动复制')
+      })
+  }
+}
 </script>
 
 <style scoped>
@@ -417,6 +476,80 @@ const formattedSummary = computed(() => {
 
 
 
+/* 助手消息工具栏样式 */
+.agent-chat__toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  padding-left: 0;
+  transition: all 0.3s ease;
+}
+
+.agent-chat__question-toolbar__copy-wrapper {
+  position: relative;
+}
+
+.ToolbarCopy_copyIconWrap__PfQIm {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.ToolbarCopy_copyIconWrap__PfQIm:hover {
+  background: #f0f4ff;
+  border-color: #e0e6ff;
+  transform: translateY(-1px);
+}
+
+.ToolbarCopy_icon__5Odjl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.3s ease;
+  padding: 2px;
+}
+
+.ToolbarCopy_copyIconWrap__PfQIm:hover .ToolbarCopy_icon__5Odjl {
+  color: #4f46e5;
+}
+
+.ToolbarCopy_icon__5Odjl el-icon {
+  font-size: 16px;
+}
+
+.ToolbarCopy_arrowIconWrap__GR0vU {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 2px;
+  transition: all 0.3s ease;
+}
+
+.ToolbarCopy_arrowIcon__hd9KH {
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 4px solid #64748b;
+  transition: all 0.3s ease;
+}
+
+.ToolbarCopy_copyIconWrap__PfQIm:hover .ToolbarCopy_arrowIcon__hd9KH {
+  border-top-color: #4f46e5;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .chat-message {
@@ -459,6 +592,19 @@ const formattedSummary = computed(() => {
 
   .chart-area {
     height: 250px;
+  }
+
+  .agent-chat__toolbar__right {
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .ToolbarCopy_copyIconWrap__PfQIm {
+    padding: 4px 8px;
+  }
+
+  .ToolbarCopy_icon__5Odjl el-icon {
+    font-size: 16px;
   }
 }
 </style>
