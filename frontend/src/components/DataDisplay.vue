@@ -133,7 +133,7 @@
                     :label="field" 
                     :value="field"
                   />
-                  <el-option v-if="numericFields.length === 0" label="数量" value="count" />
+                  <el-option label="数量" value="count" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -243,29 +243,7 @@ const processedTableData = computed(() => {
   const data = props.queryData
   if (!data || data.length === 0) return []
   
-  const columns = Object.keys(data[0])
-  
-  // 分类字段
-  const { businessFields, numericFields } = categorizeFields(columns, data)
-  
-  if (numericFields.length > 0) {
-    // 有数值列，直接返回原始数据
-    return data
-  } else if (businessFields.length > 0) {
-    // 没有数值列，统计每个类别的个数
-    const countMap = new Map()
-    data.forEach(row => {
-      const key = String(row[businessFields[0]])
-      countMap.set(key, (countMap.get(key) || 0) + 1)
-    })
-    
-    // 转换为表格数据格式
-    return Array.from(countMap.entries()).map(([value, count]) => ({
-      [businessFields[0]]: value,
-      '数量': count
-    }))
-  }
-  
+  // 直接返回原始数据，不做任何修改
   return data
 })
 
@@ -274,20 +252,8 @@ const processedTableColumns = computed(() => {
   const data = props.queryData
   if (!data || data.length === 0) return []
   
-  const columns = Object.keys(data[0])
-  
-  // 分类字段
-  const { businessFields, numericFields } = categorizeFields(columns, data)
-  
-  if (numericFields.length > 0) {
-    // 有数值列，直接返回原始列
-    return columns
-  } else if (businessFields.length > 0) {
-    // 没有数值列，添加数量列
-    return [...businessFields, '数量']
-  }
-  
-  return columns
+  // 直接返回原始列，不做任何修改
+  return Object.keys(data[0])
 })
 
 // 高亮 SQL 代码
@@ -436,12 +402,9 @@ const renderChart = () => {
   if (!selectedXAxis.value && businessFields.length > 0) {
     selectedXAxis.value = businessFields[0]
   }
+  // 始终默认使用数量作为纵坐标
   if (!selectedYAxis.value) {
-    if (numericFields.length > 0) {
-      selectedYAxis.value = numericFields[0]
-    } else {
-      selectedYAxis.value = 'count'
-    }
+    selectedYAxis.value = 'count'
   }
 
   let labels, values, seriesName

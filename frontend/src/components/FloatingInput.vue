@@ -46,15 +46,40 @@
         </el-select>
       </div>
       
-      <!-- 自动选择开关 -->
-      <div class="auto-selection-toggle">
-        <el-switch
+      <!-- 自动选择下拉菜单 -->
+      <div class="auto-selection-dropdown">
+        <el-select
           v-model="autoSelectionValue"
-          active-text="智能选择"
-          inactive-text="手动选择"
-          @change="handleAutoSelectionToggle"
+          placeholder="选择模式"
           size="small"
-        />
+          class="auto-selection-select"
+          @change="handleAutoSelectionToggle"
+        >
+          <el-option
+            :label="'智能选择'"
+            :value="true"
+          >
+            <div class="auto-selection-option">
+              <div class="option-content">
+                <span class="option-name">智能选择</span>
+                <span class="option-description">自动判断并选择合适的数据源</span>
+              </div>
+              <el-icon v-if="autoSelectionValue === true" class="option-check"><Check /></el-icon>
+            </div>
+          </el-option>
+          <el-option
+            :label="'手动选择'"
+            :value="false"
+          >
+            <div class="auto-selection-option">
+              <div class="option-content">
+                <span class="option-name">手动选择</span>
+                <span class="option-description">手动控制数据源选择</span>
+              </div>
+              <el-icon v-if="autoSelectionValue === false" class="option-check"><Check /></el-icon>
+            </div>
+          </el-option>
+        </el-select>
       </div>
       
       <!-- 发送按钮 -->
@@ -73,7 +98,7 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits, watch } from 'vue'
-import { DataAnalysis, ArrowUp, Paperclip } from '@element-plus/icons-vue'
+import { ArrowUp, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
   loading: {
@@ -198,9 +223,13 @@ const handleSend = () => {
 .input-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-top: 4px;
-  justify-content: space-between;
+  justify-content: flex-start;
+}
+
+.input-actions .send-btn {
+  margin-left: auto;
 }
 
 /* 数据源选择器：紧凑样式 */
@@ -345,6 +374,131 @@ const handleSend = () => {
   font-weight: 500;
 }
 
+/* 自动选择下拉菜单样式 */
+.auto-selection-dropdown {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 200px;
+}
+
+.auto-selection-select {
+  flex: 1;
+  width: 100%;
+}
+
+.auto-selection-select :deep(.el-select) {
+  width: 100%;
+}
+
+.auto-selection-select :deep(.el-input__wrapper) {
+  width: 100%;
+  border-radius: 16px !important;
+  border: none !important;
+  background: #f8f9fa !important;
+  transition: all 0.3s ease !important;
+  padding: 2px 12px !important;
+  height: 32px !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-color: transparent !important;
+}
+
+.auto-selection-select :deep(.el-input__wrapper):hover,
+.auto-selection-select :deep(.el-input__wrapper.is-focus) {
+  background: #e9ecef !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-1px) !important;
+  border: none !important;
+  outline: none !important;
+  border-color: transparent !important;
+}
+
+.auto-selection-select :deep(.el-input__wrapper.is-focus) {
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+.auto-selection-select :deep(.el-select__caret) {
+  color: #6b7280 !important;
+  transition: all 0.3s ease !important;
+}
+
+.auto-selection-select :deep(.el-select__caret:hover) {
+  color: #4f46e5 !important;
+}
+
+/* 自动选择下拉菜单项样式 */
+.auto-selection-select :deep(.el-select-dropdown) {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  background: white;
+  min-width: 200px;
+}
+
+.auto-selection-select :deep(.el-select-dropdown__item) {
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 2px 0;
+  transition: all 0.3s ease;
+  height: auto;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.auto-selection-select :deep(.el-select-dropdown__item:hover) {
+  background: #f0f4ff;
+  transform: translateX(4px);
+}
+
+.auto-selection-select :deep(.el-select-dropdown__item.selected) {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.auto-selection-select :deep(.el-select-dropdown__item.selected:hover) {
+  background: #c7d2fe;
+}
+
+.auto-selection-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.option-name {
+  font-weight: 500;
+  color: #1a1a2a;
+  font-size: 14px;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.option-description {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.option-check {
+  color: #2116f1;
+  font-size: 16px;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
 /* 发送按钮：用户要求的样式 */
 .send-btn {
   width: 36px;
@@ -386,6 +540,7 @@ const handleSend = () => {
   .input-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
   
   .function-buttons {
@@ -394,6 +549,12 @@ const handleSend = () => {
   
   .datasource-selector {
     width: 100%;
+    max-width: none;
+  }
+  
+  .auto-selection-dropdown {
+    width: 100%;
+    max-width: none;
   }
   
   .attach-btn,
