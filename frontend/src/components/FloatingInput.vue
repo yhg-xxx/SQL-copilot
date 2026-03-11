@@ -22,6 +22,7 @@
           size="small"
           class="datasource-select"
           @change="handleDatasourceChange"
+          :disabled="useAutoDatabaseSelection"
           :style="{
             '--el-select-border-color': 'transparent',
             '--el-select-focus-border-color': 'transparent',
@@ -45,13 +46,24 @@
         </el-select>
       </div>
       
+      <!-- 自动选择开关 -->
+      <div class="auto-selection-toggle">
+        <el-switch
+          v-model="autoSelectionValue"
+          active-text="智能选择"
+          inactive-text="手动选择"
+          @change="handleAutoSelectionToggle"
+          size="small"
+        />
+      </div>
+      
       <!-- 发送按钮 -->
       <el-button
         @click="handleSend"
         type="primary"
         :loading="loading"
         class="send-btn"
-        :disabled="!inputMessage.trim() || !selectedDatasourceModel"
+        :disabled="!inputMessage.trim() || (!useAutoDatabaseSelection && !selectedDatasourceModel)"
       >
         <el-icon v-if="!loading"><ArrowUp /></el-icon>
       </el-button>
@@ -75,12 +87,22 @@ const props = defineProps({
   selectedDatasource: {
     type: [String, Number],
     default: null
+  },
+  useAutoDatabaseSelection: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['send', 'update:selectedDatasource'])
+const emit = defineEmits(['send', 'update:selectedDatasource', 'toggle-auto-selection'])
 
 const inputMessage = ref('')
+const autoSelectionValue = ref(props.useAutoDatabaseSelection)
+
+// 监听 props 变化
+watch(() => props.useAutoDatabaseSelection, (newValue) => {
+  autoSelectionValue.value = newValue
+})
 
 // 使用 computed 实现双向绑定
 const selectedDatasourceModel = computed({
@@ -93,9 +115,14 @@ const handleDatasourceChange = (value) => {
   emit('update:selectedDatasource', value)
 }
 
+// 处理自动选择开关变化
+const handleAutoSelectionToggle = (value) => {
+  emit('toggle-auto-selection', value)
+}
+
 const handleSend = () => {
   const message = inputMessage.value.trim()
-  if (message && props.selectedDatasource) {
+  if (message && (props.useAutoDatabaseSelection || props.selectedDatasource)) {
     emit('send', message)
     inputMessage.value = ''
   }

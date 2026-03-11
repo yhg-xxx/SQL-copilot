@@ -97,7 +97,7 @@ class MultiAgent:
         graph: CompiledStateGraph = create_multi_agent_graph()
 
         try:
-            final_state = graph.invoke(initial_state)
+            final_state = await graph.ainvoke(initial_state)
         except Exception as e:
             logger.error(f"图执行失败: {e}", exc_info=True)
             initial_state["error_message"] = f"执行失败: {str(e)}"

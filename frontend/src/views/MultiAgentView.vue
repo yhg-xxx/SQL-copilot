@@ -60,7 +60,9 @@
                 :loading="loading"
                 :datasources="datasources"
                 v-model:selectedDatasource="selectedDatasource"
+                :useAutoDatabaseSelection="useAutoDatabaseSelection"
                 @send="handleSendMessage"
+                @toggle-auto-selection="useAutoDatabaseSelection = !useAutoDatabaseSelection"
               />
             </div>
           </div>
@@ -72,7 +74,9 @@
             :loading="loading"
             :datasources="datasources"
             v-model:selectedDatasource="selectedDatasource"
+            :useAutoDatabaseSelection="useAutoDatabaseSelection"
             @send="handleSendMessage"
+            @toggle-auto-selection="useAutoDatabaseSelection = !useAutoDatabaseSelection"
           />
         </div>
         
@@ -101,6 +105,7 @@ const messagesContainer = ref(null)
 const selectedDatasource = ref(null)
 const currentResult = ref(null)
 const datasources = ref([])
+const useAutoDatabaseSelection = ref(true)
 
 // 滚动状态跟踪
 const shouldAutoScroll = ref(true)
@@ -129,13 +134,13 @@ const handleSendMessage = async (message) => {
     ElMessage.warning('请输入查询内容')
     return
   }
-  if (!selectedDatasource.value) {
+  if (!useAutoDatabaseSelection.value && !selectedDatasource.value) {
     ElMessage.warning('请先选择数据源')
     return
   }
   
   // 保存当前选中的数据源ID
-  const currentDatasourceId = selectedDatasource.value
+  const currentDatasourceId = useAutoDatabaseSelection.value ? null : selectedDatasource.value
   
   // 如果没有选中的对话，自动创建一个新对话
   if (!selectedConversationId.value) {
