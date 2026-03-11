@@ -92,8 +92,8 @@
 
     <!-- 数据表格 -->
     <template v-if="dataViewMode === 'table'">
-      <el-table v-if="queryData && queryData.length > 0" :data="queryData" stripe border max-height="300" style="width: 100%; margin-top: 12px;" class="data-table">
-        <el-table-column v-for="col in queryColumns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
+      <el-table v-if="queryData && queryData.length > 0" :data="processedTableData" stripe border max-height="300" style="width: 100%; margin-top: 12px;" class="data-table">
+        <el-table-column v-for="col in processedTableColumns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
       </el-table>
       <div v-else class="empty-data">
         <el-empty description="暂无数据" :image-size="60" />
@@ -102,13 +102,42 @@
 
     <!-- 图表 -->
     <template v-else-if="dataViewMode === 'chart'">
-      <div v-if="queryData && queryData.length > 0" class="chart-container">
+      <div v-if="queryData && queryData.length > 0 && isChartDataValid" class="chart-container">
         <div class="chart-type-selector">
           <el-radio-group v-model="chartType" size="small">
             <el-radio-button label="bar">柱状图</el-radio-button>
             <el-radio-button label="pie">饼图</el-radio-button>
             <el-radio-button label="line">折线图</el-radio-button>
           </el-radio-group>
+        </div>
+        <div class="axis-selector" v-if="businessFields.length > 0">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="横坐标" size="small">
+                <el-select v-model="selectedXAxis" size="small" @change="renderChart">
+                  <el-option 
+                    v-for="field in businessFields" 
+                    :key="field" 
+                    :label="field" 
+                    :value="field"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="纵坐标" size="small">
+                <el-select v-model="selectedYAxis" size="small" @change="renderChart">
+                  <el-option 
+                    v-for="field in numericFields" 
+                    :key="field" 
+                    :label="field" 
+                    :value="field"
+                  />
+                  <el-option v-if="numericFields.length === 0" label="数量" value="count" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
         </div>
         <div ref="chartRef" class="chart-area"></div>
       </div>
@@ -174,11 +203,91 @@ const exportingExcel = ref(false)
 const chartType = ref('bar')
 const chartRef = ref(null)
 let chartInstance = null
+const selectedXAxis = ref('')
+const selectedYAxis = ref('')
 
 // 获取查询结果的列名
 const queryColumns = computed(() => {
   if (!props.queryData || props.queryData.length === 0) return []
   return Object.keys(props.queryData[0])
+})
+
+// 检查图表数据是否有效
+const isChartDataValid = computed(() => {
+  if (!props.queryData || props.queryData.length === 0) return false
+  
+  const data = props.queryData
+  const columns = Object.keys(data[0])
+  
+  // 至少需要有一列数据
+  return columns.length > 0
+})
+
+// 业务字段和数值字段计算属性
+const businessFields = computed(() => {
+  if (!props.queryData || props.queryData.length === 0) return []
+  const columns = Object.keys(props.queryData[0])
+  const { businessFields } = categorizeFields(columns, props.queryData)
+  return businessFields
+})
+
+const numericFields = computed(() => {
+  if (!props.queryData || props.queryData.length === 0) return []
+  const columns = Object.keys(props.queryData[0])
+  const { numericFields } = categorizeFields(columns, props.queryData)
+  return numericFields
+})
+
+// 处理表格数据
+const processedTableData = computed(() => {
+  const data = props.queryData
+  if (!data || data.length === 0) return []
+  
+  const columns = Object.keys(data[0])
+  
+  // 分类字段
+  const { businessFields, numericFields } = categorizeFields(columns, data)
+  
+  if (numericFields.length > 0) {
+    // 有数值列，直接返回原始数据
+    return data
+  } else if (businessFields.length > 0) {
+    // 没有数值列，统计每个类别的个数
+    const countMap = new Map()
+    data.forEach(row => {
+      const key = String(row[businessFields[0]])
+      countMap.set(key, (countMap.get(key) || 0) + 1)
+    })
+    
+    // 转换为表格数据格式
+    return Array.from(countMap.entries()).map(([value, count]) => ({
+      [businessFields[0]]: value,
+      '数量': count
+    }))
+  }
+  
+  return data
+})
+
+// 处理表格列
+const processedTableColumns = computed(() => {
+  const data = props.queryData
+  if (!data || data.length === 0) return []
+  
+  const columns = Object.keys(data[0])
+  
+  // 分类字段
+  const { businessFields, numericFields } = categorizeFields(columns, data)
+  
+  if (numericFields.length > 0) {
+    // 有数值列，直接返回原始列
+    return columns
+  } else if (businessFields.length > 0) {
+    // 没有数值列，添加数量列
+    return [...businessFields, '数量']
+  }
+  
+  return columns
 })
 
 // 高亮 SQL 代码
@@ -278,9 +387,84 @@ watch([dataViewMode, chartType, () => props.queryData], async ([mode]) => {
   }
 }, { immediate: false, deep: true })
 
+// 数据字段分类函数
+const categorizeFields = (columns, data) => {
+  const idPattern = /^(id|uuid|guid|sale_id|order_id|user_id|customer_id|product_id|transaction_id|row_id|record_id)$/i
+  const numericPattern = /^\d+(\.\d+)?$/
+  
+  const businessFields = []
+  const numericFields = []
+  const idFields = []
+  
+  columns.forEach(col => {
+    const sampleValue = data[0][col]
+    const valueStr = String(sampleValue)
+    
+    // 检查是否为ID字段
+    if (idPattern.test(col) || valueStr.length > 20 && /^[a-zA-Z0-9-]+$/.test(valueStr)) {
+      idFields.push(col)
+    } else if (typeof sampleValue === 'number' || numericPattern.test(valueStr)) {
+      numericFields.push(col)
+      businessFields.push(col)
+    } else {
+      businessFields.push(col)
+    }
+  })
+  
+  return {
+    businessFields,
+    numericFields,
+    idFields
+  }
+}
+
 // 渲染图表
 const renderChart = () => {
   if (!chartRef.value || !props.queryData || props.queryData.length === 0) return
+
+  const data = props.queryData
+  const columns = Object.keys(data[0])
+  
+  // 分类字段
+  const { businessFields, numericFields } = categorizeFields(columns, data)
+  
+  // 智能选择或使用用户选择的维度和数值列
+  let labelColumn = selectedXAxis.value || (businessFields.length > 0 ? businessFields[0] : columns[0])
+  let valueColumn = selectedYAxis.value || (numericFields.length > 0 ? numericFields[0] : null)
+
+  // 自动设置默认值
+  if (!selectedXAxis.value && businessFields.length > 0) {
+    selectedXAxis.value = businessFields[0]
+  }
+  if (!selectedYAxis.value) {
+    if (numericFields.length > 0) {
+      selectedYAxis.value = numericFields[0]
+    } else {
+      selectedYAxis.value = 'count'
+    }
+  }
+
+  let labels, values, seriesName
+
+  if (valueColumn && valueColumn !== 'count') {
+    // 有数值列，直接使用
+    labels = data.map(row => String(row[labelColumn]))
+    values = data.map(row => Number(row[valueColumn]) || 0)
+    seriesName = valueColumn
+  } else {
+    // 没有数值列，统计每个类别的个数
+    const countMap = new Map()
+    data.forEach(row => {
+      const label = String(row[labelColumn])
+      countMap.set(label, (countMap.get(label) || 0) + 1)
+    })
+    
+    // 转换为数组
+    const countArray = Array.from(countMap.entries())
+    labels = countArray.map(([label]) => label)
+    values = countArray.map(([_, count]) => count)
+    seriesName = '数量'
+  }
 
   // 销毁旧实例
   if (chartInstance) {
@@ -288,19 +472,6 @@ const renderChart = () => {
   }
 
   chartInstance = echarts.init(chartRef.value)
-
-  const data = props.queryData
-  const columns = Object.keys(data[0])
-
-  // 智能选择维度和数值列
-  let labelColumn = columns[0]
-  let valueColumn = columns.find(col => {
-    const val = data[0][col]
-    return typeof val === 'number' || !isNaN(Number(val))
-  }) || columns[1] || columns[0]
-
-  const labels = data.map(row => String(row[labelColumn]))
-  const values = data.map(row => Number(row[valueColumn]) || 0)
 
   let option = {}
 
@@ -314,7 +485,7 @@ const renderChart = () => {
       },
       yAxis: { type: 'value' },
       series: [{
-        name: valueColumn,
+        name: seriesName,
         type: 'bar',
         data: values,
         itemStyle: {
@@ -348,7 +519,7 @@ const renderChart = () => {
       },
       yAxis: { type: 'value' },
       series: [{
-        name: valueColumn,
+        name: seriesName,
         type: 'line',
         data: values,
         smooth: true,
@@ -554,6 +725,28 @@ watch(dataViewMode, (newMode) => {
 .chart-type-selector :deep(.el-radio-button__orig-radio:checked + .el-radio-button__inner) {
   background: #4f46e5;
   border-color: #4f46e5;
+}
+
+.axis-selector {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.axis-selector:hover {
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+}
+
+.axis-selector :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.axis-selector :deep(.el-select) {
+  width: 100%;
 }
 
 .chart-area {
