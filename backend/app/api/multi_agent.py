@@ -113,6 +113,9 @@ async def multi_agent_query_stream(
                 yield f"data: {json.dumps({'type': 'error', 'content': '执行失败'}, ensure_ascii=False)}\n\n"
                 return
             
+            # 发送总结中步骤进度
+            yield f"data: {json.dumps({'type': 'step', 'step': '总结中'}, ensure_ascii=False)}\n\n"
+            
             # 然后流式输出对话总结
             if chat_history or result.get("sql_execution_result"):
                 async for chunk in stream_conversation_summary(

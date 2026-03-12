@@ -244,15 +244,14 @@ const handleSendMessage = async (message) => {
               // 更新当前执行步骤
               currentStep.value = data.step + '...'
             } else if (data.type === 'sql_result') {
-              // 收到SQL结果，隐藏加载提示，清空步骤
+              // 收到SQL结果，关闭loading但保留步骤显示
               loading.value = false
-              currentStep.value = ''
               
               // 收到SQL结果
               sqlResult = data.data
               currentResult.value = sqlResult
 
-              // 现在才创建助手消息
+              // 现在才创建助手消息，标记为正在总结
               assistantMessageIndex = messages.value.length
               messages.value.push({
                 role: 'assistant',
@@ -264,7 +263,8 @@ const handleSendMessage = async (message) => {
                 success: sqlResult.success,
                 summary: '',
                 queryData: sqlResult.sql_execution_result?.data || [],
-                isStreaming: true
+                isStreaming: true,
+                isSummarizing: true  // 新增：标记正在总结状态
               })
 
               if (sqlResult.success) {
@@ -309,6 +309,7 @@ const handleSendMessage = async (message) => {
             } else if (data.type === 'done') {
               if (assistantMessageIndex >= 0) {
                 messages.value[assistantMessageIndex].isStreaming = false
+                messages.value[assistantMessageIndex].isSummarizing = false
               }
               loading.value = false
               currentStep.value = ''

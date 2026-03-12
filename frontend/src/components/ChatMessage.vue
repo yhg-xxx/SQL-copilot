@@ -12,24 +12,35 @@
       </div>
       <div class="message-body">
         <!-- 有SQL和总结时 -->
-        <template v-if="message.sql && message.summary">
+        <template v-if="message.sql && (message.summary || message.isSummarizing)">
           <!-- 总结显示 -->
           <div class="summary-section">
             <div class="summary-header">
               <el-icon><Document /></el-icon>
               <span>对话总结</span>
+              <!-- 总结中状态指示 -->
+              <span v-if="message.isSummarizing" class="summarizing-indicator">
+                <span class="summarizing-dot"></span>
+                总结中...
+              </span>
             </div>
-            <div class="summary-content" v-html="formattedSummary"></div>
+            <div v-if="message.summary" class="summary-content" v-html="formattedSummary"></div>
+            <!-- 总结中占位提示 -->
+            <div v-else class="summary-placeholder">
+              <div class="placeholder-line"></div>
+              <div class="placeholder-line placeholder-line-short"></div>
+            </div>
             <!-- 数据展示区域：使用新组件 -->
             <DataDisplay
+              v-if="message.queryData && message.queryData.length > 0"
               :query-data="message.queryData"
               :sql="message.sql"
             />
           </div>
         </template>
         
-        <!-- 仅有SQL无总结时 -->
-        <template v-else-if="message.sql && !message.summary">
+        <!-- 仅有SQL无总结且未在总结时 -->
+        <template v-else-if="message.sql && !message.summary && !message.isSummarizing">
           <!-- 不显示任何内容 -->
         </template>
         
@@ -468,6 +479,65 @@ const handleRegenerate = () => {
   color: #1a1a2e;
   font-size: 16px;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.summarizing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.summarizing-dot {
+  width: 6px;
+  height: 6px;
+  background: #8b5cf6;
+  border-radius: 50%;
+  animation: summarizingPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes summarizingPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.summary-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.placeholder-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: placeholderShimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.placeholder-line-short {
+  width: 60%;
+}
+
+@keyframes placeholderShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .summary-content {

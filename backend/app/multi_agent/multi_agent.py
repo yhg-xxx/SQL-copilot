@@ -15,6 +15,7 @@ STEP_NAMES = {
     "syntax_validator": "语法验证",
     "execution_optimizer": "执行优化",
     "sql_executor": "SQL 执行",
+    "summary_generator": "总结中"
 }
 
 class MultiAgent:
@@ -209,32 +210,48 @@ class MultiAgent:
         graph: CompiledStateGraph = create_multi_agent_graph()
         final_state = initial_state
 
-        # 定义步骤执行顺序
+        # 定义步骤执行顺序（按预期执行顺序）
         step_order = ["database_selector", "sql_generator", "syntax_validator", "execution_optimizer", "sql_executor"]
-        completed_steps = set()
+        sent_steps = set()
+        actual_executed_nodes = []
 
         try:
+            # 首先立即发送第一个步骤，让用户知道已经开始
+            first_step = step_order[0]
+            if first_step in STEP_NAMES and first_step not in sent_steps:
+                step_name = STEP_NAMES[first_step]
+                logger.info(f"发送步骤进度: {step_name}")
+                yield {
+                    "type": "step",
+                    "step": step_name,
+                    "node": first_step
+                }
+                sent_steps.add(first_step)
+                await asyncio.sleep(0.1)
+
             # 使用 astream 流式执行，获取每个步骤的进度
             async for event in graph.astream(initial_state, stream_mode="updates"):
                 # event 格式: {node_name: state_update}
                 for node_name, state_update in event.items():
+                    actual_executed_nodes.append(node_name)
+                    
                     # 找到当前步骤在顺序中的位置
                     if node_name in step_order:
                         current_idx = step_order.index(node_name)
-                        # 发送所有未发送的前置步骤（包括当前步骤）
-                        for i in range(current_idx + 1):
-                            step_node = step_order[i]
-                            if step_node not in completed_steps and step_node in STEP_NAMES:
-                                step_name = STEP_NAMES[step_node]
+                        # 发送下一个步骤（如果存在且未发送）
+                        next_idx = current_idx + 1
+                        if next_idx < len(step_order):
+                            next_step = step_order[next_idx]
+                            if next_step in STEP_NAMES and next_step not in sent_steps:
+                                step_name = STEP_NAMES[next_step]
                                 logger.info(f"发送步骤进度: {step_name}")
                                 yield {
                                     "type": "step",
                                     "step": step_name,
-                                    "node": step_node
+                                    "node": next_step
                                 }
-                                completed_steps.add(step_node)
-                                # 添加延迟确保前端能看到每个步骤
-                                await asyncio.sleep(0.5)
+                                sent_steps.add(next_step)
+                                await asyncio.sleep(0.1)
                     
                     # 更新最终状态
                     if isinstance(state_update, dict):
@@ -242,19 +259,6 @@ class MultiAgent:
         except Exception as e:
             logger.error(f"图执行失败: {e}", exc_info=True)
             final_state["error_message"] = f"执行失败: {str(e)}"
-
-        # 确保所有步骤都已发送（处理可能遗漏的步骤）
-        for step_node in step_order:
-            if step_node not in completed_steps and step_node in STEP_NAMES:
-                step_name = STEP_NAMES[step_node]
-                logger.info(f"补发步骤进度: {step_name}")
-                yield {
-                    "type": "step",
-                    "step": step_name,
-                    "node": step_node
-                }
-                completed_steps.add(step_node)
-                await asyncio.sleep(0.5)  # 增加到500ms让用户能看到
 
         # 构建最终结果
         result = {
