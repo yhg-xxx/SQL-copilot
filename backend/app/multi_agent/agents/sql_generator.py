@@ -8,6 +8,7 @@ from app.multi_agent.state.agent_state import AgentState
 from app.utils.llm_util import get_llm
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
+from app.multi_agent.RAG.table_schema_retriever import retrieve_relevant_tables, format_tables_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +122,35 @@ def sql_generator(state: AgentState) -> AgentState | None:
         # 历史示例功能已移除
         examples_text = ""
 
-        # 获取数据源表结构
+        # 获取数据源表结构 - 使用RAG检索相关表
         schema = {}
         db_type = "mysql"
+        schema_text = ""
+        
         if datasource_id:
-            schema = get_datasource_schema(datasource_id)
+            # 先尝试使用RAG检索相关表
+            try:
+                relevant_tables = retrieve_relevant_tables(
+                    question=user_query,
+                    datasource_id=datasource_id,
+                    top_k=20,  # 进一步增加返回的表数量，使检索更宽松
+                    score_threshold=0.1  # 进一步降低相似度阈值，使检索更宽松
+                )
+                
+                if relevant_tables and len(relevant_tables) > 0:
+                    logger.info(f"使用RAG检索到 {len(relevant_tables)} 个相关表")
+                    schema_text = format_tables_for_prompt(relevant_tables)
+                else:
+                    logger.info("RAG未找到相关表，回退到获取所有表")
+                    # RAG没有找到相关表，回退到获取所有表
+                    schema = get_datasource_schema(datasource_id)
+                    schema_text = format_schema_for_prompt(schema)
+            except Exception as e:
+                logger.warning(f"RAG检索失败，回退到获取所有表: {e}")
+                # RAG失败，回退到获取所有表
+                schema = get_datasource_schema(datasource_id)
+                schema_text = format_schema_for_prompt(schema)
+            
             # 获取数据库类型
             try:
                 from app.database.db import SessionLocal
@@ -140,9 +165,8 @@ def sql_generator(state: AgentState) -> AgentState | None:
                     db.close()
             except Exception as e:
                 logger.warning(f"获取数据源类型失败: {e}")
-
-        # 格式化表结构信息
-        schema_text = format_schema_for_prompt(schema)
+        else:
+            schema_text = "无可用表结构信息"
         
         # 将格式化后的表结构存入 state，供后续智能体使用
         state["db_info"] = schema_text

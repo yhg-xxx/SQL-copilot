@@ -243,7 +243,9 @@ def syntax_validator(state: AgentState) -> AgentState:
                 logger.error(error_msg, exc_info=True)
                 fixed_sql = generated_sql
 
-            need_db_verify = fixed_sql != generated_sql or len(all_errors) == 0
+            # 修改need_db_verify逻辑，确保即使有类型不匹配错误也进行数据库验证
+            # 这样可以利用数据库的类型转换能力来验证SQL的实际可执行性
+            need_db_verify = fixed_sql != generated_sql or len(all_errors) == 0 or any("字段类型不匹配" in error or "type mismatch" in error.lower() for error in all_errors)
             db_verified = False
 
             if datasource_id and need_db_verify:
@@ -296,10 +298,31 @@ def syntax_validator(state: AgentState) -> AgentState:
                 all_warnings.append(warning_msg)
                 logger.warning(warning_msg)
 
-            is_valid = len(all_errors) == 0
-            
-            if len(all_errors) == 0 and len(all_warnings) > 0:
-                is_valid = True
+            # 调整验证逻辑：如果数据库验证通过，即使LLM报告类型不匹配，也视为有效
+            # 因为某些数据库（如MySQL）会自动进行类型转换
+            if validation_passed and db_verified:
+                # 数据库验证通过，将类型不匹配的错误转换为警告
+                filtered_errors = []
+                type_mismatch_warnings = []
+                
+                for error in all_errors:
+                    if "字段类型不匹配" in error or "type mismatch" in error.lower():
+                        type_mismatch_warnings.append(f"类型警告: {error}")
+                    else:
+                        filtered_errors.append(error)
+                
+                all_errors = filtered_errors
+                all_warnings.extend(type_mismatch_warnings)
+                
+                # 如果没有其他错误，标记为有效
+                if len(all_errors) == 0:
+                    is_valid = True
+            else:
+                # 没有数据库验证时，使用原始逻辑
+                is_valid = len(all_errors) == 0
+                
+                if len(all_errors) == 0 and len(all_warnings) > 0:
+                    is_valid = True
 
             need_fix = len(all_errors) > 0 and attempt < max_fix_attempts
 

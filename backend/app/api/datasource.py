@@ -12,6 +12,8 @@ from app.schemas.datasource import (
 )
 from app.utils.dependencies import get_current_user
 from app.utils.db_utils import get_database_handler
+from app.multi_agent.RAG.table_schema_retriever import save_datasource_tables_to_vector_store
+from app.multi_agent.RAG.vector_store import get_vector_store
 from typing import List
 import json
 
@@ -188,6 +190,13 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
             db.commit()
 
             db.refresh(new_datasource)
+            
+            # 保存表结构到向量库
+            try:
+                save_datasource_tables_to_vector_store(new_datasource.id)
+            except Exception as e:
+                logger.warning(f"保存表结构到向量库失败: {e}")
+            
             return new_datasource
 
         except Exception as e:
@@ -408,6 +417,12 @@ async def update_datasource(datasource_id: int, datasource: DatasourceUpdate, db
 
             # 统一提交所有更改
             db.commit()
+            
+            # 保存表结构到向量库
+            try:
+                save_datasource_tables_to_vector_store(datasource_id)
+            except Exception as e:
+                logger.warning(f"保存表结构到向量库失败: {e}")
 
         except Exception as e:
             db.rollback()
@@ -435,6 +450,13 @@ async def delete_datasource(datasource_id: int, db: Session = Depends(get_db), c
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Datasource not found"
         )
+
+    # 删除向量库中的表结构
+    try:
+        vector_store = get_vector_store()
+        vector_store.delete_datasource_tables(datasource_id)
+    except Exception as e:
+        logger.warning(f"删除向量库中表结构失败: {e}")
 
     # 删除数据源（级联删除相关的表和字段信息）
     db.delete(db_datasource)
@@ -839,6 +861,40 @@ async def fetch_databases_by_config(datasource_config: dict):
         )
 
 
+# 重新生成数据源的表结构向量
+@router.post("/{datasource_id}/regen-vectors")
+async def regenerate_table_vectors(datasource_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """
+    重新生成指定数据源的表结构向量
+    """
+    # 获取当前用户ID
+    user_id = int(current_user.get("sub"))
+
+    # 查找数据源
+    datasource = db.query(Datasource).filter(Datasource.id == datasource_id, Datasource.create_by == user_id).first()
+    if not datasource:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Datasource not found"
+        )
+
+    try:
+        success = save_datasource_tables_to_vector_store(datasource_id)
+        if success:
+            return {"message": "Table vectors regenerated successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to regenerate table vectors"
+            )
+    except Exception as e:
+        logger.error(f"重新生成表结构向量失败: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate table vectors: {str(e)}"
+        )
+
+
 # 批量创建数据源
 @router.post("/batch-create", response_model=List[DatasourceResponse])
 async def batch_create_datasources(batch_data: BatchDatasourceCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -991,6 +1047,13 @@ async def batch_create_datasources(batch_data: BatchDatasourceCreate, db: Sessio
                     logger.error(f"同步表和字段信息失败: {str(e)}")
             
             db.refresh(new_datasource)
+            
+            # 保存表结构到向量库
+            try:
+                save_datasource_tables_to_vector_store(new_datasource.id)
+            except Exception as e:
+                logger.warning(f"保存数据源 {new_datasource.id} 表结构到向量库失败: {e}")
+            
             created_datasources.append(new_datasource)
         
         # 统一提交所有更改

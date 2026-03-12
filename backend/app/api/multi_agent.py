@@ -9,8 +9,8 @@ from app.models.user_qa_record import UserQARecord
 from app.models.conversation import UserConversation
 from app.utils.title_generator import generate_conversation_title
 from app.multi_agent.agents.conversation_summarizer import stream_conversation_summary
-import logging
 import uuid
+import logging
 import json
 from typing import AsyncGenerator
 
@@ -55,7 +55,6 @@ async def multi_agent_query_stream(
                 db.refresh(qa_record)
                 logging.info(f"创建问答记录成功，ID: {qa_record.id}")
             except Exception as e:
-                import logging
                 logging.error(f"创建问答记录失败: {e}")
         # ===========================================================
 
@@ -157,7 +156,6 @@ async def multi_agent_query_stream(
                     db.commit()
                     db.refresh(qa_record)
 
-                    # RAG功能已移除
 
                     conversation = db.query(UserConversation).filter(
                         UserConversation.conversation_id == request.chat_id,
