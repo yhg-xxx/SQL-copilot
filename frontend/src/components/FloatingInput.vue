@@ -10,6 +10,9 @@
       @keyup.enter.exact="handleSend"
       :disabled="loading"
       class="chat-input"
+      ref="textareaRef"
+      @input="adjustHeight"
+      @paste="adjustHeight"
     ></el-input>
 
     <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
@@ -97,7 +100,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits, watch } from 'vue'
+import { ref, computed, defineProps, defineEmits, watch, onMounted } from 'vue'
 import { ArrowUp, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -116,6 +119,10 @@ const props = defineProps({
   useAutoDatabaseSelection: {
     type: Boolean,
     default: true
+  },
+  maxRows: {
+    type: Number,
+    default: 12
   }
 })
 
@@ -123,10 +130,16 @@ const emit = defineEmits(['send', 'update:selectedDatasource', 'toggle-auto-sele
 
 const inputMessage = ref('')
 const autoSelectionValue = ref(props.useAutoDatabaseSelection)
+const textareaRef = ref(null)
 
 // 监听 props 变化
 watch(() => props.useAutoDatabaseSelection, (newValue) => {
   autoSelectionValue.value = newValue
+})
+
+// 监听输入内容变化，调整高度
+watch(inputMessage, () => {
+  adjustHeight()
 })
 
 // 使用 computed 实现双向绑定
@@ -145,13 +158,47 @@ const handleAutoSelectionToggle = (value) => {
   emit('toggle-auto-selection', value)
 }
 
+// 调整输入框高度
+const adjustHeight = () => {
+  if (!textareaRef.value) return
+  
+  const textarea = textareaRef.value.$el.querySelector('textarea')
+  if (!textarea) return
+  
+  // 重置高度以正确计算滚动高度
+  textarea.style.height = 'auto'
+  
+  // 计算单行高度和最大高度
+  const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 20
+  const maxHeight = lineHeight * props.maxRows
+  
+  // 计算内容高度
+  const scrollHeight = textarea.scrollHeight
+  
+  // 设置高度，不超过最大限制
+  if (scrollHeight <= maxHeight) {
+    textarea.style.height = `${scrollHeight}px`
+    textarea.style.overflowY = 'hidden'
+  } else {
+    textarea.style.height = `${maxHeight}px`
+    textarea.style.overflowY = 'auto'
+  }
+}
+
 const handleSend = () => {
   const message = inputMessage.value.trim()
   if (message && (props.useAutoDatabaseSelection || props.selectedDatasource)) {
     emit('send', message)
     inputMessage.value = ''
+    // 重置高度
+    setTimeout(adjustHeight, 0)
   }
 }
+
+// 组件挂载后初始化
+onMounted(() => {
+  adjustHeight()
+})
 </script>
 
 <style scoped>
@@ -198,11 +245,11 @@ const handleSend = () => {
   font-size: 14px;
   line-height: 1.5;
   resize: none;
-  height: 100% !important;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: #1a1a2a;
-  transition: all 0.3s ease;
+  transition: height 0.3s ease, overflow 0.3s ease;
   min-height: 40px;
+  max-height: 300px;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -268,14 +315,13 @@ const handleSend = () => {
 .datasource-select :deep(.el-input__wrapper) {
   width: 100%;
   border-radius: 16px !important;
-  border: none !important;
   background: #f8f9fa !important;
   transition: all 0.3s ease !important;
   padding: 2px 12px !important;
   height: 32px !important;
   box-shadow: none !important;
   outline: none !important;
-  border-color: transparent !important;
+  border: none transparent !important;
 }
 
 .datasource-select :deep(.el-input__wrapper):hover,
@@ -283,9 +329,8 @@ const handleSend = () => {
   background: #e9ecef !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   transform: translateY(-1px) !important;
-  border: none !important;
   outline: none !important;
-  border-color: transparent !important;
+  border: none transparent !important;
 }
 
 .datasource-select :deep(.el-input__wrapper.is-focus) {
@@ -394,14 +439,13 @@ const handleSend = () => {
 .auto-selection-select :deep(.el-input__wrapper) {
   width: 100%;
   border-radius: 16px !important;
-  border: none !important;
   background: #f8f9fa !important;
   transition: all 0.3s ease !important;
   padding: 2px 12px !important;
   height: 32px !important;
   box-shadow: none !important;
   outline: none !important;
-  border-color: transparent !important;
+  border: none transparent !important;
 }
 
 .auto-selection-select :deep(.el-input__wrapper):hover,
@@ -409,9 +453,8 @@ const handleSend = () => {
   background: #e9ecef !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   transform: translateY(-1px) !important;
-  border: none !important;
   outline: none !important;
-  border-color: transparent !important;
+  border: none transparent !important;
 }
 
 .auto-selection-select :deep(.el-input__wrapper.is-focus) {

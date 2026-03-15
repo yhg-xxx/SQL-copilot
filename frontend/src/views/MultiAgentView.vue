@@ -32,6 +32,7 @@
               :message="message"
               :is-user="message.role === 'user'"
               @regenerate="handleRegenerate(index)"
+              @edit="handleEdit(index, $event)"
             />
             
             <!-- 加载消息 -->
@@ -469,6 +470,36 @@ const handleCreateConversation = () => {
     // 从localStorage中移除选中的对话ID
     localStorage.removeItem('selectedConversationId')
   }
+}
+
+// 处理编辑用户消息
+const handleEdit = async (index, newContent) => {
+  // 获取非欢迎消息的列表
+  const nonWelcomeMessages = messages.value.filter(m => !m.isWelcome)
+  
+  // 确保当前消息是用户消息
+  if (nonWelcomeMessages[index].role !== 'user') {
+    ElMessage.info('只能编辑用户消息')
+    return
+  }
+  
+  const userMessage = nonWelcomeMessages[index]
+  
+  // 检查是否有对应的助手消息（应该是下一条）
+  const hasAssistantReply = index + 1 < nonWelcomeMessages.length && 
+    nonWelcomeMessages[index + 1].role === 'assistant'
+  
+  // 删除该用户消息和对应的助手消息（如果存在）
+  messages.value = messages.value.filter((msg, msgIndex) => {
+    const filteredIndex = messages.value.slice().filter(m => !m.isWelcome).findIndex(m => m === msg)
+    if (hasAssistantReply) {
+      return filteredIndex !== index && filteredIndex !== index + 1
+    }
+    return filteredIndex !== index
+  })
+  
+  // 重新发送编辑后的消息
+  handleSendMessage(newContent)
 }
 
 // 处理重新生成

@@ -11,46 +11,69 @@
         <span class="message-author">{{ isUser ? '我' : 'SQL 助手' }}</span>
       </div>
       <div class="message-body">
-        <!-- 有SQL和总结时 -->
-        <template v-if="message.sql && (message.summary || message.isSummarizing)">
-          <!-- 总结显示 -->
-          <div class="summary-section">
-            <div class="summary-header">
-              <el-icon><Document /></el-icon>
-              <span>对话总结</span>
-              <!-- 总结中状态指示 -->
-              <span v-if="message.isSummarizing" class="summarizing-indicator">
-                <span class="summarizing-dot"></span>
-                总结中...
-              </span>
-            </div>
-            <div v-if="message.summary" class="summary-content" v-html="formattedSummary"></div>
-            <!-- 总结中占位提示 -->
-            <div v-else class="summary-placeholder">
-              <div class="placeholder-line"></div>
-              <div class="placeholder-line placeholder-line-short"></div>
-            </div>
-            <!-- 数据展示区域：使用新组件 -->
-            <DataDisplay
-              v-if="message.sql"
-              :query-data="message.queryData || []"
-              :sql="message.sql"
+        <!-- 用户消息编辑模式 -->
+        <template v-if="isUser && isEditing">
+          <div class="edit-message-container">
+            <el-input
+              v-model="editingContent"
+              type="textarea"
+              :rows="3"
+              ref="editInputRef"
+              @keyup.enter="saveEdit"
+              @keyup.escape="cancelEdit"
+              class="edit-input"
             />
+            <div class="edit-actions">
+              <el-button size="small" @click="cancelEdit">取消</el-button>
+              <el-button type="primary" size="small" @click="saveEdit">发送</el-button>
+            </div>
           </div>
         </template>
         
-        <!-- 仅有SQL无总结且未在总结时 -->
-        <template v-else-if="message.sql && !message.summary && !message.isSummarizing">
-          <!-- 不显示任何内容 -->
+        <!-- 非编辑模式 -->
+        <template v-else>
+          <!-- 有SQL和总结时 -->
+          <template v-if="message.sql && (message.summary || message.isSummarizing)">
+            <!-- 总结显示 -->
+            <div class="summary-section">
+              <div class="summary-header">
+                <el-icon><Document /></el-icon>
+                <span>对话总结</span>
+                <!-- 总结中状态指示 -->
+                <span v-if="message.isSummarizing" class="summarizing-indicator">
+                  <span class="summarizing-dot"></span>
+                  总结中...
+                </span>
+              </div>
+              <div v-if="message.summary" class="summary-content" v-html="formattedSummary"></div>
+              <!-- 总结中占位提示 -->
+              <div v-else class="summary-placeholder">
+                <div class="placeholder-line"></div>
+                <div class="placeholder-line placeholder-line-short"></div>
+              </div>
+              <!-- 数据展示区域：使用新组件 -->
+              <DataDisplay
+                v-if="message.sql"
+                :query-data="message.queryData || []"
+                :sql="message.sql"
+              />
+            </div>
+          </template>
+          
+          <!-- 仅有SQL无总结且未在总结时 -->
+          <template v-else-if="message.sql && !message.summary && !message.isSummarizing">
+            <!-- 不显示任何内容 -->
+          </template>
+          
+          <!-- 普通文本消息 -->
+          <div v-else class="text-message" v-html="formattedContent"></div>
         </template>
-        
-        <!-- 普通文本消息 -->
-        <div v-else class="text-message" v-html="formattedContent"></div>
       </div>
       <div v-if="message.success === false" class="message-error">
         <el-icon class="error-icon"><Warning /></el-icon>
         <span>生成失败</span>
       </div>
+      
       <!-- 助手消息的工具栏 -->
       <div v-if="!isUser" class="agent-chat__toolbar__right">
         <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px;">
@@ -83,19 +106,38 @@
           </div>
         </div>
       </div>
+      
+      <!-- 用户消息的工具栏 -->
+      <div v-if="isUser && !isEditing" class="user-chat__toolbar__right">
+        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px;">
+          <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_">
+            <div class="ToolbarCopy_icon__5Odjl" @click="copyUserMessage">
+              <el-icon><CopyDocument /></el-icon>
+            </div>
+          </div>
+        </div>
+        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px;">
+          <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_" @click="startEdit">
+            <div class="ToolbarCopy_icon__5Odjl">
+              <el-icon><Edit /></el-icon>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import {
   User,
   ChatDotRound,
   Warning,
   Document,
   CopyDocument,
-  RefreshRight
+  RefreshRight,
+  Edit
 } from '@element-plus/icons-vue'
 import DataDisplay from './DataDisplay.vue'
 import { ElMessage } from 'element-plus'
@@ -111,7 +153,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['regenerate'])
+const emit = defineEmits(['regenerate', 'edit'])
+
+// 编辑状态
+const isEditing = ref(false)
+const editingContent = ref('')
+const editInputRef = ref(null)
 
 // 格式化主内容
 const formattedContent = computed(() => {
@@ -128,7 +175,7 @@ const formattedSummary = computed(() => {
     .replace(/^#\s+(.+)$/gm, '<h1 style="font-size: 18px; font-weight: 600; color: #1a1a2e; margin: 8px 0 6px 0;">$1</h1>')
     .replace(/^##\s+(.+)$/gm, '<h2 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 6px 0 4px 0;">$1</h2>')
     .replace(/^###\s+(.+)$/gm, '<h3 style="font-size: 14px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>')
-    .replace(/^####\s+(.+)$/gm, '<h4 style="font-size: 13px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h4>')
+    .replace(/^####\s+(.+)$/gm, '<h4 style="font-size: 13px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
@@ -162,6 +209,55 @@ const copyMessage = (format = 'plain') => {
         ElMessage.error('复制失败，请手动复制')
       })
   }
+}
+
+// 复制用户消息内容
+const copyUserMessage = () => {
+  const content = props.message.content || ''
+  if (content) {
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        ElMessage.success('内容已复制')
+      })
+      .catch(err => {
+        console.error('复制失败:', err)
+        ElMessage.error('复制失败，请手动复制')
+      })
+  }
+}
+
+// 开始编辑
+const startEdit = () => {
+  isEditing.value = true
+  editingContent.value = props.message.content || ''
+  nextTick(() => {
+    if (editInputRef.value) {
+      editInputRef.value.focus()
+    }
+  })
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  isEditing.value = false
+  editingContent.value = ''
+}
+
+// 保存编辑
+const saveEdit = () => {
+  const content = editingContent.value.trim()
+  if (!content) {
+    ElMessage.warning('内容不能为空')
+    return
+  }
+  if (content === props.message.content) {
+    ElMessage.info('内容未修改')
+    cancelEdit()
+    return
+  }
+  emit('edit', content)
+  isEditing.value = false
+  editingContent.value = ''
 }
 
 // 重新生成
@@ -251,7 +347,10 @@ const handleRegenerate = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+
 }
+
+
 
 .message-header {
   display: flex;
@@ -560,13 +659,62 @@ const handleRegenerate = () => {
 
 
 /* 助手消息工具栏样式 */
-.agent-chat__toolbar__right {
+.agent-chat__toolbar__right,
+.user-chat__toolbar__right {
   display: flex;
   align-items: center;
   gap: 4px;
   margin-top: 12px;
   padding-left: 0;
   transition: all 0.3s ease;
+}
+
+/* 用户消息工具栏靠右对齐 */
+.user-message .user-chat__toolbar__right {
+  justify-content: flex-end;
+}
+
+/* 编辑模式样式 */
+.edit-message-container {
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: #f3f4f6;
+  text-align: left;
+  color: #374151;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+
+  min-width: 700px;
+
+}
+
+
+
+.edit-input :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  resize: none;
+  background: white;
+  border: 1px solid #d1d5db;
+
+}
+
+.edit-input :deep(.el-textarea__inner:focus) {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .agent-chat__question-toolbar__copy-wrapper,

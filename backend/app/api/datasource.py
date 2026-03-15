@@ -1047,17 +1047,17 @@ async def batch_create_datasources(batch_data: BatchDatasourceCreate, db: Sessio
                     logger.error(f"同步表和字段信息失败: {str(e)}")
             
             db.refresh(new_datasource)
-            
-            # 保存表结构到向量库
-            try:
-                save_datasource_tables_to_vector_store(new_datasource.id)
-            except Exception as e:
-                logger.warning(f"保存数据源 {new_datasource.id} 表结构到向量库失败: {e}")
-            
             created_datasources.append(new_datasource)
         
         # 统一提交所有更改
         db.commit()
+        
+        # 事务提交后，保存表结构到向量库
+        for datasource in created_datasources:
+            try:
+                save_datasource_tables_to_vector_store(datasource.id)
+            except Exception as e:
+                logger.warning(f"保存数据源 {datasource.id} 表结构到向量库失败: {e}")
         return created_datasources
         
     except Exception as e:
