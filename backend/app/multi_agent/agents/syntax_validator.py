@@ -243,12 +243,11 @@ def syntax_validator(state: AgentState) -> AgentState:
                 logger.error(error_msg, exc_info=True)
                 fixed_sql = generated_sql
 
-            # 修改need_db_verify逻辑，确保即使有类型不匹配错误也进行数据库验证
-            # 这样可以利用数据库的类型转换能力来验证SQL的实际可执行性
-            need_db_verify = fixed_sql != generated_sql or len(all_errors) == 0 or any("字段类型不匹配" in error or "type mismatch" in error.lower() for error in all_errors)
+            # 修改逻辑：永远不要跳过数据库验证，只要有datasource_id就进行验证
             db_verified = False
+            validation_passed = False
 
-            if datasource_id and need_db_verify:
+            if datasource_id:
                 try:
                     # 首先检查 state 中是否已有缓存的 datasource_config
                     datasource_config = state.get("datasource_config")
@@ -294,29 +293,30 @@ def syntax_validator(state: AgentState) -> AgentState:
                     all_warnings.append(error_msg)
                     logger.error(error_msg, exc_info=True)
             else:
-                warning_msg = "无数据源ID或无需验证，跳过数据库验证"
+                warning_msg = "无数据源ID，跳过数据库验证"
                 all_warnings.append(warning_msg)
                 logger.warning(warning_msg)
 
-            # 调整验证逻辑：如果数据库验证通过，即使LLM报告类型不匹配，也视为有效
-            # 因为某些数据库（如MySQL）会自动进行类型转换
+            # 调整验证逻辑：如果数据库验证通过，就视为验证通过
+            # 因为数据库验证是最权威的，只要SQL能在数据库中执行，就视为有效
             if validation_passed and db_verified:
-                # 数据库验证通过，将类型不匹配的错误转换为警告
+                # 数据库验证通过，将所有非数据库验证错误转换为警告
                 filtered_errors = []
-                type_mismatch_warnings = []
+                non_db_warnings = []
                 
                 for error in all_errors:
-                    if "字段类型不匹配" in error or "type mismatch" in error.lower():
-                        type_mismatch_warnings.append(f"类型警告: {error}")
-                    else:
+                    # 只保留数据库验证产生的错误，其他错误转换为警告
+                    if "数据库验证" in error or "验证过程异常" in error:
                         filtered_errors.append(error)
+                    else:
+                        non_db_warnings.append(f"建议: {error}")
                 
                 all_errors = filtered_errors
-                all_warnings.extend(type_mismatch_warnings)
+                all_warnings.extend(non_db_warnings)
                 
-                # 如果没有其他错误，标记为有效
-                if len(all_errors) == 0:
-                    is_valid = True
+                # 数据库验证通过，即使有其他错误（如类型不匹配），也视为有效
+                # 因为某些数据库（如MySQL）会自动进行类型转换
+                is_valid = len(filtered_errors) == 0
             else:
                 # 没有数据库验证时，使用原始逻辑
                 is_valid = len(all_errors) == 0
