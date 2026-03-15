@@ -32,8 +32,8 @@
             </div>
             <!-- 数据展示区域：使用新组件 -->
             <DataDisplay
-              v-if="message.queryData && message.queryData.length > 0"
-              :query-data="message.queryData"
+              v-if="message.sql"
+              :query-data="message.queryData || []"
               :sql="message.sql"
             />
           </div>

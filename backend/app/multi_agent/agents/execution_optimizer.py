@@ -5,65 +5,24 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.multi_agent.state.agent_state import AgentState, OptimizationResult
 
 from app.utils.llm_util import get_llm
+from app.multi_agent.prompts.database_optimization_prompts import get_optimization_prompt_by_db_type
 
 logger = logging.getLogger(__name__)
 
 
-def generate_optimization_suggestions(sql, schema_text, user_query):
+def generate_optimization_suggestions(sql, schema_text, user_query, db_type):
     """使用大模型生成SQL优化建议"""
     try:
         logger.info("开始生成 SQL 优化建议和功能说明")
         logger.info(f"分析的 SQL 语句: {sql}")
         logger.info(f"用户原始查询: {user_query}")
+        logger.info(f"数据库类型: {db_type}")
 
         # 准备表结构信息
         schema_text = schema_text or ""
 
-        system_prompt = f"""你是一个专业的 SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
-
-{schema_text}
-
-用户原始查询需求：{user_query}
-
-请分析以下 SQL 语句的性能问题，并提供具体的优化建议，包括：
-1. 索引使用情况分析
-2. 查询结构优化建议
-3. 可能的性能瓶颈
-4. 优化后的 SQL 语句
-
-同时，请分析 SQL 语句的功能，并生成详细的功能说明，包括：
-1. 数据来源：列出 SQL 语句中涉及的所有表
-2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
-3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
-4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
-
-重要约束：
-- 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
-- 不要在优化后的 SQL 语句中使用 FORCE INDEX 或类似的索引强制提示
-- 只基于现有的表结构和索引信息进行优化
-- 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
-- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
-- 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
-- 用简洁明了的自然语言表达，避免技术术语过多
-- 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
-- 特别注意：针对 SQL Server 数据库，当使用 GROUP BY 子句时，SELECT 列表中的所有非聚合列必须包含在 GROUP BY 子句中，即使这些列在功能上依赖于主键
-
-请只返回 JSON 格式的结果，不要包含其他文字。
-
-JSON 格式：
-{{
-  "optimized": true/false,
-  "optimized_sql": "优化后的 SQL 语句",
-  "suggestions": ["建议1", "建议2"],
-  "execution_notes": "执行注释",
-  "functional_description": {{
-    "data_source": "涉及的表",
-    "data_type": "数据类型",
-    "query_purpose": "查询目的",
-    "core_logic": "核心逻辑"
-  }}
-}}
-"""
+        # 根据数据库类型获取特定的优化提示词
+        system_prompt = get_optimization_prompt_by_db_type(db_type, schema_text, user_query)
         
         user_prompt = f"请分析并优化以下 SQL 语句，并生成功能说明：\n```sql\n{sql}\n```"
         
@@ -175,16 +134,19 @@ def execution_optimizer(state: AgentState) -> AgentState:
             return state
 
 
-        # 2. 使用大模型同时生成优化建议和功能说明
-        llm_result = generate_optimization_suggestions(generated_sql, schema_text, user_query)
+        # 2. 获取数据库类型
+        db_type = state.get("db_type", "mysql")
+        
+        # 3. 使用大模型同时生成优化建议和功能说明
+        llm_result = generate_optimization_suggestions(generated_sql, schema_text, user_query, db_type)
         logger.info(f"LLM 分析结果: {llm_result}")
         
-        # 3. 提取功能说明并生成注释
+        # 4. 提取功能说明并生成注释
         functional_description = llm_result.get("functional_description", {})
         natural_language_comment = generate_comment_from_functional_description(functional_description)
         logger.info(f"生成的功能说明注释: {natural_language_comment[:200]}...")
         
-        # 4. 生成最终优化后的 SQL
+        # 5. 生成最终优化后的 SQL
         if llm_result.get("optimized") and llm_result.get("optimized_sql"):
             optimized_sql = llm_result.get("optimized_sql")
             # 使用 sqlparse 格式化 SQL
@@ -197,7 +159,7 @@ def execution_optimizer(state: AgentState) -> AgentState:
             formatted_sql = sqlparse.format(generated_sql, reindent=True, keyword_case='upper')
             optimized_sql = f"{formatted_sql}\n{natural_language_comment}"
         
-        # 5. 构建优化结果
+        # 6. 构建优化结果
         suggestions = llm_result.get("suggestions", [])
         if not suggestions:
             suggestions = ["已添加 SQL 语句功能说明"]

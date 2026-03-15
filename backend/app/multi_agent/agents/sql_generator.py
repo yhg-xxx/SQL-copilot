@@ -9,6 +9,7 @@ from app.utils.llm_util import get_llm
 from app.models.datasource import Datasource, DatasourceTable, DatasourceField
 from app.multi_agent.agents.schema_utils import format_schema_for_prompt
 from app.multi_agent.RAG.table_schema_retriever import retrieve_relevant_tables, format_tables_for_prompt
+from app.multi_agent.prompts.database_prompts import get_prompt_by_db_type
 
 logger = logging.getLogger(__name__)
 
@@ -112,44 +113,69 @@ def sql_generator(state: AgentState) -> AgentState | None:
     try:
         user_query = state.get("user_query", "")
         datasource_id = state.get("datasource_id")
-        user_id = state.get("user_id")
         chat_history = state.get("chat_history", [])
 
         if not user_query:
             state["error_message"] = "用户查询为空"
             return state
 
-        # 历史示例功能已移除
-        examples_text = ""
-
         # 获取数据源表结构 - 使用RAG检索相关表
         schema = {}
         db_type = "mysql"
-        schema_text = ""
         
         if datasource_id:
-            # 先尝试使用RAG检索相关表
+            # 先获取数据源的表数量
+            table_count = 0
             try:
-                relevant_tables = retrieve_relevant_tables(
-                    question=user_query,
-                    datasource_id=datasource_id,
-                    top_k=20,  # 进一步增加返回的表数量，使检索更宽松
-                    score_threshold=0.1  # 进一步降低相似度阈值，使检索更宽松
-                )
-                
-                if relevant_tables and len(relevant_tables) > 0:
-                    logger.info(f"使用RAG检索到 {len(relevant_tables)} 个相关表")
-                    schema_text = format_tables_for_prompt(relevant_tables)
-                else:
-                    logger.info("RAG未找到相关表，回退到获取所有表")
-                    # RAG没有找到相关表，回退到获取所有表
-                    schema = get_datasource_schema(datasource_id)
-                    schema_text = format_schema_for_prompt(schema)
+                from app.database.db import SessionLocal
+                db = SessionLocal()
+                try:
+                    # 获取已选中的表数量
+                    tables = db.query(DatasourceTable).filter(
+                        DatasourceTable.ds_id == datasource_id,
+                        DatasourceTable.checked == True
+                    ).all()
+                    table_count = len(tables)
+                    logger.info(f"数据源 {datasource_id} 共有 {table_count} 张已选中的表")
+                finally:
+                    db.close()
             except Exception as e:
-                logger.warning(f"RAG检索失败，回退到获取所有表: {e}")
-                # RAG失败，回退到获取所有表
+                logger.warning(f"获取表数量失败: {e}")
+            
+            # 如果表数量 <= 5，直接使用所有表
+            if table_count <= 5:
+                logger.info(f"表数量较少 ({table_count} 张)，直接使用全部表结构")
                 schema = get_datasource_schema(datasource_id)
                 schema_text = format_schema_for_prompt(schema)
+            else:
+                # 表数量 > 5，使用RAG检索
+                try:
+                    relevant_tables = retrieve_relevant_tables(
+                        question=user_query,
+                        datasource_id=datasource_id,
+                        top_k=20,  # 进一步增加返回的表数量，使检索更宽松
+                        score_threshold=0.1  # 进一步降低相似度阈值，使检索更宽松
+                    )
+                    
+                    if relevant_tables and len(relevant_tables) > 0:
+                        # 确保返回的表数量至少为5个
+                        if len(relevant_tables) < 5:
+                            logger.info(f"RAG检索到 {len(relevant_tables)} 个表，不足5个，获取所有表")
+                            schema = get_datasource_schema(datasource_id)
+                            schema_text = format_schema_for_prompt(schema)
+                        else:
+                            logger.info(f"使用RAG检索到 {len(relevant_tables)} 个相关表")
+                            schema_text = format_tables_for_prompt(relevant_tables)
+                    else:
+                        logger.info("RAG未找到相关表，回退到获取所有表")
+                        # RAG没有找到相关表，回退到获取所有表
+                        schema = get_datasource_schema(datasource_id)
+                        schema_text = format_schema_for_prompt(schema)
+                except Exception as e:
+                    logger.warning(f"RAG检索失败，回退到获取所有表: {e}")
+                    # RAG失败，回退到获取所有表
+                    schema = get_datasource_schema(datasource_id)
+                    schema_text = format_schema_for_prompt(schema)
             
             # 获取数据库类型
             try:
@@ -221,85 +247,16 @@ def sql_generator(state: AgentState) -> AgentState | None:
                         last_sql_hint = f"\n（提示：上一轮生成了SQL查询，当前可能是对该SQL的修改）"
                     break
 
-        # 构建系统提示
-        db_type_display = db_type
-        if db_type.lower() == 'pg':
-            db_type_display = 'PostgreSQL'
-        elif db_type.lower() in ['sqlserver', 'sql_server', 'mssql']:
-            db_type_display = 'SQL Server'
-        
-        system_prompt = f"""你是一个专业的 SQL 生成助手。请根据用户的自然语言查询、对话历史和提供的数据库表结构，生成对应的 SQL 语句。
-
-重要：当前数据库类型是 {db_type_display}，请生成符合该数据库语法规范的 SQL 语句！
-
-{schema_text}
-
-{history_text}
-
-{'=' * 60}
-重要：这是多轮对话的第{len(chat_history) + 1}轮
-{'=' * 60}
-
-核心指令：
-1. 这是多轮对话，当前用户的查询是对话的延续
-2. 请特别注意最近一轮（第{len(chat_history)}轮）的对话内容
-3. 如果用户当前的查询涉及到修改、调整或优化，应该基于最近一轮助手的回答进行修改
-4. 如果对话历史中有相关信息，请结合完整的对话历史来理解上下文
-5. 如果当前查询明显是对上一轮SQL的修改，请基于上一轮的SQL进行调整
-
-{'=' * 60}
-
-当前查询：{user_query}
-{last_sql_hint if is_modification else ''}
-
-请只返回 JSON 格式的结果，不要包含其他文字。
-JSON 格式：
-{{
-  "success": true,
-  "sql": "SELECT * FROM table_name",
-  "message": ""
-}}
-
-注意事项：
-1. 根据表结构和字段注释理解业务含义
-2. 使用正确的表名和字段名
-3. 考虑字段类型，避免类型错误
-4. 如果查询条件需要，使用适当的 WHERE 子句
-5. 如果需要连接多个表，使用适当的 JOIN 语句
-6. 优先使用索引字段作为过滤条件、JOIN 条件和排序字段
-7. 避免在非索引字段上进行大范围过滤或排序
-8. 对于复杂查询，选择最优的执行计划
-9. 参考对话历史，理解用户的上下文需求
-10. 确保生成的 SQL 符合 {db_type_display} 数据库的语法规范"""
-
-        # 针对 SQL Server 的特殊语法要求
-        if db_type.lower() in ['sqlserver', 'sql_server', 'mssql']:
-            system_prompt += """
-
-        ===== SQL Server 特殊语法要求 =====
-        重要：SQL Server 对标识符有严格的语法规则，必须遵守：
-
-        1. 中文别名必须加方括号：
-           - 错误：SELECT name AS 姓名
-           - 正确：SELECT name AS [姓名]
-
-        2. 包含空格或特殊字符的标识符必须加方括号：
-           - 错误：SELECT user name FROM table
-           - 正确：SELECT [user name] FROM [table]
-
-        3. 字符串常量使用单引号，N 前缀表示 Unicode：
-           - 正确：WHERE name = N'中文值'
-           - 正确：WHERE name = 'English'
-
-        4. 日期时间常量使用单引号：
-           - 正确：WHERE create_time >= '2024-01-01'
-
-        5. TOP 子句语法（如果使用）：
-           - 正确：SELECT TOP 10 * FROM table
-
-        6. 避免使用 MySQL 特有的语法（如 LIMIT、反引号 `）
-        ====================================
-        """
+        # 根据数据库类型构建特定的系统提示词
+        system_prompt = get_prompt_by_db_type(
+            db_type=db_type,
+            schema_text=schema_text,
+            history_text=history_text,
+            user_query=user_query,
+            last_sql_hint=last_sql_hint,
+            is_modification=is_modification,
+            chat_history_len=len(chat_history)
+        )
 
         # 构建用户提示
         if is_modification and len(chat_history) > 0:
