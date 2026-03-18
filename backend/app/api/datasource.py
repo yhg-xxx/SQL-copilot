@@ -120,8 +120,7 @@ async def create_datasource(datasource: DatasourceCreate, db: Session = Depends(
 
             # 创建数据源实例
             new_datasource = Datasource(
-                name=datasource.name,
-                description=datasource.description,
+                name=datasource.name,                description=datasource.description,
                 type=datasource.type,
                 type_name=datasource.type_name or datasource.type,
                 configuration=configuration,

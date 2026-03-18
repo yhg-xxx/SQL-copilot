@@ -16,7 +16,6 @@ def retrieve_similar_history_examples(
     datasource_id: Optional[int] = None,
     user_id: Optional[int] = None,
     top_k: int = 3,
-    max_history_days: int = 30
 ) -> List[Dict[str, Any]]:
     """
     检索相似的历史查询示例（基于向量相似度）
@@ -26,7 +25,6 @@ def retrieve_similar_history_examples(
         datasource_id: 数据源ID（可选，用于过滤）
         user_id: 用户ID（可选，用于过滤）
         top_k: 返回的最大示例数量
-        max_history_days: 检索最近多少天的历史（向量搜索已内置过滤，此参数保留兼容）
 
     Returns:
         历史示例列表，格式为 [{"question": "...", "sql": "...", "score": ..., "create_time": "..."}]

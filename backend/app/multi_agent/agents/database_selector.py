@@ -6,12 +6,13 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.multi_agent.state.agent_state import AgentState
 from app.utils.llm_util import get_llm
-from app.models.datasource import Datasource, DatasourceTable, DatasourceField
+from app.models.datasource import Datasource, DatasourceTable
 from app.database.db import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-def get_datasource_info(datasource: Datasource) -> dict[str, Any]:
+def get_datasource_info(datasource: Datasource) -> dict[str, str | list[Any] | int] | dict[
+    str, str | list[Any] | int | Any] | None:
     """
     获取数据源的详细信息
 
@@ -66,7 +67,7 @@ def get_datasource_info(datasource: Datasource) -> dict[str, Any]:
             "tables": []
         }
 
-def database_selector(state: AgentState) -> AgentState:
+def database_selector(state: AgentState) -> AgentState | None:
     """
     数据库选择智能体
     根据用户查询自动选择最合适的数据库
@@ -91,7 +92,6 @@ def database_selector(state: AgentState) -> AgentState:
     logger.info(f"用户查询: {user_query}")
     
     # 获取用户的所有数据源
-    datasources = []
     try:
         db = SessionLocal()
         try:

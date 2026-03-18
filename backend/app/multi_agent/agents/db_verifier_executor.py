@@ -1,6 +1,7 @@
 import logging
 import os
 import pymysql
+import pymysql.cursors
 import psycopg2
 import pyodbc
 import oracledb
@@ -162,7 +163,6 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
         }
 
         try:
-            schema = self.config.get('db_schema', 'public')
             connection = psycopg2.connect(
                 host=self.config['host'],
                 port=int(self.config.get('port', 5432)),
@@ -219,7 +219,6 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
         }
 
         try:
-            schema = self.config.get('db_schema', 'public')
             connection = psycopg2.connect(
                 host=self.config['host'],
                 port=int(self.config.get('port', 5432)),
