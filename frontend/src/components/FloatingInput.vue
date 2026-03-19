@@ -350,7 +350,7 @@ onMounted(() => {
 }
 
 .datasource-select :deep(.el-select__caret:hover) {
-  color: #4f46e5 !important;
+  color: #6b7280 !important;
 }
 
 /* 确保输入框本身没有边框 */
@@ -468,7 +468,7 @@ onMounted(() => {
 }
 
 .auto-selection-select :deep(.el-select__caret:hover) {
-  color: #4f46e5 !important;
+  color: #6b7280 !important;
 }
 
 /* 自动选择下拉菜单项样式 */
@@ -559,9 +559,10 @@ onMounted(() => {
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #555555;
+  background: #f0f4ff;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+  color: #4f46e5;
 }
 
 .send-btn:disabled {

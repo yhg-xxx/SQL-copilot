@@ -169,7 +169,7 @@ const fetchDatasourceList = async () => {
   loading.value = true;
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.get('http://localhost:8000/datasource/list', {
+    const response = await axios.get(`/datasource/list`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -220,7 +220,7 @@ const confirmDelete = async (datasource) => {
   .then(async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:8000/datasource/delete/${datasource.id}`, {
+      await axios.delete(`/datasource/delete/${datasource.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

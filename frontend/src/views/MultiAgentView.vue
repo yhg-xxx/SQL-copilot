@@ -151,7 +151,7 @@ const handleSendMessage = async (message) => {
   if (!selectedConversationId.value) {
     try {
       const token = localStorage.getItem('token')
-      const response = await axios.post('http://localhost:8000/conversations', {
+      const response = await axios.post(`/conversations`, {
         title: '新对话'
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -195,7 +195,7 @@ const handleSendMessage = async (message) => {
 
   // 使用流式接口
   try {
-    const response = await fetch('http://localhost:8000/multi-agent/query/stream', {
+    const response = await fetch(`/multi-agent/query/stream`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -346,9 +346,11 @@ const handleSendMessage = async (message) => {
 const loadDatasources = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get('http://localhost:8000/datasource/list', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    const response = await axios.get(`/datasource/list`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     datasources.value = response.data
     if (datasources.value.length > 0 && !selectedDatasource.value) {
       selectedDatasource.value = datasources.value[0].id
@@ -363,10 +365,11 @@ const loadDatasources = async () => {
 const loadConversationHistory = async (conversationId) => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8000/conversations/${conversationId}/history`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
+    const response = await axios.get(`/conversations/${conversationId}/history`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const history = response.data.history
     const lastDatasourceId = response.data.last_datasource_id
     messages.value = []
@@ -429,7 +432,7 @@ const loadConversationHistory = async (conversationId) => {
 const updateConversationLastMessage = async (conversationId, lastMessage) => {
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/conversations/${conversationId}`, {
+    await axios.put(`/conversations/${conversationId}`, {
       last_message: lastMessage,
       last_message_time: new Date().toISOString()
     }, {
@@ -538,7 +541,7 @@ const handleRegenerate = async (index) => {
   if (selectedConversationId.value) {
     try {
       const token = localStorage.getItem('token')
-      await axios.delete(`http://localhost:8000/conversations/${selectedConversationId.value}/last-assistant`, {
+      await axios.delete(`/conversations/${selectedConversationId.value}/last-assistant`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
     } catch (error) {

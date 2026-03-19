@@ -215,9 +215,9 @@ const confirmDeleteConversation = (conversationId) => {
   ).then(async () => {
     try {
       const token = localStorage.getItem('token')
-      await axios.delete(`http://localhost:8000/conversations/${conversationId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      await axios.delete(`/conversations/${conversationId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       
       // 从列表中移除对话
       conversations.value = conversations.value.filter(
@@ -266,8 +266,8 @@ const saveRename = async (conversationId) => {
   if (editingTitle.value.trim()) {
     try {
       const token = localStorage.getItem('token')
-      await axios.put(`http://localhost:8000/conversations/${conversationId}`, {
-        title: editingTitle.value.trim()
+      await axios.put(`/conversations/${conversationId}`, {
+        title: editingTitle.value
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -298,7 +298,7 @@ const truncateMessage = (message, maxLength = 30) => {
 const loadConversations = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get('http://localhost:8000/conversations', {
+    const response = await axios.get(`/conversations`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     conversations.value = response.data.conversations

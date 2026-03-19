@@ -472,8 +472,10 @@ const initForm = async () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:8000/datasource/${props.datasource.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await axios.get(`/datasource/${props.datasource.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       const data = response.data;
       formData.name = data.name;
@@ -540,7 +542,7 @@ const testConnection = async () => {
   try {
     const config = buildConfiguration();
     const token = localStorage.getItem('token');
-    const response = await axios.post('http://localhost:8000/datasource/test-connection', {
+    const response = await axios.post(`/datasource/test-connection`, {
       name: formData.name,
       description: formData.description,
       type: formData.type,
@@ -573,7 +575,7 @@ const fetchDatabaseList = async () => {
   try {
     const config = buildConfiguration();
     const token = localStorage.getItem('token');
-    const response = await axios.post('http://localhost:8000/datasource/fetch-databases', {
+    const response = await axios.post(`/datasource/fetch-databases`, {
       type: formData.type,
       configuration: JSON.stringify(config)
     }, {
@@ -597,7 +599,7 @@ const fetchTableList = async () => {
   try {
     const config = buildConfiguration();
     const token = localStorage.getItem('token');
-    const response = await axios.post('http://localhost:8000/datasource/fetch-tables', {
+    const response = await axios.post(`/datasource/fetch-tables`, {
       type: formData.type,
       configuration: JSON.stringify(config)
     }, {
@@ -610,7 +612,7 @@ const fetchTableList = async () => {
 
     if (props.datasource?.id) {
       try {
-        const tablesResponse = await axios.get(`http://localhost:8000/datasource/${props.datasource.id}/tables`, {
+        const tablesResponse = await axios.get(`/datasource/${props.datasource.id}/tables`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         selectedTables.value = tablesResponse.data
@@ -646,7 +648,7 @@ const buildConfiguration = () => {
 const checkDatasourceName = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await axios.post('http://localhost:8000/datasource/check-name', {
+    const response = await axios.post(`/datasource/check-name`, {
       name: formData.name,
       id: props.datasource?.id
     }, {
@@ -680,7 +682,7 @@ const handleNext = async () => {
         try {
           const config = buildConfiguration();
           const token = localStorage.getItem('token');
-          const response = await axios.post('http://localhost:8000/datasource/test-connection', {
+          const response = await axios.post(`/datasource/test-connection`, {
             name: 'test',
             type: formData.type,
             type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
@@ -871,7 +873,7 @@ const handleSave = debounce(async () => {
         databases: databaseConfigs.value
       };
 
-      await axios.post('http://localhost:8000/datasource/batch-create', requestData, {
+      await axios.post(`/datasource/batch-create`, requestData, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -921,11 +923,11 @@ const handleSave = debounce(async () => {
       let dsId = props.datasource?.id;
 
       if (props.datasource?.id) {
-        response = await axios.put(`http://localhost:8000/datasource/update/${props.datasource.id}`, requestData, {
+        response = await axios.put(`/datasource/update/${props.datasource.id}`, requestData, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
       } else {
-        response = await axios.post('http://localhost:8000/datasource/create', requestData, {
+        response = await axios.post(`/datasource/create`, requestData, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
       }
@@ -933,7 +935,7 @@ const handleSave = debounce(async () => {
       dsId = response.data?.id || dsId;
 
       try {
-        await axios.post(`http://localhost:8000/datasource/${dsId}/sync-tables`, {
+        await axios.post(`/datasource/${dsId}/sync-tables`, {
           tables,
           selectAll: isSelectAll.value
         }, {

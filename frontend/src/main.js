@@ -32,7 +32,7 @@ import axios from "axios";
 
 // 全局配置 axios
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = 'http://localhost:8080'
+axios.defaults.baseURL = 'http://localhost:8000'
 
 const app = createApp(App)
 

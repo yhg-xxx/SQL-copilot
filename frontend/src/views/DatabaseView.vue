@@ -247,7 +247,7 @@ const editingField = ref(null)
 const loadDatasource = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8000/datasource/${route.params.id}`, {
+    const response = await axios.get(`/datasource/${route.params.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     datasource.value = response.data
@@ -262,7 +262,7 @@ const loadTables = async () => {
   fieldsLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8000/datasource/${route.params.id}/table-info`, {
+    const response = await axios.get(`/datasource/${route.params.id}/table-info`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     tables.value = response.data
@@ -297,7 +297,7 @@ const loadFields = async (tableId) => {
   fieldsLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8000/datasource/${route.params.id}/table-info`, {
+    const response = await axios.get(`/datasource/${route.params.id}/table-info`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const tableData = response.data.find(t => t.id === tableId)
@@ -323,7 +323,7 @@ const loadTableData = async () => {
   dataLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://localhost:8000/datasource/${route.params.id}/table/${currentTable.value.table_name}/data`, {
+    const response = await axios.get(`/datasource/${route.params.id}/table/${currentTable.value.table_name}/data`, {
       params: { limit: 10 },
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -345,7 +345,7 @@ const editTableComment = () => {
 const saveTableComment = async () => {
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/datasource-table/${currentTable.value.id}/comment`, tableCommentInput.value, {
+    await axios.put(`/datasource-table/${currentTable.value.id}/comment`, tableCommentInput.value, {
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'text/plain'
@@ -371,7 +371,7 @@ const editFieldComment = (field) => {
 const saveFieldComment = async () => {
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/datasource-table/field/${editingField.value.id}/comment`, fieldCommentInput.value, {
+    await axios.put(`/datasource-table/field/${editingField.value.id}/comment`, fieldCommentInput.value, {
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'text/plain'
@@ -389,7 +389,7 @@ const saveFieldComment = async () => {
 const toggleFieldChecked = async (field) => {
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`http://localhost:8000/datasource-table/field/${field.id}/checked`, field.checked, {
+    await axios.put(`/datasource-table/field/${field.id}/checked`, field.checked, {
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

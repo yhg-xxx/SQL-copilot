@@ -13,19 +13,21 @@
       <div class="message-body">
         <!-- 用户消息编辑模式 -->
         <template v-if="isUser && isEditing">
-          <div class="edit-message-container">
-            <el-input
-              v-model="editingContent"
-              type="textarea"
-              :rows="3"
-              ref="editInputRef"
-              @keyup.enter="saveEdit"
-              @keyup.escape="cancelEdit"
-              class="edit-input"
-            />
-            <div class="edit-actions">
-              <el-button size="small" @click="cancelEdit">取消</el-button>
-              <el-button type="primary" size="small" @click="saveEdit">发送</el-button>
+          <div class="edit-message-wrapper">
+            <div class="edit-input-container">
+              <el-input
+                v-model="editingContent"
+                type="textarea"
+                :rows="3"
+                ref="editInputRef"
+                @keyup.enter="saveEdit"
+                @keyup.escape="cancelEdit"
+                class="edit-input"
+              />
+              <div class="edit-actions">
+                <el-button size="small" @click="cancelEdit">取消</el-button>
+                <el-button type="primary" size="small" @click="saveEdit">发送</el-button>
+              </div>
             </div>
           </div>
         </template>
@@ -675,39 +677,38 @@ const handleRegenerate = () => {
 }
 
 /* 编辑模式样式 */
-.edit-message-container {
-  padding: 16px 20px;
-  border-radius: 20px;
-  background: #f3f4f6;
-  text-align: left;
-  color: #374151;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  border: 1px solid #e5e7eb;
-
-  min-width: 700px;
-
+.edit-message-wrapper {
+  display: flex;
+  justify-content: flex-end;
 }
 
-
+.edit-input-container {
+  position: relative;
+  width: 100%;
+  min-width: 700px;
+  max-width: 900px;
+  border-radius: 16px;
+  background: white;
+  border: 2px solid #4f46e5;
+  padding: 16px 20px;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
 
 .edit-input :deep(.el-textarea__inner) {
-  border-radius: 12px;
+  border: none;
+  border-radius: 8px;
   font-size: 15px;
   line-height: 1.6;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   resize: none;
-  background: white;
-  border: 1px solid #d1d5db;
-
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
 }
 
 .edit-input :deep(.el-textarea__inner:focus) {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  border: none;
+  box-shadow: none;
 }
 
 .edit-actions {
@@ -715,6 +716,24 @@ const handleRegenerate = () => {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
+  padding-top: 8px;
+}
+
+.edit-actions .el-button {
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.edit-actions .el-button--primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.edit-actions .el-button--primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
 }
 
 .agent-chat__question-toolbar__copy-wrapper,
@@ -735,8 +754,8 @@ const handleRegenerate = () => {
 }
 
 .ToolbarCopy_copyIconWrap__PfQIm:hover {
-  background: #f0f4ff;
-  border-color: #e0e6ff;
+  background: #e9ecef;
+  border-color: #dee2e6;
   transform: translateY(-1px);
 }
 
@@ -750,7 +769,7 @@ const handleRegenerate = () => {
 }
 
 .ToolbarCopy_copyIconWrap__PfQIm:hover .ToolbarCopy_icon__5Odjl {
-  color: #4f46e5;
+  color: #495057;
 }
 
 .ToolbarCopy_icon__5Odjl el-icon {
@@ -779,7 +798,7 @@ const handleRegenerate = () => {
 }
 
 .ToolbarCopy_copyIconWrap__PfQIm:hover .ToolbarCopy_arrowIcon__hd9KH {
-  border-top-color: #4f46e5;
+  border-top-color: #495057;
 }
 
 /* 响应式设计 */

@@ -128,7 +128,7 @@ const showChangePasswordDialog = async () => {
 const changePassword = async (newPassword) => {
   try {
     const token = localStorage.getItem('token');
-    await axios.post('http://localhost:8000/user/change-password', 
+    await axios.post(`/user/change-password`, 
       { new_password: newPassword },
       {
         headers: {

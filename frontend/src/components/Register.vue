@@ -39,6 +39,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
@@ -84,7 +85,7 @@ const handleRegister = async () => {
 
   loading.value = true;
   try {
-    await axios.post('http://localhost:8000/user/register', {
+    await axios.post(`/user/register`, {
       username: registerForm.username,
       password: registerForm.password
     });
