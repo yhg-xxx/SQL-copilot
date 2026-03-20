@@ -12,7 +12,7 @@ class ValidationResult(BaseModel):
     warnings: Optional[List[str]] = None
     mysql_validation_passed: Optional[bool] = None
     llm_validation_passed: Optional[bool] = None
-    mysql_explain_result: Optional[str] = None
+    execution_plan: Optional[str] = None
     llm_feedback: Optional[str] = None
 
 
@@ -60,6 +60,7 @@ class AgentState(TypedDict):
     generated_sql: Optional[str]  # 初始生成的 SQL 语句
     validated_sql: Optional[str]  # 语法验证成功后的 SQL 语句（未优化，用于RAG检索）
     validation_result: Optional[ValidationResult]  # SQL 语法验证结果
+    execution_plan: Optional[str]  # 通过数据库验证的执行计划
     optimized_sql: Optional[str]  # 优化后的 SQL 语句
     optimization_result: Optional[OptimizationResult]  # SQL 优化结果
     final_sql: Optional[str]  # 最终可执行的 SQL 语句
@@ -74,6 +75,5 @@ class AgentState(TypedDict):
     fix_attempts:int # 修复次数
     was_fixed: bool # 是否修复成功
     fix_explanation: Optional[str] # 修复描述
-    retrieved_examples: Optional[List[Dict[str, Any]]] # RAG检索到的历史示例
     db_errors:Optional[List[Dict[str, Any]]]  # 数据库验证返回的错误
     datasource_config: Optional[Dict[str, Any]]  # 数据源连接配置（缓存，避免重复查询数据库）

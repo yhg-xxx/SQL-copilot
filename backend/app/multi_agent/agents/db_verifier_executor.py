@@ -5,7 +5,7 @@ import pymysql.cursors
 import psycopg2
 import pyodbc
 import oracledb
-from typing import Dict, Any
+from typing import Dict, Any, LiteralString
 from app.utils.db_utils import build_oracle_dsn
 
 
@@ -38,7 +38,7 @@ class MySQLVerifierExecutor(BaseDBVerifierExecutor):
             "errors": [],
             "warnings": [],
             "validation_passed": False,
-            "explain_result": None
+            "execution_plan": None
         }
 
         try:
@@ -60,7 +60,7 @@ class MySQLVerifierExecutor(BaseDBVerifierExecutor):
                 logger.info(f"执行 EXPLAIN: {explain_sql}")
                 cursor.execute(explain_sql)
                 explain_result = cursor.fetchall()
-                result["explain_result"] = str(explain_result)
+                result["execution_plan"] = str(explain_result)
 
                 if "LIMIT" not in sql.upper():
                     validation_sql = f"{clean_sql} LIMIT 10"
@@ -180,7 +180,7 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
                 logger.info(f"执行 EXPLAIN: {explain_sql}")
                 cursor.execute(explain_sql)
                 explain_result = cursor.fetchall()
-                result["explain_result"] = str(explain_result)
+                result["execution_plan"] = str(explain_result)
 
                 if "LIMIT" not in sql.upper():
                     validation_sql = f"{clean_sql} LIMIT 10"
@@ -273,14 +273,14 @@ class PostgreSQLVerifierExecutor(BaseDBVerifierExecutor):
 class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
     """SQL Server 数据库验证和执行器"""
 
-    def validate_sql(self, sql: str) -> dict[str, bool | list[Any] | None] | None:
+    def validate_sql(self, sql: str) -> dict[str, bool | None | LiteralString | list[Any]] | None:
         """使用 SQL Server 验证 SQL 语句"""
         result = {
             "valid": False,
             "errors": [],
             "warnings": [],
             "validation_passed": False,
-            "explain_result": None
+            "execution_plan": None
         }
 
         try:
@@ -311,9 +311,30 @@ class SQLServerVerifierExecutor(BaseDBVerifierExecutor):
                 clean_sql = sql.strip().rstrip(';')
                 # 移除注释
                 clean_sql_no_comments = remove_comments(clean_sql)
-                explain_sql = f"SET SHOWPLAN_XML ON; {clean_sql_no_comments}; SET SHOWPLAN_XML OFF;"
-                logger.info(f"执行执行计划: {explain_sql}")
+                
+                # 获取执行计划
+                try:
+                    explain_sql = f"SET SHOWPLAN_XML ON; {clean_sql_no_comments}; SET SHOWPLAN_XML OFF;"
+                    logger.info(f"执行执行计划: {explain_sql}")
+                    cursor.execute(explain_sql)
+                    
+                    # 收集所有执行计划结果
+                    plan_results = []
+                    while True:
+                        if cursor.description:
+                            rows = cursor.fetchall()
+                            plan_results.extend(str(row) for row in rows)
+                        if not cursor.nextset():
+                            break
+                    
+                    if plan_results:
+                        result["execution_plan"] = '\n'.join(plan_results)
+                        logger.info("成功获取 SQL Server 执行计划")
+                except Exception as plan_ex:
+                    logger.warning(f"获取执行计划失败: {plan_ex}")
+                    result["warnings"].append(f"获取执行计划失败: {str(plan_ex)}")
 
+                # 执行验证查询
                 if "TOP" not in sql.upper() and "LIMIT" not in sql.upper():
                     if "ORDER BY" in sql.upper():
                         if clean_sql_no_comments.upper().startswith("SELECT"):

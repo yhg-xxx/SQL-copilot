@@ -178,7 +178,7 @@ def syntax_validator(state: AgentState) -> AgentState:
                 warnings=[],
                 mysql_validation_passed=False,
                 llm_validation_passed=False,
-                mysql_explain_result=None,
+                execution_plan=None,
                 llm_feedback=""
             )
             state["validation_result"] = validation_result
@@ -238,11 +238,12 @@ def syntax_validator(state: AgentState) -> AgentState:
                             db_errors = db_result.get("errors", [])
                             db_warnings = db_result.get("warnings", [])
                             validation_passed = db_result.get("validation_passed", False)
-                            explain_result = db_result.get("explain_result")
+                            execution_plan = db_result.get("execution_plan")
                             logger.info(f"数据库验证结果: {'通过' if validation_passed else '失败'}")
 
                             if validation_passed:
                                 all_warnings.extend(db_warnings)
+                                explain_result = execution_plan
                                 logger.info("数据库验证通过，直接结束验证流程 ✅")
                                 break
                             else:
@@ -296,7 +297,7 @@ def syntax_validator(state: AgentState) -> AgentState:
             warnings=all_warnings,
             mysql_validation_passed=validation_passed,
             llm_validation_passed=llm_validation_passed,
-            mysql_explain_result=explain_result,
+            execution_plan=explain_result,
             llm_feedback=llm_feedback
         )
 
@@ -306,6 +307,9 @@ def syntax_validator(state: AgentState) -> AgentState:
         if is_valid:
             logger.info(f"SQL 语法验证通过 (修复尝试: {state.get('fix_attempts', 0)}次)")
             state["validated_sql"] = current_sql
+            if explain_result:
+                state["execution_plan"] = explain_result
+                logger.info(f"已保存执行计划到图状态")
             logger.info(f"已保存验证成功的SQL: {current_sql}")
             if all_warnings:
                 logger.warning(f"验证警告: {all_warnings}")
@@ -320,7 +324,7 @@ def syntax_validator(state: AgentState) -> AgentState:
             warnings=[],
             mysql_validation_passed=False,
             llm_validation_passed=False,
-            mysql_explain_result=None,
+            execution_plan=None,
             llm_feedback=""
         )
         state["validation_result"] = validation_result

@@ -3,23 +3,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_mysql_optimization_prompt(schema_text, user_query):
+def get_mysql_optimization_prompt(schema_text, user_query, execution_plan=None):
     """
     获取 MySQL 特定的 SQL 优化提示词
 
     Args:
         schema_text: 数据库表结构信息
         user_query: 用户原始查询需求
+        execution_plan: 数据库执行计划（可选）
 
     Returns:
         MySQL 特定的优化提示词
     """
+    execution_plan_section = ""
+    if execution_plan:
+        execution_plan_section = f"""
+数据库执行计划：
+{execution_plan}
+
+"""
     return f"""你是一个专业的 MySQL SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
 {schema_text}
 
 用户原始查询需求：{user_query}
 
+{execution_plan_section}
 请分析以下 SQL 语句的性能问题，并提供具体的优化建议，包括：
 1. 索引使用情况分析
 2. 查询结构优化建议
@@ -28,16 +37,13 @@ def get_mysql_optimization_prompt(schema_text, user_query):
 
 同时，请分析 SQL 语句的功能，并生成详细的功能说明，包括：
 1. 数据来源：列出 SQL 语句中涉及的所有表
-2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
-3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
-4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
+2. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
 
 重要约束：
 - 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
 - 不要在优化后的 SQL 语句中使用 FORCE INDEX 或类似的索引强制提示
 - 只基于现有的表结构和索引信息进行优化
 - 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
-- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
 - 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
@@ -64,31 +70,38 @@ JSON 格式：
   "execution_notes": "执行注释",
   "functional_description": {{
     "data_source": "涉及的表",
-    "data_type": "数据类型",
-    "query_purpose": "查询目的",
     "core_logic": "核心逻辑"
   }}
 }}
 """
 
 
-def get_postgresql_optimization_prompt(schema_text, user_query):
+def get_postgresql_optimization_prompt(schema_text, user_query, execution_plan=None):
     """
     获取 PostgreSQL 特定的 SQL 优化提示词
 
     Args:
         schema_text: 数据库表结构信息
         user_query: 用户原始查询需求
+        execution_plan: 数据库执行计划（可选）
 
     Returns:
         PostgreSQL 特定的优化提示词
     """
+    execution_plan_section = ""
+    if execution_plan:
+        execution_plan_section = f"""
+数据库执行计划：
+{execution_plan}
+
+"""
     return f"""你是一个专业的 PostgreSQL SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
 {schema_text}
 
 用户原始查询需求：{user_query}
 
+{execution_plan_section}
 请分析以下 SQL 语句的性能问题，并提供具体的优化建议，包括：
 1. 索引使用情况分析
 2. 查询结构优化建议
@@ -97,16 +110,13 @@ def get_postgresql_optimization_prompt(schema_text, user_query):
 
 同时，请分析 SQL 语句的功能，并生成详细的功能说明，包括：
 1. 数据来源：列出 SQL 语句中涉及的所有表
-2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
-3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
-4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
+2. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
 
 重要约束：
 - 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
 - 不要在优化后的 SQL 语句中使用类似的索引强制提示
 - 只基于现有的表结构和索引信息进行优化
 - 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
-- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
 - 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
@@ -135,31 +145,38 @@ JSON 格式：
   "execution_notes": "执行注释",
   "functional_description": {{
     "data_source": "涉及的表",
-    "data_type": "数据类型",
-    "query_purpose": "查询目的",
     "core_logic": "核心逻辑"
   }}
 }}
 """
 
 
-def get_oracle_optimization_prompt(schema_text, user_query):
+def get_oracle_optimization_prompt(schema_text, user_query, execution_plan=None):
     """
     获取 Oracle 特定的 SQL 优化提示词
 
     Args:
         schema_text: 数据库表结构信息
         user_query: 用户原始查询需求
+        execution_plan: 数据库执行计划（可选）
 
     Returns:
         Oracle 特定的优化提示词
     """
+    execution_plan_section = ""
+    if execution_plan:
+        execution_plan_section = f"""
+数据库执行计划：
+{execution_plan}
+
+"""
     return f"""你是一个专业的 Oracle SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
 {schema_text}
 
 用户原始查询需求：{user_query}
 
+{execution_plan_section}
 请分析以下 SQL 语句的性能问题，并提供具体的优化建议，包括：
 1. 索引使用情况分析
 2. 查询结构优化建议
@@ -168,16 +185,13 @@ def get_oracle_optimization_prompt(schema_text, user_query):
 
 同时，请分析 SQL 语句的功能，并生成详细的功能说明，包括：
 1. 数据来源：列出 SQL 语句中涉及的所有表
-2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
-3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
-4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
+2. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
 
 重要约束：
 - 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
 - 不要在优化后的 SQL 语句中使用类似的索引强制提示
 - 只基于现有的表结构和索引信息进行优化
 - 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
-- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
 - 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
@@ -208,31 +222,38 @@ JSON 格式：
   "execution_notes": "执行注释",
   "functional_description": {{
     "data_source": "涉及的表",
-    "data_type": "数据类型",
-    "query_purpose": "查询目的",
     "core_logic": "核心逻辑"
   }}
 }}
 """
 
 
-def get_sqlserver_optimization_prompt(schema_text, user_query):
+def get_sqlserver_optimization_prompt(schema_text, user_query, execution_plan=None):
     """
     获取 SQL Server 特定的 SQL 优化提示词
 
     Args:
         schema_text: 数据库表结构信息
         user_query: 用户原始查询需求
+        execution_plan: 数据库执行计划（可选）
 
     Returns:
         SQL Server 特定的优化提示词
     """
+    execution_plan_section = ""
+    if execution_plan:
+        execution_plan_section = f"""
+数据库执行计划：
+{execution_plan}
+
+"""
     return f"""你是一个专业的 SQL Server SQL 性能优化专家。请根据以下信息对给定的 SQL 语句进行性能分析和优化建议：
 
 {schema_text}
 
 用户原始查询需求：{user_query}
 
+{execution_plan_section}
 请分析以下 SQL 语句的性能问题，并提供具体的优化建议，包括：
 1. 索引使用情况分析
 2. 查询结构优化建议
@@ -241,16 +262,13 @@ def get_sqlserver_optimization_prompt(schema_text, user_query):
 
 同时，请分析 SQL 语句的功能，并生成详细的功能说明，包括：
 1. 数据来源：列出 SQL 语句中涉及的所有表
-2. 数据类型：描述查询结果的类型（如统计数据、详细记录等）
-3. 查询目的：用自然语言清晰解释 SQL 语句的具体功能，描述它实现了什么业务逻辑
-4. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
+2. 核心逻辑：解释 SQL 语句的主要实现方法和执行流程
 
 重要约束：
 - 只能使用上述表结构信息中已有的索引，不要建议或使用不存在的索引
 - 不要在优化后的 SQL 语句中使用类似的索引强制提示
 - 只基于现有的表结构和索引信息进行优化
 - 优化后的 SQL 语句必须在语法上正确，并且可以直接执行
-- 查询目的必须是对 SQL 语句功能的客观解释，绝对不要直接重复用户的原始问题
 - 请基于 SQL 语句的实际内容进行分析，而不是基于用户的问题描述
 - 用简洁明了的自然语言表达，避免技术术语过多
 - 优化后的 SQL 语句必须使用格式化格式：每个子句（SELECT、FROM、JOIN、WHERE、ORDER BY 等）单独成行，关键字大写，字段名适当缩进
@@ -284,15 +302,13 @@ JSON 格式：
   "execution_notes": "执行注释",
   "functional_description": {{
     "data_source": "涉及的表",
-    "data_type": "数据类型",
-    "query_purpose": "查询目的",
     "core_logic": "核心逻辑"
   }}
 }}
 """
 
 
-def get_optimization_prompt_by_db_type(db_type, schema_text, user_query):
+def get_optimization_prompt_by_db_type(db_type, schema_text, user_query, execution_plan=None):
     """
     根据数据库类型获取对应的优化提示词
 
@@ -300,6 +316,7 @@ def get_optimization_prompt_by_db_type(db_type, schema_text, user_query):
         db_type: 数据库类型
         schema_text: 数据库表结构信息
         user_query: 用户原始查询需求
+        execution_plan: 数据库执行计划（可选）
 
     Returns:
         对应数据库类型的优化提示词
@@ -308,16 +325,16 @@ def get_optimization_prompt_by_db_type(db_type, schema_text, user_query):
     
     if db_type_lower == 'mysql':
         logger.info("使用 MySQL 优化提示词")
-        return get_mysql_optimization_prompt(schema_text, user_query)
+        return get_mysql_optimization_prompt(schema_text, user_query, execution_plan)
     elif db_type_lower in ['pg', 'postgresql']:
         logger.info("使用 PostgreSQL 优化提示词")
-        return get_postgresql_optimization_prompt(schema_text, user_query)
+        return get_postgresql_optimization_prompt(schema_text, user_query, execution_plan)
     elif db_type_lower == 'oracle':
         logger.info("使用 Oracle 优化提示词")
-        return get_oracle_optimization_prompt(schema_text, user_query)
+        return get_oracle_optimization_prompt(schema_text, user_query, execution_plan)
     elif db_type_lower in ['sqlserver', 'sql_server', 'mssql']:
         logger.info("使用 SQL Server 优化提示词")
-        return get_sqlserver_optimization_prompt(schema_text, user_query)
+        return get_sqlserver_optimization_prompt(schema_text, user_query, execution_plan)
     else:
         logger.warning(f"未知数据库类型: {db_type}，默认使用 MySQL 优化提示词")
-        return get_mysql_optimization_prompt(schema_text, user_query)
+        return get_mysql_optimization_prompt(schema_text, user_query, execution_plan)

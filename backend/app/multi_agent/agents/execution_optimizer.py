@@ -10,7 +10,7 @@ from app.multi_agent.prompts.database_optimization_prompts import get_optimizati
 logger = logging.getLogger(__name__)
 
 
-def generate_optimization_suggestions(sql, schema_text, user_query, db_type):
+def generate_optimization_suggestions(sql, schema_text, user_query, db_type, execution_plan=None):
     """使用大模型生成SQL优化建议"""
     try:
         logger.info("开始生成 SQL 优化建议和功能说明")
@@ -22,9 +22,11 @@ def generate_optimization_suggestions(sql, schema_text, user_query, db_type):
         schema_text = schema_text or ""
 
         # 根据数据库类型获取特定的优化提示词
-        system_prompt = get_optimization_prompt_by_db_type(db_type, schema_text, user_query)
+        system_prompt = get_optimization_prompt_by_db_type(db_type, schema_text, user_query, execution_plan)
         
         user_prompt = f"请分析并优化以下 SQL 语句，并生成功能说明：\n```sql\n{sql}\n```"
+        if execution_plan:
+            user_prompt += f"\n\n以下是该 SQL 的数据库执行计划（仅供参考）：\n{execution_plan}"
         
         # 调用 LLM
         logger.info("调用大模型生成 SQL 优化建议和功能说明")
@@ -63,8 +65,6 @@ def generate_optimization_suggestions(sql, schema_text, user_query, db_type):
                 "execution_notes": "",
                 "functional_description": {
                     "data_source": "未知",
-                    "data_type": "未知",
-                    "query_purpose": "未知",
                     "core_logic": "未知"
                 }
             }
@@ -79,8 +79,6 @@ def generate_optimization_suggestions(sql, schema_text, user_query, db_type):
             "execution_notes": "",
             "functional_description": {
                 "data_source": "未知",
-                "data_type": "未知",
-                "query_purpose": "未知",
                 "core_logic": "未知"
             }
         }
@@ -89,8 +87,6 @@ def generate_comment_from_functional_description(func_desc):
     """根据功能说明生成注释格式"""
     comment = "-- SQL 语句功能说明：\n"
     comment += f"-- 数据来源：{func_desc.get('data_source', '未知')}\n"
-    comment += f"-- 数据类型：{func_desc.get('data_type', '未知')}\n"
-    comment += f"-- 查询目的：{func_desc.get('query_purpose', '未知')}\n"
     comment += f"-- 核心逻辑：{func_desc.get('core_logic', '未知')}\n"
     comment += ""  # 添加一个空行，使注释与 SQL 主体分离更清晰
     return comment
@@ -134,11 +130,12 @@ def execution_optimizer(state: AgentState) -> AgentState:
             return state
 
 
-        # 2. 获取数据库类型
+        # 2. 获取数据库类型和执行计划
         db_type = state.get("db_type", "mysql")
+        execution_plan = state.get("execution_plan")
         
         # 3. 使用大模型同时生成优化建议和功能说明
-        llm_result = generate_optimization_suggestions(generated_sql, schema_text, user_query, db_type)
+        llm_result = generate_optimization_suggestions(generated_sql, schema_text, user_query, db_type, execution_plan)
         logger.info(f"LLM 分析结果: {llm_result}")
         
         # 4. 提取功能说明并生成注释

@@ -195,7 +195,7 @@ const handleSendMessage = async (message) => {
 
   // 使用流式接口
   try {
-    const response = await fetch(`/multi-agent/query/stream`, {
+    const response = await fetch(`http://localhost:8000/multi-agent/query/stream`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
