@@ -90,13 +90,73 @@
         <p class="empty-hint">点击上方按钮创建新对话</p>
       </div>
     </div>
+
+    <!-- 底部设置区域 -->
+    <div class="settings-section">
+      <el-popover placement="right" :width="320" trigger="click">
+        <template #reference>
+          <el-button class="settings-btn" type="primary" circle>
+            <el-icon><Setting /></el-icon>
+          </el-button>
+        </template>
+        
+        <div class="settings-content">
+          <!-- 用户信息区域 -->
+          <div class="user-section">
+            <div class="user-header">
+              <el-icon class="user-icon"><User /></el-icon>
+              <span class="username">{{ username }}</span>
+            </div>
+            <div class="user-actions">
+              <el-button size="small" @click="showChangePasswordDialog">
+                <el-icon><Lock /></el-icon>
+                修改密码
+              </el-button>
+              <el-button size="small" type="danger" @click="logout">
+                <el-icon><SwitchButton /></el-icon>
+                退出登录
+              </el-button>
+            </div>
+          </div>
+          
+          <el-divider />
+          
+          <!-- 数据源配置区域 -->
+          <div class="datasource-section">
+            <div class="section-header">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>数据源管理</span>
+            </div>
+            <div class="datasource-actions">
+              <el-button size="small" @click="goToDatasource">
+                <el-icon><Management /></el-icon>
+                管理数据源
+              </el-button>
+              <el-button size="small" @click="refreshDatasources">
+                <el-icon><Refresh /></el-icon>
+                刷新列表
+              </el-button>
+            </div>
+            <div class="datasource-info" v-if="datasources.length > 0">
+              <div class="datasource-count">
+                已配置 {{ datasources.length }} 个数据源
+              </div>
+              <div class="current-datasource" v-if="selectedDatasource">
+                当前选择: {{ getCurrentDatasourceName() }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-popover>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
-import { Delete, Plus, ChatLineSquare, Search, Edit } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { Delete, Plus, ChatLineSquare, Search, Edit, Setting, User, Lock, SwitchButton, DataAnalysis, Management, Refresh } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import axios from 'axios'
 
 const props = defineProps({
@@ -107,6 +167,10 @@ const props = defineProps({
   selectedConversationId: {
     type: [String, Number],
     default: null
+  },
+  selectedDatasource: {
+    type: [String, Number],
+    default: null
   }
 })
 
@@ -115,7 +179,8 @@ const emit = defineEmits([
   'select-conversation',
   'create-conversation',
   'update:selectedConversationId',
-  'refresh-conversations'
+  'refresh-conversations',
+  'update:selectedDatasource'
 ])
 
 // 编辑状态
@@ -126,6 +191,11 @@ const renameInput = ref(null)
 // 对话相关状态
 const conversations = ref([])
 const searchQuery = ref('')
+
+// 其他状态
+const router = useRouter()
+const username = ref('用户')
+const datasources = ref([])
 
 // 分组后的对话列表
 const groupedConversations = computed(() => {
@@ -316,39 +386,151 @@ const refreshConversations = () => {
   loadConversations()
 }
 
+// 设置相关方法
+const showChangePasswordDialog = async () => {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入新密码', '修改密码', {
+      confirmButtonText: '确认修改',
+      cancelButtonText: '取消',
+      inputType: 'password',
+    });
+
+    if (value) {
+      await changePassword(value);
+    }
+  } catch (error) {
+    // 用户取消操作
+  }
+}
+
+const changePassword = async (newPassword) => {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.post(`/user/change-password`, 
+      { new_password: newPassword },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    ElMessage.success('密码修改成功');
+  } catch (error) {
+    console.error('修改密码失败:', error);
+    ElMessage.error('修改密码失败，请重试');
+  }
+}
+
+const logout = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    await axios.post('/auth/logout', {}, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    localStorage.removeItem('token')
+    localStorage.removeItem('selectedConversationId')
+    router.push('/login')
+    ElMessage.success('退出登录成功')
+  } catch (error) {
+    console.error('退出登录失败:', error)
+    // 即使失败也要清除本地存储并跳转
+    localStorage.removeItem('token')
+    localStorage.removeItem('selectedConversationId')
+    router.push('/login')
+  }
+}
+
+const goToDatasource = () => {
+  router.push('/datasource')
+}
+
+const refreshDatasources = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/datasource/list', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    datasources.value = response.data
+    ElMessage.success('数据源刷新成功')
+  } catch (error) {
+    console.error('刷新数据源失败:', error)
+    ElMessage.error('刷新数据源失败，请重试')
+  }
+}
+
+const getCurrentDatasourceName = () => {
+  if (!props.selectedDatasource) return ''
+  const datasource = datasources.value.find(ds => ds.datasource_id === props.selectedDatasource)
+  return datasource ? datasource.name : ''
+}
+
+// 加载数据源列表
+const loadDatasources = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      return
+    }
+    const response = await axios.get('/datasource/list', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    datasources.value = response.data
+  } catch (error) {
+    console.error('获取数据源列表失败:', error)
+  }
+}
+
+// 加载用户信息
+const loadUserInfo = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      return
+    }
+    const response = await axios.get('/user/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    username.value = response.data.username || '用户'
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
+
+// 组件挂载时加载数据
+loadDatasources()
+loadUserInfo()
+
 // 暴露方法给父组件
 defineExpose({
-  refreshConversations
+  refreshConversations,
+  refreshDatasources
 })
 </script>
 
 <style scoped>
 /* 左侧对话列表 */
 .conversation-list {
-  width: 280px;
-  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
   background: white;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid #e8ecf4;
-  transition: width 0.3s ease;
-  will-change: width;
-  min-width: 0;
+  position: relative;
 }
 
 /* 侧边栏收起状态 */
 .conversation-list.collapsed {
-  width: 0;
   border-right: none;
   overflow: hidden;
-  min-width: 0;
 }
 
 /* 侧边栏收起时隐藏所有内容 */
 .conversation-list.collapsed .conversation-header,
 .conversation-list.collapsed .search-container,
-.conversation-list.collapsed .conversation-items {
+.conversation-list.collapsed .conversation-items,
+.conversation-list.collapsed .settings-section {
   opacity: 0;
   transform: translateX(-20px);
   pointer-events: none;
@@ -358,7 +540,8 @@ defineExpose({
 /* 侧边栏内容正常状态 */
 .conversation-header,
 .search-container,
-.conversation-items {
+.conversation-items,
+.settings-section {
   transition: all 0.3s ease;
   opacity: 1;
   transform: translateX(0);
@@ -468,7 +651,7 @@ defineExpose({
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px;
+  padding: 12px 12px 80px 12px;
   transition: all 0.3s ease;
   background: white;
   width: 100%;
@@ -497,6 +680,157 @@ defineExpose({
   border-color: #4f46e5;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+}
+
+.new-chat-icon {
+  font-size: 18px;
+  color: #4a89dc;
+}
+
+/* 底部设置区域 */
+.settings-section {
+  padding: 16px;
+  border-top: 1px solid #e8ecf4;
+  display: flex;
+  justify-content: center;
+  background: white;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.settings-btn {
+  transition: all 0.3s ease;
+}
+
+.settings-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.settings-content {
+  padding: 16px;
+  width: 320px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-section {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8ecf4;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.user-icon {
+  font-size: 20px;
+  color: #4a89dc;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.username {
+  font-weight: 600;
+  color: #1a2639;
+  font-size: 16px;
+  flex: 1;
+}
+
+.user-actions,
+.datasource-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.user-actions .el-button,
+.datasource-actions .el-button {
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  text-align: left;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.user-actions .el-button .el-icon,
+.datasource-actions .el-button .el-icon {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.user-actions .el-button span,
+.datasource-actions .el-button span {
+  flex: 1;
+  text-align: left;
+}
+
+.user-actions .el-button:hover,
+.datasource-actions .el-button:hover {
+  background-color: #f0f4ff;
+  border-color: #e0e7ff;
+}
+
+.el-divider {
+  margin: 8px 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: #1a2639;
+  font-size: 14px;
+}
+
+.section-header .el-icon {
+  color: #4a89dc;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.datasource-info {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #6c757d;
+  margin-top: 12px;
+  line-height: 1.4;
+}
+
+.datasource-count {
+  margin-bottom: 4px;
+}
+
+.current-datasource {
+  font-weight: 500;
+  color: #495057;
+}
+
+.datasource-section {
+  width: 100%;
 }
 
 .new-chat-icon {

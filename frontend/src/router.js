@@ -6,8 +6,8 @@ const router = createRouter({
         routes: [
             {
                 path: "/",
-                name: "home",
-                component: () => import("./views/HomeView.vue"),
+                name: "multi-agent",
+                component: () => import("./views/MultiAgentView.vue"),
                 meta: { requiresAuth: true }
             },
             {
@@ -20,12 +20,6 @@ const router = createRouter({
                 path: "/database/:id",
                 name: "database",
                 component: () => import("./views/DatabaseView.vue"),
-                meta: { requiresAuth: true }
-            },
-            {
-                path: "/multi-agent",
-                name: "multi-agent",
-                component: () => import("./views/MultiAgentView.vue"),
                 meta: { requiresAuth: true }
             },
             {
