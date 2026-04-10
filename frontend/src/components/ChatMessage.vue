@@ -1,15 +1,7 @@
 <template>
   <div :class="['chat-message', { 'user-message': isUser, 'assistant-message': !isUser }]">
-    <div class="message-avatar">
-      <div :class="['avatar', { 'user-avatar': isUser, 'assistant-avatar': !isUser }]">
-        <el-icon v-if="isUser"><User /></el-icon>
-        <el-icon v-else><ChatDotRound /></el-icon>
-      </div>
-    </div>
     <div class="message-content">
-      <div class="message-header">
-        <span class="message-author">{{ isUser ? '我' : 'SQL 助手' }}</span>
-      </div>
+      
       <div class="message-body">
         <!-- 用户消息编辑模式 -->
         <template v-if="isUser && isEditing">
@@ -133,8 +125,6 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import {
-  User,
-  ChatDotRound,
   Warning,
   Document,
   CopyDocument,
@@ -271,7 +261,6 @@ const handleRegenerate = () => {
 <style scoped>
 .chat-message {
   display: flex;
-  gap: 16px;
   max-width: 100%;
   padding: 12px 0;
   animation: fadeIn 0.4s ease-in;
@@ -294,54 +283,9 @@ const handleRegenerate = () => {
   flex-direction: row-reverse;
 }
 
-.message-avatar {
-  flex-shrink: 0;
-}
-
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.avatar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
-  z-index: 1;
-}
-
-.avatar:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-.user-avatar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: white;
-}
-
-.assistant-avatar {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
-  color: white;
-}
-
 .message-content {
   flex: 1;
-  max-width: 90%;
+  max-width: 100%;
   position: relative;
 }
 
@@ -349,30 +293,11 @@ const handleRegenerate = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-
 }
 
 
 
-.message-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-  width: 100%;
-}
 
-.user-message .message-header {
-  justify-content: flex-end;
-}
-
-.message-author {
-  font-weight: 600;
-  color: #1a1a2a;
-  font-size: 15px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
 
 .message-body {
   word-wrap: break-word;
@@ -824,10 +749,7 @@ const handleRegenerate = () => {
     padding: 16px 20px;
   }
 
-  .message-header {
-    margin-bottom: 10px;
-    font-size: 13px;
-  }
+  
 
   .summary-section {
     padding: 16px;

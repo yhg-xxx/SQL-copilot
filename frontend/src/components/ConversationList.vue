@@ -93,10 +93,15 @@
 
     <!-- 底部设置区域 -->
     <div class="settings-section">
-      <el-popover placement="right" :width="320" trigger="click">
+      <el-popover 
+        placement="right" 
+        :width="340" 
+        trigger="click"
+        popper-class="custom-settings-popover"
+      >
         <template #reference>
           <el-button class="settings-btn" type="primary" circle>
-            <el-icon><Setting /></el-icon>
+            <el-icon class="settings-icon"><Setting /></el-icon>
           </el-button>
         </template>
         
@@ -104,37 +109,59 @@
           <!-- 用户信息区域 -->
           <div class="user-section">
             <div class="user-header">
-              <el-icon class="user-icon"><User /></el-icon>
-              <span class="username">{{ username }}</span>
+              <div class="user-avatar">
+                <el-icon class="user-icon"><User /></el-icon>
+              </div>
+              <div class="user-info">
+                <span class="username">{{ username }}</span>
+                <span class="user-subtitle">数据灵犀用户</span>
+              </div>
             </div>
             <div class="user-actions">
-              <el-button size="small" @click="showChangePasswordDialog">
-                <el-icon><Lock /></el-icon>
-                修改密码
+              <el-button 
+                size="small" 
+                @click="showChangePasswordDialog"
+                class="action-button"
+              >
+                <el-icon class="button-icon"><Lock /></el-icon>
+                <span>修改密码</span>
               </el-button>
-              <el-button size="small" type="danger" @click="logout">
-                <el-icon><SwitchButton /></el-icon>
-                退出登录
+              <el-button 
+                size="small" 
+                type="danger" 
+                @click="logout"
+                class="action-button"
+              >
+                <el-icon class="button-icon"><SwitchButton /></el-icon>
+                <span>退出登录</span>
               </el-button>
             </div>
           </div>
           
-          <el-divider />
+          <el-divider class="custom-divider" />
           
           <!-- 数据源配置区域 -->
           <div class="datasource-section">
             <div class="section-header">
-              <el-icon><DataAnalysis /></el-icon>
+              <el-icon class="section-icon"><DataAnalysis /></el-icon>
               <span>数据源管理</span>
             </div>
             <div class="datasource-actions">
-              <el-button size="small" @click="goToDatasource">
-                <el-icon><Management /></el-icon>
-                管理数据源
+              <el-button 
+                size="small" 
+                @click="goToDatasource"
+                class="action-button"
+              >
+                <el-icon class="button-icon"><Management /></el-icon>
+                <span>管理数据源</span>
               </el-button>
-              <el-button size="small" @click="refreshDatasources">
-                <el-icon><Refresh /></el-icon>
-                刷新列表
+              <el-button 
+                size="small" 
+                @click="refreshDatasources"
+                class="action-button"
+              >
+                <el-icon class="button-icon"><Refresh /></el-icon>
+                <span>刷新列表</span>
               </el-button>
             </div>
             <div class="datasource-info" v-if="datasources.length > 0">
@@ -156,7 +183,7 @@
 import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { Delete, Plus, ChatLineSquare, Search, Edit, Setting, User, Lock, SwitchButton, DataAnalysis, Management, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
 const props = defineProps({
@@ -429,14 +456,14 @@ const logout = async () => {
     })
     localStorage.removeItem('token')
     localStorage.removeItem('selectedConversationId')
-    router.push('/login')
+    await router.push('/login')
     ElMessage.success('退出登录成功')
   } catch (error) {
     console.error('退出登录失败:', error)
     // 即使失败也要清除本地存储并跳转
     localStorage.removeItem('token')
     localStorage.removeItem('selectedConversationId')
-    router.push('/login')
+    await router.push('/login')
   }
 }
 
@@ -699,138 +726,277 @@ defineExpose({
   left: 0;
   right: 0;
   z-index: 1;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .settings-btn {
   transition: all 0.3s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
 }
 
 .settings-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+}
+
+.settings-icon {
+  font-size: 20px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.settings-btn:hover .settings-icon {
+  transform: rotate(90deg);
+}
+
+/* 自定义设置弹出框 */
+.custom-settings-popover {
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  border: none !important;
+  overflow: hidden !important;
+  background: white !important;
 }
 
 .settings-content {
-  padding: 16px;
-  width: 320px;
+  padding: 20px;
+  width: 340px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
+/* 用户信息区域 */
 .user-section {
-  padding-bottom: 16px;
+  padding-bottom: 20px;
   border-bottom: 1px solid #e8ecf4;
 }
 
 .user-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a89dc, #6b9fde);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(74, 137, 220, 0.3);
+  transition: all 0.3s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(74, 137, 220, 0.4);
 }
 
 .user-icon {
-  font-size: 20px;
-  color: #4a89dc;
-  width: 20px;
-  height: 20px;
+  font-size: 24px;
+  color: white;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .username {
   font-weight: 600;
   color: #1a2639;
   font-size: 16px;
-  flex: 1;
+  display: block;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.user-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 操作按钮 */
 .user-actions,
 .datasource-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
-.user-actions .el-button,
-.datasource-actions .el-button {
-  justify-content: flex-start;
-  align-items: center;
+.action-button {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  border-radius: 10px !important;
+  transition: all 0.3s ease !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  border: 1px solid #e8ecf4 !important;
+  background: white !important;
+  color: #374151 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
   width: 100%;
-  padding: 12px 16px;
-  font-size: 14px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  text-align: left;
-  box-sizing: border-box;
-  margin: 0;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.1), transparent);
+  transition: left 0.5s ease;
 }
 
-.user-actions .el-button .el-icon,
-.datasource-actions .el-button .el-icon {
-  margin-right: 10px;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
+.action-button:hover::before {
+  left: 100%;
 }
 
-.user-actions .el-button span,
-.datasource-actions .el-button span {
-  flex: 1;
-  text-align: left;
+.action-button:hover {
+  background-color: #f0f4ff !important;
+  border-color: #4f46e5 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15) !important;
 }
 
-.user-actions .el-button:hover,
-.datasource-actions .el-button:hover {
-  background-color: #f0f4ff;
-  border-color: #e0e7ff;
+.action-button .el-icon {
+  margin-right: 12px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
+  color: #4a89dc !important;
 }
 
-.el-divider {
-  margin: 8px 0;
+.action-button span {
+  flex: 1 !important;
+  text-align: left !important;
+  font-weight: 500 !important;
 }
 
+.action-button[type="danger"] .el-icon {
+  color: #ef4444 !important;
+}
+
+.action-button[type="danger"]:hover {
+  background-color: #fef2f2 !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
+}
+
+.action-button[type="danger"]::before {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
+}
+
+/* 分隔线 */
+.custom-divider {
+  margin: 12px 0 !important;
+  background: #e8ecf4 !important;
+  height: 1px !important;
+}
+
+/* 数据源管理区域 */
 .section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 16px;
   font-weight: 600;
   color: #1a2639;
   font-size: 14px;
 }
 
-.section-header .el-icon {
-  color: #4a89dc;
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
+.section-icon {
+  color: #4a89dc !important;
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
 }
 
+/* 数据源信息 */
 .datasource-info {
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
   font-size: 13px;
   color: #6c757d;
   margin-top: 12px;
-  line-height: 1.4;
+  line-height: 1.5;
+  border: 1px solid #e8ecf4;
+  transition: all 0.3s ease;
+}
+
+.datasource-info:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .datasource-count {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .current-datasource {
-  font-weight: 500;
+  font-weight: 600;
   color: #495057;
+  font-size: 12px;
 }
 
 .datasource-section {
   width: 100%;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .settings-content {
+    width: 300px;
+    padding: 16px;
+  }
+  
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .user-icon {
+    font-size: 20px;
+  }
+  
+  .username {
+    font-size: 14px;
+  }
+  
+  .action-button {
+    padding: 10px 14px !important;
+  }
 }
 
 .new-chat-icon {
@@ -1019,24 +1185,56 @@ defineExpose({
   color: #4f46e5;
 }
 
-/* 滚动条样式：更细、更柔和 */
+/* 滚动条样式：只在悬停时显示 */
+.conversation-items {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+  /* 确保滚动条独立显示，不显示背景内容 */
+  background-clip: padding-box;
+}
+
+.conversation-items:hover {
+  scrollbar-color: #e0e0e0 #f5f5f5;
+}
+
 .conversation-items::-webkit-scrollbar {
   width: 6px;
+  transition: all 0.3s ease;
 }
 
 .conversation-items::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.3s ease;
+  /* 确保轨道不显示背景内容 */
+  background-clip: padding-box;
 }
 
 .conversation-items::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: transparent;
   border-radius: 3px;
-  transition: all 0.2s ease;
+  transition: background 0.3s ease;
+  /* 确保滑块不显示背景内容 */
+  background-clip: padding-box;
+  border: 1px solid transparent;
+}
+
+.conversation-items:hover::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.conversation-items:hover::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
 }
 
 .conversation-items::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #d0d0d0;
+}
+
+.conversation-items::-webkit-scrollbar-thumb:active {
+  background: #c0c0c0;
 }
 
 /* 响应式设计 */
