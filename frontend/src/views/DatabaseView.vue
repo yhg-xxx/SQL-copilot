@@ -82,17 +82,20 @@
               >
                 表结构
               </div>
-              <div
-                :class="['tab', { active: activeTab === 'preview' }]"
-                @click="switchToPreview"
-              >
+              <div :class="['tab', { active: activeTab === 'preview' }]" @click="switchToPreview">
                 数据预览
               </div>
             </div>
 
             <div class="tab-content" v-show="activeTab === 'schema'">
               <div class="table-wrapper">
-                <el-table :data="fields" stripe style="width: 100%" v-loading="fieldsLoading" class="custom-table">
+                <el-table
+                  :data="fields"
+                  stripe
+                  style="width: 100%"
+                  v-loading="fieldsLoading"
+                  class="custom-table"
+                >
                   <el-table-column prop="field_name" label="字段名" min-width="150" />
                   <el-table-column prop="field_type" label="字段类型" min-width="120" />
                   <el-table-column prop="field_comment" label="字段注释" min-width="150">
@@ -129,7 +132,16 @@
                   <el-table-column label="索引信息" min-width="150">
                     <template #default="{ row }">
                       <div v-if="row.is_indexed" class="index-info">
-                        <el-tag :type="row.index_type === 'PRIMARY' ? 'success' : row.index_type === 'UNIQUE' ? 'warning' : 'info'" size="small">
+                        <el-tag
+                          :type="
+                            row.index_type === 'PRIMARY'
+                              ? 'success'
+                              : row.index_type === 'UNIQUE'
+                                ? 'warning'
+                                : 'info'
+                          "
+                          size="small"
+                        >
                           {{ row.index_type }}
                         </el-tag>
                         <span class="index-name">{{ row.index_name }}</span>
@@ -139,10 +151,7 @@
                   </el-table-column>
                   <el-table-column prop="checked" label="是否选中" min-width="100">
                     <template #default="{ row }">
-                      <el-switch
-                        v-model="row.checked"
-                        @change="toggleFieldChecked(row)"
-                      />
+                      <el-switch v-model="row.checked" @change="toggleFieldChecked(row)" />
                     </template>
                   </el-table-column>
                 </el-table>
@@ -172,7 +181,12 @@
     </div>
 
     <!-- 编辑表注释对话框 -->
-    <el-dialog v-model="tableCommentDialogVisible" title="编辑表注释" width="500px" class="custom-dialog">
+    <el-dialog
+      v-model="tableCommentDialogVisible"
+      title="编辑表注释"
+      width="500px"
+      class="custom-dialog"
+    >
       <el-input
         v-model="tableCommentInput"
         type="textarea"
@@ -187,7 +201,12 @@
     </el-dialog>
 
     <!-- 编辑字段注释对话框 -->
-    <el-dialog v-model="fieldCommentDialogVisible" title="编辑字段注释" width="500px" class="custom-dialog">
+    <el-dialog
+      v-model="fieldCommentDialogVisible"
+      title="编辑字段注释"
+      width="500px"
+      class="custom-dialog"
+    >
       <el-input
         v-model="fieldCommentInput"
         type="textarea"
@@ -204,23 +223,23 @@
 </template>
 
 <script setup>
-import { ref , onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Search, Edit, QuestionFilled } from '@element-plus/icons-vue'
 
 // 导入图标
-const iconModules = import.meta.glob('@/assets/*', { eager: true, as: 'url' });
+const iconModules = import.meta.glob('@/assets/*', { eager: true, as: 'url' })
 
 const getTableIcon = () => {
   for (const [path, url] of Object.entries(iconModules)) {
     if (path.endsWith('table-icon.png')) {
-      return url;
+      return url
     }
   }
-  return '';
-};
+  return ''
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -248,7 +267,7 @@ const loadDatasource = async () => {
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get(`/datasource/${route.params.id}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     datasource.value = response.data
     datasourceConfig.value = JSON.parse(response.data.configuration)
@@ -263,7 +282,7 @@ const loadTables = async () => {
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get(`/datasource/${route.params.id}/table-info`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     tables.value = response.data
     filteredTables.value = response.data
@@ -280,25 +299,26 @@ const filterTables = () => {
     filteredTables.value = tables.value
   } else {
     const keyword = searchKeyword.value.toLowerCase()
-    filteredTables.value = tables.value.filter(table =>
-      table.table_name.toLowerCase().includes(keyword) ||
-      (table.table_comment && table.table_comment.toLowerCase().includes(keyword))
+    filteredTables.value = tables.value.filter(
+      table =>
+        table.table_name.toLowerCase().includes(keyword) ||
+        (table.table_comment && table.table_comment.toLowerCase().includes(keyword))
     )
   }
 }
 
-const selectTable = async (table) => {
+const selectTable = async table => {
   currentTable.value = table
   activeTab.value = 'schema'
   await loadFields(table.id)
 }
 
-const loadFields = async (tableId) => {
+const loadFields = async tableId => {
   fieldsLoading.value = true
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get(`/datasource/${route.params.id}/table-info`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     const tableData = response.data.find(t => t.id === tableId)
     if (tableData) {
@@ -323,10 +343,13 @@ const loadTableData = async () => {
   dataLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`/datasource/${route.params.id}/table/${currentTable.value.table_name}/data`, {
-      params: { limit: 10 },
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    const response = await axios.get(
+      `/datasource/${route.params.id}/table/${currentTable.value.table_name}/data`,
+      {
+        params: { limit: 10 },
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
     tableData.value = response.data.data
     previewColumns.value = response.data.columns
   } catch (error) {
@@ -338,7 +361,8 @@ const loadTableData = async () => {
 }
 
 const editTableComment = () => {
-  tableCommentInput.value = currentTable.value.custom_comment || currentTable.value.table_comment || ''
+  tableCommentInput.value =
+    currentTable.value.custom_comment || currentTable.value.table_comment || ''
   tableCommentDialogVisible.value = true
 }
 
@@ -346,8 +370,8 @@ const saveTableComment = async () => {
   try {
     const token = localStorage.getItem('token')
     await axios.put(`/datasource-table/${currentTable.value.id}/comment`, tableCommentInput.value, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'text/plain'
       }
     })
@@ -362,7 +386,7 @@ const saveTableComment = async () => {
   }
 }
 
-const editFieldComment = (field) => {
+const editFieldComment = field => {
   editingField.value = field
   fieldCommentInput.value = field.custom_comment || ''
   fieldCommentDialogVisible.value = true
@@ -371,12 +395,16 @@ const editFieldComment = (field) => {
 const saveFieldComment = async () => {
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`/datasource-table/field/${editingField.value.id}/comment`, fieldCommentInput.value, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'text/plain'
+    await axios.put(
+      `/datasource-table/field/${editingField.value.id}/comment`,
+      fieldCommentInput.value,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'text/plain'
+        }
       }
-    })
+    )
     editingField.value.custom_comment = fieldCommentInput.value
     ElMessage.success('字段注释保存成功')
     fieldCommentDialogVisible.value = false
@@ -386,12 +414,12 @@ const saveFieldComment = async () => {
   }
 }
 
-const toggleFieldChecked = async (field) => {
+const toggleFieldChecked = async field => {
   try {
     const token = localStorage.getItem('token')
     await axios.put(`/datasource-table/field/${field.id}/checked`, field.checked, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })

@@ -1,7 +1,6 @@
 <template>
   <div :class="['chat-message', { 'user-message': isUser, 'assistant-message': !isUser }]">
     <div class="message-content">
-      
       <div class="message-body">
         <!-- 用户消息编辑模式 -->
         <template v-if="isUser && isEditing">
@@ -23,7 +22,7 @@
             </div>
           </div>
         </template>
-        
+
         <!-- 非编辑模式 -->
         <template v-else>
           <!-- 有SQL和总结时 -->
@@ -53,12 +52,12 @@
               />
             </div>
           </template>
-          
+
           <!-- 仅有SQL无总结且未在总结时 -->
           <template v-else-if="message.sql && !message.summary && !message.isSummarizing">
             <!-- 不显示任何内容 -->
           </template>
-          
+
           <!-- 普通文本消息 -->
           <div v-else class="text-message" v-html="formattedContent"></div>
         </template>
@@ -67,10 +66,10 @@
         <el-icon class="error-icon"><Warning /></el-icon>
         <span>生成失败</span>
       </div>
-      
+
       <!-- 助手消息的工具栏 -->
       <div v-if="!isUser" class="agent-chat__toolbar__right">
-        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px;">
+        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px">
           <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_">
             <div class="ToolbarCopy_icon__5Odjl" @click="copyMessage('plain')">
               <el-icon><CopyDocument /></el-icon>
@@ -81,9 +80,7 @@
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="copyMessage('plain')">
-                    复制为纯文本
-                  </el-dropdown-item>
+                  <el-dropdown-item @click="copyMessage('plain')"> 复制为纯文本 </el-dropdown-item>
                   <el-dropdown-item @click="copyMessage('markdown')">
                     复制为Markdown
                   </el-dropdown-item>
@@ -92,25 +89,28 @@
             </el-dropdown>
           </div>
         </div>
-        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px;">
-          <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_" @click="handleRegenerate">
+        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px">
+          <div
+            class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_"
+            @click="handleRegenerate"
+          >
             <div class="ToolbarCopy_icon__5Odjl">
               <el-icon><RefreshRight /></el-icon>
             </div>
           </div>
         </div>
       </div>
-      
+
       <!-- 用户消息的工具栏 -->
       <div v-if="isUser && !isEditing" class="user-chat__toolbar__right">
-        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px;">
+        <div class="agent-chat__question-toolbar__copy-wrapper" style="line-height: 24px">
           <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_">
             <div class="ToolbarCopy_icon__5Odjl" @click="copyUserMessage">
               <el-icon><CopyDocument /></el-icon>
             </div>
           </div>
         </div>
-        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px;">
+        <div class="agent-chat__question-toolbar__regenerate-wrapper" style="line-height: 24px">
           <div class="ToolbarCopy_copyIconWrap__PfQIm ToolbarCopy_isWeb__cNQ6_" @click="startEdit">
             <div class="ToolbarCopy_icon__5Odjl">
               <el-icon><Edit /></el-icon>
@@ -124,13 +124,7 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue'
-import {
-  Warning,
-  Document,
-  CopyDocument,
-  RefreshRight,
-  Edit
-} from '@element-plus/icons-vue'
+import { Warning, Document, CopyDocument, RefreshRight, Edit } from '@element-plus/icons-vue'
 import DataDisplay from './DataDisplay.vue'
 import { ElMessage } from 'element-plus'
 
@@ -164,10 +158,22 @@ const formattedContent = computed(() => {
 const formattedSummary = computed(() => {
   if (!props.message.summary) return ''
   return props.message.summary
-    .replace(/^#\s+(.+)$/gm, '<h1 style="font-size: 18px; font-weight: 600; color: #1a1a2e; margin: 8px 0 6px 0;">$1</h1>')
-    .replace(/^##\s+(.+)$/gm, '<h2 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 6px 0 4px 0;">$1</h2>')
-    .replace(/^###\s+(.+)$/gm, '<h3 style="font-size: 14px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>')
-    .replace(/^####\s+(.+)$/gm, '<h4 style="font-size: 13px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>')
+    .replace(
+      /^#\s+(.+)$/gm,
+      '<h1 style="font-size: 18px; font-weight: 600; color: #1a1a2e; margin: 8px 0 6px 0;">$1</h1>'
+    )
+    .replace(
+      /^##\s+(.+)$/gm,
+      '<h2 style="font-size: 16px; font-weight: 600; color: #1a1a2e; margin: 6px 0 4px 0;">$1</h2>'
+    )
+    .replace(
+      /^###\s+(.+)$/gm,
+      '<h3 style="font-size: 14px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>'
+    )
+    .replace(
+      /^####\s+(.+)$/gm,
+      '<h4 style="font-size: 13px; font-weight: 600; color: #1a1a2e; margin: 4px 0 2px 0;">$1</h3>'
+    )
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^(\d+\.\s)/gm, '<span class="list-number">$1</span>')
     .replace(/\n/g, '<br>')
@@ -178,7 +184,7 @@ const copyMessage = (format = 'plain') => {
   const content = props.message.summary || props.message.content || ''
   if (content) {
     let textToCopy = content
-    
+
     // 如果是markdown格式，保持原样
     // 如果是纯文本格式，移除markdown标记
     if (format === 'plain') {
@@ -191,8 +197,9 @@ const copyMessage = (format = 'plain') => {
         .replace(/<br>/g, '\n')
         .replace(/<[^>]*>/g, '')
     }
-    
-    navigator.clipboard.writeText(textToCopy)
+
+    navigator.clipboard
+      .writeText(textToCopy)
       .then(() => {
         ElMessage.success(`内容已复制为${format === 'plain' ? '纯文本' : 'Markdown'}格式`)
       })
@@ -207,7 +214,8 @@ const copyMessage = (format = 'plain') => {
 const copyUserMessage = () => {
   const content = props.message.content || ''
   if (content) {
-    navigator.clipboard.writeText(content)
+    navigator.clipboard
+      .writeText(content)
       .then(() => {
         ElMessage.success('内容已复制')
       })
@@ -294,10 +302,6 @@ const handleRegenerate = () => {
   flex-direction: column;
   align-items: flex-end;
 }
-
-
-
-
 
 .message-body {
   word-wrap: break-word;
@@ -529,7 +533,8 @@ const handleRegenerate = () => {
 }
 
 @keyframes summarizingPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -582,8 +587,6 @@ const handleRegenerate = () => {
   color: #1a1a2e;
   font-weight: 600;
 }
-
-
 
 /* 助手消息工具栏样式 */
 .agent-chat__toolbar__right,
@@ -732,24 +735,22 @@ const handleRegenerate = () => {
     gap: 12px;
     padding: 8px 0;
   }
-  
+
   .avatar {
     width: 38px;
     height: 38px;
     font-size: 18px;
   }
-  
+
   .message-content {
     max-width: 85%;
   }
-  
+
   .text-message,
   .sql-message {
     font-size: 14px;
     padding: 16px 20px;
   }
-
-  
 
   .summary-section {
     padding: 16px;

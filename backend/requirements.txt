@@ -3,6 +3,7 @@ uvicorn
 python-jose[cryptography]
 python-multipart
 passlib[bcrypt]
+sqlparse
 sqlalchemy
 python-dotenv
 pymysql

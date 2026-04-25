@@ -58,7 +58,7 @@
       <div class="form-container">
         <!-- 登录表单 -->
         <Login v-if="activeTab === 'login'" @switch-to-register="activeTab = 'register'" />
-        
+
         <!-- 注册表单 -->
         <Register v-else @switch-to-login="activeTab = 'login'" />
       </div>
@@ -67,12 +67,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Star } from '@element-plus/icons-vue';
-import Login from './Login.vue';
-import Register from './Register.vue';
+import { ref } from 'vue'
+import { Star } from '@element-plus/icons-vue'
+import Login from './Login.vue'
+import Register from './Register.vue'
 
-const activeTab = ref('login');
+const activeTab = ref('login')
 </script>
 
 <style scoped>

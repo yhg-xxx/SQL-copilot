@@ -5,10 +5,7 @@
     <div class="bg-grid"></div>
 
     <!-- 返回按钮（固定在左上角） -->
-    <el-button
-      class="back-home-btn glass-btn"
-      @click="goToHome"
-    >
+    <el-button class="back-home-btn glass-btn" @click="goToHome">
       <el-icon><ArrowLeft /></el-icon>
       返回主界面
     </el-button>
@@ -64,7 +61,13 @@
                 <div class="datasource-type">{{ datasource.type_name || datasource.type }}</div>
               </div>
             </div>
-            <div class="status-dot" :class="{ success: datasource.status === 'Success', failed: datasource.status === 'Failed' }"></div>
+            <div
+              class="status-dot"
+              :class="{
+                success: datasource.status === 'Success',
+                failed: datasource.status === 'Failed'
+              }"
+            ></div>
           </div>
 
           <!-- 卡片内容 -->
@@ -80,7 +83,9 @@
               </div>
               <div class="detail-row">
                 <span class="detail-label">数据库</span>
-                <span class="detail-value">{{ getDatabaseFromConfig(datasource.configuration) }}</span>
+                <span class="detail-value">{{
+                  getDatabaseFromConfig(datasource.configuration)
+                }}</span>
               </div>
             </div>
           </div>
@@ -92,9 +97,7 @@
               <button class="action-btn edit-btn" @click.stop="openEditDialog(datasource)">
                 编辑
               </button>
-              <button class="action-btn view-btn" @click="viewDatabase(datasource)">
-                授权
-              </button>
+              <button class="action-btn view-btn" @click="viewDatabase(datasource)">授权</button>
               <button class="action-btn delete-btn" @click.stop="confirmDelete(datasource)">
                 删除
               </button>
@@ -116,20 +119,20 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { ArrowLeft, Search, Refresh, Plus, Upload } from '@element-plus/icons-vue';
-import DatasourceForm from '@/views/DatasourceForm.vue';
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft, Search, Refresh, Plus, Upload } from '@element-plus/icons-vue'
+import DatasourceForm from '@/views/DatasourceForm.vue'
 
-const router = useRouter();
+const router = useRouter()
 
 const goToHome = () => {
-  router.push('/');
-};
+  router.push('/')
+}
 
-const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
+const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' })
 
 const iconMap = {
   mysql: 'icon_mysql.svg',
@@ -140,122 +143,122 @@ const iconMap = {
   ck: 'icon_ck.svg',
   starrocks: 'icon_starrocks.png',
   doris: 'icon_doris.png'
-};
+}
 
-const getDatasourceIcon = (type) => {
-  const iconName = iconMap[type] || 'icon_mysql.svg';
+const getDatasourceIcon = type => {
+  const iconName = iconMap[type] || 'icon_mysql.svg'
   for (const [path, url] of Object.entries(iconModules)) {
     if (path.endsWith(iconName)) {
-      return url;
+      return url
     }
   }
-  return '';
-};
+  return ''
+}
 
-const datasources = ref([]);
-const loading = ref(false);
-const searchQuery = ref('');
+const datasources = ref([])
+const loading = ref(false)
+const searchQuery = ref('')
 
 const filteredDatasources = computed(() => {
   if (!searchQuery.value) {
-    return datasources.value;
+    return datasources.value
   }
   return datasources.value.filter(item =>
     item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
+  )
+})
 
 const fetchDatasourceList = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token')
     const response = await axios.get(`/datasource/list`, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
-    });
-    datasources.value = response.data;
+    })
+    datasources.value = response.data
   } catch (error) {
-    console.error('获取数据源列表失败:', error);
-    ElMessage.error('获取数据源列表失败');
+    console.error('获取数据源列表失败:', error)
+    ElMessage.error('获取数据源列表失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-fetchDatasourceList();
+fetchDatasourceList()
 
-const dialogVisible = ref(false);
-const currentDatasource = ref(null);
-const isBatchImportMode = ref(false);
+const dialogVisible = ref(false)
+const currentDatasource = ref(null)
+const isBatchImportMode = ref(false)
 
 const openCreateDialog = () => {
-  isBatchImportMode.value = false;
-  currentDatasource.value = null;
-  dialogVisible.value = true;
-};
+  isBatchImportMode.value = false
+  currentDatasource.value = null
+  dialogVisible.value = true
+}
 
 const openBatchImportDialog = () => {
-  isBatchImportMode.value = true;
-  currentDatasource.value = null;
-  dialogVisible.value = true;
-};
+  isBatchImportMode.value = true
+  currentDatasource.value = null
+  dialogVisible.value = true
+}
 
-const openEditDialog = (datasource) => {
-  isBatchImportMode.value = false;
-  currentDatasource.value = datasource;
-  dialogVisible.value = true;
-};
+const openEditDialog = datasource => {
+  isBatchImportMode.value = false
+  currentDatasource.value = datasource
+  dialogVisible.value = true
+}
 
 const handleFormSuccess = () => {
-  fetchDatasourceList();
-};
+  fetchDatasourceList()
+}
 
-const confirmDelete = async (datasource) => {
+const confirmDelete = async datasource => {
   ElMessageBox.confirm('确定要删除这个数据源吗？', '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   })
-  .then(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`/datasource/delete/${datasource.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      datasources.value = datasources.value.filter(item => item.id !== datasource.id);
-      ElMessage.success('删除成功');
-    } catch (error) {
-      console.error('删除失败:', error);
-      ElMessage.error('删除失败');
-    }
-  })
-  .catch(() => {});
-};
+    .then(async () => {
+      try {
+        const token = localStorage.getItem('token')
+        await axios.delete(`/datasource/delete/${datasource.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        datasources.value = datasources.value.filter(item => item.id !== datasource.id)
+        ElMessage.success('删除成功')
+      } catch (error) {
+        console.error('删除失败:', error)
+        ElMessage.error('删除失败')
+      }
+    })
+    .catch(() => {})
+}
 
-const getHostFromConfig = (config) => {
+const getHostFromConfig = config => {
   try {
-    const parsedConfig = JSON.parse(config);
-    return parsedConfig.host || '';
+    const parsedConfig = JSON.parse(config)
+    return parsedConfig.host || ''
   } catch {
-    return '';
+    return ''
   }
-};
+}
 
-const getDatabaseFromConfig = (config) => {
+const getDatabaseFromConfig = config => {
   try {
-    const parsedConfig = JSON.parse(config);
-    return parsedConfig.database || '';
+    const parsedConfig = JSON.parse(config)
+    return parsedConfig.database || ''
   } catch {
-    return '';
+    return ''
   }
-};
+}
 
-const viewDatabase = (datasource) => {
-  router.push(`/database/${datasource.id}`);
-};
+const viewDatabase = datasource => {
+  router.push(`/database/${datasource.id}`)
+}
 </script>
 
 <style scoped>
@@ -464,7 +467,9 @@ const viewDatabase = (datasource) => {
 .glass-card:hover {
   transform: translateY(-8px) scale(1.02);
   border-color: rgba(74, 137, 220, 0.8);
-  box-shadow: 0 20px 40px rgba(74, 137, 220, 0.25), 0 0 30px rgba(74, 137, 220, 0.3);
+  box-shadow:
+    0 20px 40px rgba(74, 137, 220, 0.25),
+    0 0 30px rgba(74, 137, 220, 0.3);
 }
 
 .card-glow {

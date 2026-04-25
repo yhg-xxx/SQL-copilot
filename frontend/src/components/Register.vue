@@ -4,28 +4,54 @@
 
     <el-form :model="registerForm" :rules="rules" ref="registerFormRef" class="register-form">
       <el-form-item prop="username">
-        <el-input v-model="registerForm.username" placeholder="请输入用户名" size="large" class="custom-input">
+        <el-input
+          v-model="registerForm.username"
+          placeholder="请输入用户名"
+          size="large"
+          class="custom-input"
+        >
           <template #prefix>
             <el-icon><User /></el-icon>
           </template>
         </el-input>
       </el-form-item>
       <el-form-item prop="password">
-        <el-input v-model="registerForm.password" type="password" placeholder="请输入密码" size="large" class="custom-input" show-password>
+        <el-input
+          v-model="registerForm.password"
+          type="password"
+          placeholder="请输入密码"
+          size="large"
+          class="custom-input"
+          show-password
+        >
           <template #prefix>
             <el-icon><Lock /></el-icon>
           </template>
         </el-input>
       </el-form-item>
       <el-form-item prop="confirmPassword">
-        <el-input v-model="registerForm.confirmPassword" type="password" placeholder="请确认密码" size="large" class="custom-input" show-password>
+        <el-input
+          v-model="registerForm.confirmPassword"
+          type="password"
+          placeholder="请确认密码"
+          size="large"
+          class="custom-input"
+          show-password
+        >
           <template #prefix>
             <el-icon><Lock /></el-icon>
           </template>
         </el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="handleRegister" :loading="loading" size="large" class="submit-btn">注册</el-button>
+        <el-button
+          type="primary"
+          @click="handleRegister"
+          :loading="loading"
+          size="large"
+          class="submit-btn"
+          >注册</el-button
+        >
       </el-form-item>
       <div class="form-links center">
         <span class="text-muted">已有账号？</span>
@@ -38,66 +64,62 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
-import { ElMessage } from 'element-plus';
-import { User, Lock } from '@element-plus/icons-vue';
+import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { User, Lock } from '@element-plus/icons-vue'
 
 // 定义事件
-const emit = defineEmits(['switch-to-login']);
+const emit = defineEmits(['switch-to-login'])
 
-const registerFormRef = ref(null);
-const loading = ref(false);
+const registerFormRef = ref(null)
+const loading = ref(false)
 
 const registerForm = reactive({
   username: '',
   password: '',
   confirmPassword: ''
-});
+})
 
 const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
-  ],
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   confirmPassword: [
     {
       validator: (rule, value, callback) => {
         if (value !== registerForm.password) {
-          callback(new Error('两次输入密码不一致'));
+          callback(new Error('两次输入密码不一致'))
         } else {
-          callback();
+          callback()
         }
       },
       trigger: 'blur'
     }
   ]
-};
+}
 
 const handleRegister = async () => {
-  if (!registerFormRef.value) return;
+  if (!registerFormRef.value) return
 
-  const valid = await registerFormRef.value.validate();
-  if (!valid) return;
+  const valid = await registerFormRef.value.validate()
+  if (!valid) return
 
-  loading.value = true;
+  loading.value = true
   try {
     await axios.post(`/user/register`, {
       username: registerForm.username,
       password: registerForm.password
-    });
-    ElMessage.success('注册成功，请登录');
-    emit('switch-to-login');
+    })
+    ElMessage.success('注册成功，请登录')
+    emit('switch-to-login')
   } catch (error) {
-    console.error('注册失败:', error);
-    ElMessage.error('注册失败，用户名可能已存在');
+    console.error('注册失败:', error)
+    ElMessage.error('注册失败，用户名可能已存在')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 </script>
 
 <style scoped>

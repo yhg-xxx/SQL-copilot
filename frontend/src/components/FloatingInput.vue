@@ -1,61 +1,35 @@
 <template>
-
   <div class="floating-input-wrapper">
-
     <!-- 输入框 -->
 
     <el-input
-
       v-model="inputMessage"
-
       type="textarea"
-
       placeholder="输入您的查询，例如：查询所有用户信息"
-
       :rows="1"
-
       resize="none"
-
       @keyup.enter.exact="handleSend"
-
       :disabled="loading"
-
       class="chat-input"
-
       ref="textareaRef"
-
       @input="adjustHeight"
-
       @paste="adjustHeight"
-
     ></el-input>
-
-
 
     <!-- 操作栏：数据库选择器 + 发送按钮 横向排列 -->
 
     <div class="input-actions">
-
       <!-- 数据库选择器 -->
 
       <div class="datasource-selector">
-
         <el-select
-
           v-model="selectedDatasourceModel"
-
           placeholder="选择数据源"
-
           size="small"
-
           class="datasource-select"
-
           @change="handleDatasourceChange"
-
           :disabled="useAutoDatabaseSelection"
-
           :style="{
-
             '--el-select-border-color': 'transparent',
 
             '--el-select-focus-border-color': 'transparent',
@@ -67,196 +41,112 @@
             '--el-input-focus-border-color': 'transparent',
 
             '--el-input-hover-border-color': 'transparent'
-
           }"
-
         >
-
           <el-option
-
             v-for="datasource in datasources"
-
             :key="datasource.id"
-
             :label="datasource.name"
-
             :value="datasource.id"
-
           >
-
             <div class="datasource-option">
-
               <span class="datasource-name">{{ datasource.name }}</span>
 
               <span class="datasource-type">{{ datasource.type }}</span>
-
             </div>
-
           </el-option>
-
         </el-select>
-
       </div>
-
-      
 
       <!-- 自动选择下拉菜单 -->
 
       <div class="auto-selection-dropdown">
-
         <el-select
-
           v-model="autoSelectionValue"
-
           placeholder="选择模式"
-
           size="small"
-
           class="auto-selection-select"
-
           @change="handleAutoSelectionToggle"
-
         >
-
-          <el-option
-
-            :label="'智能选择'"
-
-            :value="true"
-
-          >
-
+          <el-option :label="'智能选择'" :value="true">
             <div class="auto-selection-option">
-
               <div class="option-content">
-
                 <span class="option-name">智能选择</span>
 
                 <span class="option-description">自动判断并选择合适的数据源</span>
-
               </div>
 
               <el-icon v-if="autoSelectionValue === true" class="option-check"><Check /></el-icon>
-
             </div>
-
           </el-option>
 
-          <el-option
-
-            :label="'手动选择'"
-
-            :value="false"
-
-          >
-
+          <el-option :label="'手动选择'" :value="false">
             <div class="auto-selection-option">
-
               <div class="option-content">
-
                 <span class="option-name">手动选择</span>
 
                 <span class="option-description">手动控制数据源选择</span>
-
               </div>
 
               <el-icon v-if="autoSelectionValue === false" class="option-check"><Check /></el-icon>
-
             </div>
-
           </el-option>
-
         </el-select>
-
       </div>
-
-      
 
       <!-- 发送按钮 -->
 
       <el-button
-
         @click="handleSend"
-
         type="primary"
-
         :loading="loading"
-
         class="send-btn"
-
         :disabled="!inputMessage.trim() || (!useAutoDatabaseSelection && !selectedDatasourceModel)"
-
       >
-
         <el-icon v-if="!loading"><ArrowUp /></el-icon>
-
       </el-button>
-
     </div>
-
   </div>
-
 </template>
 
-
-
 <script setup>
-
 import { ref, computed, defineProps, defineEmits, watch, onMounted } from 'vue'
 
 import { ArrowUp, Check } from '@element-plus/icons-vue'
 
-
-
 const props = defineProps({
-
   loading: {
-
     type: Boolean,
 
     default: false
-
   },
 
   datasources: {
-
     type: Array,
 
     default: () => []
-
   },
 
   selectedDatasource: {
-
     type: [String, Number],
 
     default: null
-
   },
 
   useAutoDatabaseSelection: {
-
     type: Boolean,
 
     default: true
-
   },
 
   maxRows: {
-
     type: Number,
 
     default: 12
-
   }
-
 })
 
-
-
 const emit = defineEmits(['send', 'update:selectedDatasource', 'toggle-auto-selection'])
-
-
 
 const inputMessage = ref('')
 
@@ -264,79 +154,53 @@ const autoSelectionValue = ref(props.useAutoDatabaseSelection)
 
 const textareaRef = ref(null)
 
-
-
 // 监听 props 变化
 
-watch(() => props.useAutoDatabaseSelection, (newValue) => {
-
-  autoSelectionValue.value = newValue
-
-})
-
-
+watch(
+  () => props.useAutoDatabaseSelection,
+  newValue => {
+    autoSelectionValue.value = newValue
+  }
+)
 
 // 监听输入内容变化，调整高度
 
 watch(inputMessage, () => {
-
   adjustHeight()
-
 })
-
-
 
 // 使用 computed 实现双向绑定
 
 const selectedDatasourceModel = computed({
-
   get: () => props.selectedDatasource,
 
-  set: (value) => emit('update:selectedDatasource', value)
-
+  set: value => emit('update:selectedDatasource', value)
 })
-
-
 
 // 处理数据源选择变化
 
-const handleDatasourceChange = (value) => {
-
+const handleDatasourceChange = value => {
   emit('update:selectedDatasource', value)
-
 }
-
-
 
 // 处理自动选择开关变化
 
-const handleAutoSelectionToggle = (value) => {
-
+const handleAutoSelectionToggle = value => {
   emit('toggle-auto-selection', value)
-
 }
-
-
 
 // 调整输入框高度
 
 const adjustHeight = () => {
-
   if (!textareaRef.value) return
-
-  
 
   const textarea = textareaRef.value.$el.querySelector('textarea')
 
   if (!textarea) return
 
-  
-
   // 重置高度以正确计算滚动高度
 
   textarea.style.height = 'auto'
-
-  
 
   // 计算单行高度和最大高度
 
@@ -344,40 +208,27 @@ const adjustHeight = () => {
 
   const maxHeight = lineHeight * props.maxRows
 
-  
-
   // 计算内容高度
 
   const scrollHeight = textarea.scrollHeight
 
-  
-
   // 设置高度，不超过最大限制
 
   if (scrollHeight <= maxHeight) {
-
     textarea.style.height = `${scrollHeight}px`
 
     textarea.style.overflowY = 'hidden'
-
   } else {
-
     textarea.style.height = `${maxHeight}px`
 
     textarea.style.overflowY = 'auto'
-
   }
-
 }
 
-
-
 const handleSend = () => {
-
   const message = inputMessage.value.trim()
 
   if (message && (props.useAutoDatabaseSelection || props.selectedDatasource)) {
-
     emit('send', message)
 
     inputMessage.value = ''
@@ -385,29 +236,18 @@ const handleSend = () => {
     // 重置高度
 
     setTimeout(adjustHeight, 0)
-
   }
-
 }
-
-
 
 // 组件挂载后初始化
 
 onMounted(() => {
-
   adjustHeight()
-
 })
-
 </script>
 
-
-
 <style scoped>
-
 .floating-input-wrapper {
-
   background: white;
 
   border-radius: 12px;
@@ -435,35 +275,23 @@ onMounted(() => {
   margin-bottom: 30px;
 
   z-index: 1000;
-
 }
 
-
-
 .floating-input-wrapper:hover {
-
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 
   transform: translateY(-1px);
-
 }
-
-
 
 /* 输入框：占满宽度，减少内边距 */
 
 .chat-input {
-
   background: transparent;
 
   flex: 1;
-
 }
 
-
-
 .chat-input :deep(.el-textarea) {
-
   line-height: 1.5;
 
   border: none !important;
@@ -471,13 +299,9 @@ onMounted(() => {
   box-shadow: none !important;
 
   background: transparent !important;
-
 }
 
-
-
 .chat-input :deep(.el-textarea__inner) {
-
   background: transparent !important;
 
   border: none !important;
@@ -496,7 +320,9 @@ onMounted(() => {
 
   color: #1a1a2a;
 
-  transition: height 0.3s ease, overflow 0.3s ease;
+  transition:
+    height 0.3s ease,
+    overflow 0.3s ease;
 
   min-height: 40px;
 
@@ -505,39 +331,27 @@ onMounted(() => {
   outline: none !important;
 
   box-shadow: none !important;
-
 }
 
-
-
 .chat-input :deep(.el-textarea__inner):focus {
-
   border-color: transparent !important;
 
   box-shadow: none !important;
 
   outline: none !important;
-
 }
 
-
-
 .chat-input :deep(.el-textarea:focus-within) {
-
   border: none !important;
 
   box-shadow: none !important;
 
   outline: none !important;
-
 }
-
-
 
 /* 操作栏：数据库选择器 + 发送按钮 横向排列，紧凑布局 */
 
 .input-actions {
-
   display: flex;
 
   align-items: center;
@@ -547,23 +361,15 @@ onMounted(() => {
   margin-top: 4px;
 
   justify-content: flex-start;
-
 }
-
-
 
 .input-actions .send-btn {
-
   margin-left: auto;
-
 }
-
-
 
 /* 数据源选择器：紧凑样式 */
 
 .datasource-selector {
-
   display: flex;
 
   align-items: center;
@@ -571,29 +377,17 @@ onMounted(() => {
   flex: 1;
 
   max-width: 200px;
-
 }
 
-
-
 .datasource-select {
-
   flex: 1;
-
 }
-
-
 
 .datasource-select {
-
   width: 100%;
-
 }
-
-
 
 .datasource-select :deep(.el-select) {
-
   width: 100%;
 
   --el-select-border-color: transparent !important;
@@ -607,13 +401,9 @@ onMounted(() => {
   --el-input-focus-border-color: transparent !important;
 
   --el-input-hover-border-color: transparent !important;
-
 }
 
-
-
 .datasource-select :deep(.el-input) {
-
   width: 100%;
 
   --el-input-border-color: transparent !important;
@@ -621,13 +411,9 @@ onMounted(() => {
   --el-input-focus-border-color: transparent !important;
 
   --el-input-hover-border-color: transparent !important;
-
 }
 
-
-
 .datasource-select :deep(.el-input__wrapper) {
-
   width: 100%;
 
   border-radius: 16px !important;
@@ -645,15 +431,10 @@ onMounted(() => {
   outline: none !important;
 
   border: none transparent !important;
-
 }
 
-
-
 .datasource-select :deep(.el-input__wrapper):hover,
-
 .datasource-select :deep(.el-input__wrapper.is-focus) {
-
   background: #e9ecef !important;
 
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
@@ -663,81 +444,53 @@ onMounted(() => {
   outline: none !important;
 
   border: none transparent !important;
-
 }
 
-
-
 .datasource-select :deep(.el-input__wrapper.is-focus) {
-
   box-shadow: none !important;
 
   border-color: transparent !important;
-
 }
-
-
 
 /* 确保下拉箭头也没有边框 */
 
 .datasource-select :deep(.el-input__suffix-inner) {
-
   border: none !important;
 
   outline: none !important;
-
 }
 
-
-
 .datasource-select :deep(.el-select__caret) {
-
   color: #6b7280 !important;
 
   transition: all 0.3s ease !important;
-
 }
-
-
 
 .datasource-select :deep(.el-select__caret:hover) {
-
   color: #6b7280 !important;
-
 }
-
-
 
 /* 确保输入框本身没有边框 */
 
 .datasource-select :deep(input) {
-
   border: none !important;
 
   outline: none !important;
 
   box-shadow: none !important;
-
 }
-
-
 
 .datasource-select :deep(input:focus) {
-
   border: none !important;
 
   outline: none !important;
 
   box-shadow: none !important;
-
 }
-
-
 
 /* 美化下拉菜单 */
 
 .datasource-select :deep(.el-select-dropdown) {
-
   border: none;
 
   border-radius: 12px;
@@ -747,13 +500,9 @@ onMounted(() => {
   padding: 8px;
 
   background: white;
-
 }
 
-
-
 .datasource-select :deep(.el-select-dropdown__item) {
-
   border-radius: 12px;
 
   padding: 10px 12px;
@@ -761,41 +510,25 @@ onMounted(() => {
   margin: 2px 0;
 
   transition: all 0.3s ease;
-
 }
 
-
-
 .datasource-select :deep(.el-select-dropdown__item:hover) {
-
   background: #f0f4ff;
 
   transform: translateX(4px);
-
 }
 
-
-
 .datasource-select :deep(.el-select-dropdown__item.selected) {
-
   background: #e0e7ff;
 
   color: #4f46e5;
-
 }
-
-
 
 .datasource-select :deep(.el-select-dropdown__item.selected:hover) {
-
   background: #c7d2fe;
-
 }
 
-
-
 .datasource-option {
-
   display: flex;
 
   align-items: center;
@@ -803,13 +536,9 @@ onMounted(() => {
   justify-content: space-between;
 
   width: 100%;
-
 }
 
-
-
 .datasource-name {
-
   font-weight: 500;
 
   color: #1a1a2a;
@@ -817,13 +546,9 @@ onMounted(() => {
   font-size: 14px;
 
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-
 }
 
-
-
 .datasource-type {
-
   font-size: 12px;
 
   color: #6b7280;
@@ -835,15 +560,11 @@ onMounted(() => {
   border-radius: 6px;
 
   font-weight: 500;
-
 }
-
-
 
 /* 自动选择下拉菜单样式 */
 
 .auto-selection-dropdown {
-
   display: flex;
 
   align-items: center;
@@ -851,31 +572,19 @@ onMounted(() => {
   flex: 1;
 
   max-width: 200px;
-
 }
 
-
-
 .auto-selection-select {
-
   flex: 1;
 
   width: 100%;
-
 }
-
-
 
 .auto-selection-select :deep(.el-select) {
-
   width: 100%;
-
 }
 
-
-
 .auto-selection-select :deep(.el-input__wrapper) {
-
   width: 100%;
 
   border-radius: 16px !important;
@@ -893,15 +602,10 @@ onMounted(() => {
   outline: none !important;
 
   border: none transparent !important;
-
 }
 
-
-
 .auto-selection-select :deep(.el-input__wrapper):hover,
-
 .auto-selection-select :deep(.el-input__wrapper.is-focus) {
-
   background: #e9ecef !important;
 
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
@@ -911,43 +615,27 @@ onMounted(() => {
   outline: none !important;
 
   border: none transparent !important;
-
 }
 
-
-
 .auto-selection-select :deep(.el-input__wrapper.is-focus) {
-
   box-shadow: none !important;
 
   border-color: transparent !important;
-
 }
 
-
-
 .auto-selection-select :deep(.el-select__caret) {
-
   color: #6b7280 !important;
 
   transition: all 0.3s ease !important;
-
 }
-
-
 
 .auto-selection-select :deep(.el-select__caret:hover) {
-
   color: #6b7280 !important;
-
 }
-
-
 
 /* 自动选择下拉菜单项样式 */
 
 .auto-selection-select :deep(.el-select-dropdown) {
-
   border: none;
 
   border-radius: 12px;
@@ -959,13 +647,9 @@ onMounted(() => {
   background: white;
 
   min-width: 200px;
-
 }
 
-
-
 .auto-selection-select :deep(.el-select-dropdown__item) {
-
   border-radius: 12px;
 
   padding: 12px 16px;
@@ -981,41 +665,25 @@ onMounted(() => {
   display: flex;
 
   align-items: center;
-
 }
 
-
-
 .auto-selection-select :deep(.el-select-dropdown__item:hover) {
-
   background: #f0f4ff;
 
   transform: translateX(4px);
-
 }
 
-
-
 .auto-selection-select :deep(.el-select-dropdown__item.selected) {
-
   background: #e0e7ff;
 
   color: #4f46e5;
-
 }
-
-
 
 .auto-selection-select :deep(.el-select-dropdown__item.selected:hover) {
-
   background: #c7d2fe;
-
 }
 
-
-
 .auto-selection-option {
-
   display: flex;
 
   align-items: center;
@@ -1023,13 +691,9 @@ onMounted(() => {
   justify-content: space-between;
 
   width: 100%;
-
 }
 
-
-
 .option-content {
-
   display: flex;
 
   flex-direction: column;
@@ -1037,13 +701,9 @@ onMounted(() => {
   gap: 4px;
 
   flex: 1;
-
 }
 
-
-
 .option-name {
-
   font-weight: 500;
 
   color: #1a1a2a;
@@ -1051,25 +711,17 @@ onMounted(() => {
   font-size: 14px;
 
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-
 }
 
-
-
 .option-description {
-
   font-size: 12px;
 
   color: #6b7280;
 
   line-height: 1.3;
-
 }
 
-
-
 .option-check {
-
   color: #2116f1;
 
   font-size: 16px;
@@ -1081,15 +733,11 @@ onMounted(() => {
   align-items: center;
 
   height: 100%;
-
 }
-
-
 
 /* 发送按钮：用户要求的样式 */
 
 .send-btn {
-
   width: 36px;
 
   height: 36px;
@@ -1113,13 +761,9 @@ onMounted(() => {
   flex-shrink: 0;
 
   color: white;
-
 }
 
-
-
 .send-btn:hover:not(:disabled) {
-
   background: #f0f4ff;
 
   transform: translateY(-1px);
@@ -1127,37 +771,25 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
 
   color: #4f46e5;
-
 }
 
-
-
 .send-btn:disabled {
-
   background: #d1d5db;
 
   cursor: not-allowed;
-
 }
-
-
 
 /* 设置区域样式 */
 
 .settings-section {
-
   display: flex;
 
   justify-content: flex-start;
 
   margin-top: 4px;
-
 }
 
-
-
 .settings-toggle-btn {
-
   display: flex;
 
   align-items: center;
@@ -1173,51 +805,30 @@ onMounted(() => {
   border-radius: 6px;
 
   transition: all 0.3s ease;
-
 }
 
-
-
 .settings-toggle-btn:hover {
-
   background: #f3f4f6;
 
   color: #374151;
-
 }
-
-
 
 .settings-toggle-btn .el-icon {
-
   font-size: 14px;
-
 }
 
-
-
 .settings-content {
-
   padding: 16px;
 
   min-width: 280px;
-
 }
-
-
 
 .user-section,
-
 .datasource-section {
-
   margin-bottom: 16px;
-
 }
 
-
-
 .user-header {
-
   display: flex;
 
   align-items: center;
@@ -1229,37 +840,24 @@ onMounted(() => {
   padding-bottom: 8px;
 
   border-bottom: 1px solid #e8ecf4;
-
 }
 
-
-
 .user-header .user-icon {
-
   font-size: 18px;
 
   color: #4a89dc;
-
 }
 
-
-
 .user-header .username {
-
   font-weight: 600;
 
   color: #1a2639;
 
   font-size: 16px;
-
 }
 
-
-
 .user-actions,
-
 .datasource-actions {
-
   display: flex;
 
   flex-direction: column;
@@ -1267,25 +865,16 @@ onMounted(() => {
   gap: 8px;
 
   margin-bottom: 12px;
-
 }
 
-
-
 .user-actions .el-button,
-
 .datasource-actions .el-button {
-
   justify-content: flex-start;
 
   width: 100%;
-
 }
 
-
-
 .section-header {
-
   display: flex;
 
   align-items: center;
@@ -1297,125 +886,43 @@ onMounted(() => {
   font-weight: 600;
 
   color: #1a2639;
-
 }
 
-
-
 .section-header .el-icon {
-
   color: #4a89dc;
 
   font-size: 16px;
-
 }
-
-
-
-.datasource-info {
-
-  padding: 8px 12px;
-
-  background: #f8f9fa;
-
-  border-radius: 8px;
-
-  font-size: 14px;
-
-  color: #6c757d;
-
-}
-
-
-
-.datasource-count {
-
-  margin-bottom: 4px;
-
-}
-
-
-
-.current-datasource {
-
-  font-weight: 500;
-
-  color: #495057;
-
-}
-
-
 
 /* 响应式设计 */
 
 @media (max-width: 768px) {
-
-  .floating-input-container {
-
-    padding: 0 16px;
-
-    bottom: 20px;
-
-  }
-
-  
-
   .floating-input-wrapper {
-
     padding: 10px;
-
   }
-
-  
 
   .input-actions {
-
     flex-direction: column;
 
     align-items: stretch;
 
     gap: 8px;
-
   }
-
-  
-
-  .function-buttons {
-
-    justify-content: center;
-
-  }
-
-  
 
   .datasource-selector {
-
     width: 100%;
 
     max-width: none;
-
   }
-
-  
 
   .auto-selection-dropdown {
-
     width: 100%;
 
     max-width: none;
-
   }
-
-  
-
-  .attach-btn,
 
   .send-btn {
-
     align-self: center;
-
   }
-
 }
-
 </style>

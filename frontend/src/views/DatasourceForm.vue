@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    :title="isEdit ? '编辑数据源' : (props.isBatchImport ? '批量导入数据源' : '新建数据源')"
+    :title="isEdit ? '编辑数据源' : props.isBatchImport ? '批量导入数据源' : '新建数据源'"
     width="700px"
     :close-on-click-modal="false"
     class="datasource-form-dialog"
@@ -9,11 +9,7 @@
   >
     <el-steps :active="currentStep - 1" finish-status="success" class="steps-wrapper">
       <el-step title="连接配置" description="配置数据库连接信息" />
-      <el-step 
-        v-if="!props.isBatchImport" 
-        title="选择表" 
-        description="选择需要管理的表" 
-      />
+      <el-step v-if="!props.isBatchImport" title="选择表" description="选择需要管理的表" />
       <template v-else>
         <el-step title="选择数据库" description="选择需要导入的数据库" />
         <el-step title="配置数据源" description="为每个数据库配置名称" />
@@ -102,8 +98,16 @@
             <el-form-item v-if="!showOracleMode" label="数据库名" prop="database">
               <el-input v-model="formData.database" placeholder="请输入数据库名" clearable />
             </el-form-item>
-            <el-form-item v-else :label="formData.mode === 'service_name' ? '服务名称' : 'SID'" prop="database">
-              <el-input v-model="formData.database" :placeholder="formData.mode === 'service_name' ? 'ORCL' : 'XE'" clearable />
+            <el-form-item
+              v-else
+              :label="formData.mode === 'service_name' ? '服务名称' : 'SID'"
+              prop="database"
+            >
+              <el-input
+                v-model="formData.database"
+                :placeholder="formData.mode === 'service_name' ? 'ORCL' : 'XE'"
+                clearable
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12" v-if="showOracleMode">
@@ -159,7 +163,8 @@
         <div class="table-selection-header">
           <div class="selection-info">
             <div>
-              已选择 <span class="highlight">{{ selectedTables.length }}</span> / {{ tableList.length }} 个表
+              已选择 <span class="highlight">{{ selectedTables.length }}</span> /
+              {{ tableList.length }} 个表
               <span v-if="isSelectAll" class="select-all-badge">（全选模式）</span>
             </div>
           </div>
@@ -177,7 +182,12 @@
           </div>
         </div>
 
-        <div v-loading="tableListLoading" class="table-list-wrapper" ref="tableListWrapper" @scroll="handleScroll">
+        <div
+          v-loading="tableListLoading"
+          class="table-list-wrapper"
+          ref="tableListWrapper"
+          @scroll="handleScroll"
+        >
           <el-checkbox-group v-model="selectedTables">
             <el-row :gutter="12">
               <el-col :span="12" v-for="table in displayedTableList" :key="table.tableName">
@@ -185,7 +195,9 @@
                   <el-checkbox :value="table.tableName" style="width: 100%">
                     <div class="checkbox-content">
                       <span class="table-name">{{ table.tableName }}</span>
-                      <span v-if="table.tableComment" class="table-comment">{{ table.tableComment }}</span>
+                      <span v-if="table.tableComment" class="table-comment">{{
+                        table.tableComment
+                      }}</span>
                     </div>
                   </el-checkbox>
                 </div>
@@ -195,7 +207,10 @@
           <el-empty v-if="tableList.length === 0" description="未找到数据表" />
 
           <div v-if="canLoadMore && !isLoadingMore" class="load-more-tip">
-            <span class="tip-text">滚动到底部加载更多（已显示 {{ displayedTableList.length }} / {{ tableList.length }}）</span>
+            <span class="tip-text"
+              >滚动到底部加载更多（已显示 {{ displayedTableList.length }} /
+              {{ tableList.length }}）</span
+            >
           </div>
 
           <div v-if="isLoadingMore" class="loading-more">
@@ -210,7 +225,8 @@
         <div class="table-selection-header">
           <div class="selection-info">
             <div>
-              已选择 <span class="highlight">{{ selectedDatabases.length }}</span> / {{ databaseList.length }} 个数据库
+              已选择 <span class="highlight">{{ selectedDatabases.length }}</span> /
+              {{ databaseList.length }} 个数据库
             </div>
           </div>
           <div class="header-actions">
@@ -242,9 +258,7 @@
       <div v-show="currentStep === 3 && props.isBatchImport" class="step-content">
         <div class="database-config-header">
           <div class="selection-info">
-            <div>
-              共 {{ databaseConfigs.length }} 个数据源待配置
-            </div>
+            <div>共 {{ databaseConfigs.length }} 个数据源待配置</div>
           </div>
         </div>
 
@@ -278,30 +292,40 @@
     <template #footer>
       <div class="modal-actions">
         <div class="left">
-          <el-button v-if="currentStep === 1 && !props.isBatchImport" :loading="testing" @click="testConnection">
+          <el-button
+            v-if="currentStep === 1 && !props.isBatchImport"
+            :loading="testing"
+            @click="testConnection"
+          >
             测试连接
           </el-button>
         </div>
         <div class="right">
           <el-button @click="handleClose">取消</el-button>
-          <el-button 
-            v-if="(currentStep === 2 && !props.isBatchImport) || (currentStep > 1 && props.isBatchImport)" 
+          <el-button
+            v-if="
+              (currentStep === 2 && !props.isBatchImport) ||
+              (currentStep > 1 && props.isBatchImport)
+            "
             @click="handlePrev"
           >
             上一步
           </el-button>
-          <el-button 
-            v-if="(currentStep === 1) || (currentStep === 2 && props.isBatchImport)" 
-            type="primary" 
+          <el-button
+            v-if="currentStep === 1 || (currentStep === 2 && props.isBatchImport)"
+            type="primary"
             @click="handleNext"
           >
             下一步
           </el-button>
-          <el-button 
-            v-if="(currentStep === 2 && !props.isBatchImport) || (currentStep === 3 && props.isBatchImport)" 
-            type="primary" 
-            :loading="loading" 
-            :disabled="loading" 
+          <el-button
+            v-if="
+              (currentStep === 2 && !props.isBatchImport) ||
+              (currentStep === 3 && props.isBatchImport)
+            "
+            type="primary"
+            :loading="loading"
+            :disabled="loading"
             @click="handleSave"
           >
             保存
@@ -313,42 +337,42 @@
 </template>
 
 <script setup>
-import {computed, reactive, ref, watch} from 'vue';
-import {ElMessage, ElMessageBox} from 'element-plus';
-import {Loading} from '@element-plus/icons-vue';
-import axios from 'axios';
+import { computed, reactive, ref, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 // 防抖函数
 const debounce = (func, wait) => {
-  let timeout;
-  return function() {
-    const context = this;
-    const args = arguments;
-    clearTimeout(timeout);
+  let timeout
+  return function () {
+    const context = this
+    const args = arguments
+    clearTimeout(timeout)
     timeout = setTimeout(() => {
-      func.apply(context, args);
-    }, wait);
-  };
-};
+      func.apply(context, args)
+    }, wait)
+  }
+}
 
-const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' });
+const iconModules = import.meta.glob('@/assets/datasource/*', { eager: true, as: 'url' })
 
 const iconMap = {
   mysql: 'icon_mysql.svg',
   pg: 'icon_pg.svg',
   oracle: 'icon_oracle.svg',
-  sqlServer: 'icon_sqlserver.svg',
-};
+  sqlServer: 'icon_sqlserver.svg'
+}
 
-const getDatasourceIcon = (type) => {
-  const iconName = iconMap[type] || 'icon_mysql.svg';
+const getDatasourceIcon = type => {
+  const iconName = iconMap[type] || 'icon_mysql.svg'
   for (const [path, url] of Object.entries(iconModules)) {
     if (path.endsWith(iconName)) {
-      return url;
+      return url
     }
   }
-  return '';
-};
+  return ''
+}
 
 const props = defineProps({
   show: {
@@ -363,27 +387,27 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
-});
+})
 
-const emit = defineEmits(['update:show', 'success']);
+const emit = defineEmits(['update:show', 'success'])
 
 const datasourceTypes = [
   { label: 'MySQL', value: 'mysql' },
   { label: 'PostgreSQL', value: 'pg' },
   { label: 'Oracle', value: 'oracle' },
-  { label: 'SQL Server', value: 'sqlServer' },
-];
+  { label: 'SQL Server', value: 'sqlServer' }
+]
 
-const needSchemaTypes = ['sqlServer', 'pg', 'dm'];
+const needSchemaTypes = ['sqlServer', 'pg', 'dm']
 
-const formRef = ref(null);
-const tableListWrapper = ref(null);
+const formRef = ref(null)
+const tableListWrapper = ref(null)
 const dialogVisible = computed({
   get: () => props.show,
-  set: (val) => emit('update:show', val)
-});
+  set: val => emit('update:show', val)
+})
 
-const isEdit = computed(() => !!props.datasource?.id);
+const isEdit = computed(() => !!props.datasource?.id)
 
 const formData = reactive({
   name: '',
@@ -399,103 +423,98 @@ const formData = reactive({
   timeout: 30,
   mode: 'service_name',
   driver: 'thin'
-});
+})
 
 const rules = computed(() => {
   const baseRules = {
-    type: [
-      { required: true, message: '请选择数据源类型', trigger: 'change' }
-    ],
-    host: [
-      { required: true, message: '请输入主机地址', trigger: 'blur' }
-    ],
+    type: [{ required: true, message: '请选择数据源类型', trigger: 'change' }],
+    host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
     port: [
       { required: true, message: '请输入端口号', trigger: 'blur' },
       { type: 'number', min: 1, max: 65535, message: '端口号范围1-65535', trigger: 'blur' }
     ]
-  };
-  
+  }
+
   if (!props.isBatchImport) {
     baseRules.name = [
       { required: true, message: '请输入数据源名称', trigger: 'blur' },
       { min: 1, max: 50, message: '名称长度在1-50个字符', trigger: 'blur' }
-    ];
-    baseRules.database = [
-      { required: true, message: '请输入数据库名', trigger: 'blur' }
-    ];
-    baseRules.dbSchema = [
-      { required: true, message: '请输入Schema', trigger: 'blur' }
-    ];
+    ]
+    baseRules.database = [{ required: true, message: '请输入数据库名', trigger: 'blur' }]
+    baseRules.dbSchema = [{ required: true, message: '请输入Schema', trigger: 'blur' }]
   }
-  
-  return baseRules;
-});
 
-const showSchema = computed(() => needSchemaTypes.includes(formData.type));
-const showOracleMode = computed(() => formData.type === 'oracle');
+  return baseRules
+})
 
-watch(() => formData.type, (newType) => {
-  const defaultPorts = {
-    mysql: 3306,
-    pg: 5432,
-    oracle: 1521,
-    sqlServer: 1433
-  };
-  if (defaultPorts[newType]) {
-    formData.port = defaultPorts[newType];
+const showSchema = computed(() => needSchemaTypes.includes(formData.type))
+const showOracleMode = computed(() => formData.type === 'oracle')
+
+watch(
+  () => formData.type,
+  newType => {
+    const defaultPorts = {
+      mysql: 3306,
+      pg: 5432,
+      oracle: 1521,
+      sqlServer: 1433
+    }
+    if (defaultPorts[newType]) {
+      formData.port = defaultPorts[newType]
+    }
   }
-});
+)
 
-const loading = ref(false);
-const testing = ref(false);
-const currentStep = ref(1);
-const tableList = ref([]);
-const selectedTables = ref([]);
-const tableListLoading = ref(false);
-const displayedTableCount = ref(50);
-const pageSize = ref(50);
-const isLoadingMore = ref(false);
-const hasMoreTables = ref(true);
-const isSelectAll = ref(false);
+const loading = ref(false)
+const testing = ref(false)
+const currentStep = ref(1)
+const tableList = ref([])
+const selectedTables = ref([])
+const tableListLoading = ref(false)
+const displayedTableCount = ref(50)
+const pageSize = ref(50)
+const isLoadingMore = ref(false)
+const hasMoreTables = ref(true)
+const isSelectAll = ref(false)
 
 // 批量导入相关状态
-const databaseList = ref([]);
-const selectedDatabases = ref([]);
-const databaseListLoading = ref(false);
-const databaseConfigs = ref([]);
+const databaseList = ref([])
+const selectedDatabases = ref([])
+const databaseListLoading = ref(false)
+const databaseConfigs = ref([])
 
 const initForm = async () => {
   if (props.datasource) {
-    formData.name = props.datasource.name || '';
-    formData.description = props.datasource.description || '';
-    formData.type = props.datasource.type || 'mysql';
+    formData.name = props.datasource.name || ''
+    formData.description = props.datasource.description || ''
+    formData.type = props.datasource.type || 'mysql'
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token')
       const response = await axios.get(`/datasource/${props.datasource.id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
-      });
-      const data = response.data;
-      formData.name = data.name;
-      formData.description = data.description;
-      formData.type = data.type;
+      })
+      const data = response.data
+      formData.name = data.name
+      formData.description = data.description
+      formData.type = data.type
       if (data.configuration) {
         try {
-          const config = JSON.parse(data.configuration);
-          Object.assign(formData, config);
+          const config = JSON.parse(data.configuration)
+          Object.assign(formData, config)
           if (config.port) {
-            formData.port = Number(config.port);
+            formData.port = Number(config.port)
           }
         } catch (e) {
-          console.error('解析配置信息失败:', e);
+          console.error('解析配置信息失败:', e)
         }
       }
-      
-      await fetchTableList();
+
+      await fetchTableList()
     } catch (error) {
-      console.error('获取数据源详情失败:', error);
+      console.error('获取数据源详情失败:', error)
     }
   } else {
     Object.assign(formData, {
@@ -512,123 +531,134 @@ const initForm = async () => {
       timeout: 30,
       mode: 'service_name',
       driver: 'thin'
-    });
+    })
   }
-  currentStep.value = 1;
-  selectedTables.value = [];
-  tableList.value = [];
-  displayedTableCount.value = pageSize.value;
-  hasMoreTables.value = true;
-  isLoadingMore.value = false;
-  isSelectAll.value = false;
+  currentStep.value = 1
+  selectedTables.value = []
+  tableList.value = []
+  displayedTableCount.value = pageSize.value
+  hasMoreTables.value = true
+  isLoadingMore.value = false
+  isSelectAll.value = false
   // 批量导入相关状态重置
-  databaseList.value = [];
-  selectedDatabases.value = [];
-  databaseListLoading.value = false;
-  databaseConfigs.value = [];
-};
+  databaseList.value = []
+  selectedDatabases.value = []
+  databaseListLoading.value = false
+  databaseConfigs.value = []
+}
 
 const testConnection = async () => {
-  if (!formRef.value) return;
-  
-  await formRef.value.validate((valid) => {
-    if (!valid) {
-      ElMessage.error('请检查表单信息');
-      return false;
-    }
-  });
+  if (!formRef.value) return
 
-  testing.value = true;
+  await formRef.value.validate(valid => {
+    if (!valid) {
+      ElMessage.error('请检查表单信息')
+      return false
+    }
+  })
+
+  testing.value = true
   try {
-    const config = buildConfiguration();
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`/datasource/test-connection`, {
-      name: formData.name,
-      description: formData.description,
-      type: formData.type,
-      type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
-      host: config.host,
-      port: String(config.port),
-      database: config.database,
-      username: config.username,
-      password: config.password
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const config = buildConfiguration()
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      `/datasource/test-connection`,
+      {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+        host: config.host,
+        port: String(config.port),
+        database: config.database,
+        username: config.username,
+        password: config.password
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
 
     if (response.data.status === 'Success') {
-      ElMessage.success('连接成功');
-      await fetchTableList();
+      ElMessage.success('连接成功')
+      await fetchTableList()
     } else {
-      ElMessage.error(response.data.message || '连接失败');
+      ElMessage.error(response.data.message || '连接失败')
     }
   } catch (error) {
-    console.error('测试连接失败:', error);
-    ElMessage.error('测试连接失败');
+    console.error('测试连接失败:', error)
+    ElMessage.error('测试连接失败')
   } finally {
-    testing.value = false;
+    testing.value = false
   }
-};
+}
 
 const fetchDatabaseList = async () => {
-  databaseListLoading.value = true;
+  databaseListLoading.value = true
   try {
-    const config = buildConfiguration();
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`/datasource/fetch-databases`, {
-      type: formData.type,
-      configuration: JSON.stringify(config)
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const config = buildConfiguration()
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      `/datasource/fetch-databases`,
+      {
+        type: formData.type,
+        configuration: JSON.stringify(config)
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
 
-    databaseList.value = response.data || [];
+    databaseList.value = response.data || []
     if (databaseList.value.length > 0) {
-      ElMessage.success(`成功获取 ${databaseList.value.length} 个数据库`);
+      ElMessage.success(`成功获取 ${databaseList.value.length} 个数据库`)
     }
   } catch (error) {
-    console.error('获取数据库列表失败:', error);
-    ElMessage.error('获取数据库列表失败');
+    console.error('获取数据库列表失败:', error)
+    ElMessage.error('获取数据库列表失败')
   } finally {
-    databaseListLoading.value = false;
+    databaseListLoading.value = false
   }
-};
+}
 
 const fetchTableList = async () => {
-  tableListLoading.value = true;
+  tableListLoading.value = true
   try {
-    const config = buildConfiguration();
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`/datasource/fetch-tables`, {
-      type: formData.type,
-      configuration: JSON.stringify(config)
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const config = buildConfiguration()
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      `/datasource/fetch-tables`,
+      {
+        type: formData.type,
+        configuration: JSON.stringify(config)
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
 
-    tableList.value = response.data || [];
-    displayedTableCount.value = Math.min(pageSize.value, tableList.value.length);
-    hasMoreTables.value = tableList.value.length > displayedTableCount.value;
+    tableList.value = response.data || []
+    displayedTableCount.value = Math.min(pageSize.value, tableList.value.length)
+    hasMoreTables.value = tableList.value.length > displayedTableCount.value
 
     if (props.datasource?.id) {
       try {
         const tablesResponse = await axios.get(`/datasource/${props.datasource.id}/tables`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        selectedTables.value = tablesResponse.data
-          .map(t => t.table_name);
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        selectedTables.value = tablesResponse.data.map(t => t.table_name)
       } catch (error) {
-        console.error('获取已选择的表列表失败:', error);
-        selectedTables.value = [];
+        console.error('获取已选择的表列表失败:', error)
+        selectedTables.value = []
       }
     }
   } catch (error) {
-    console.error('获取表列表失败:', error);
-    ElMessage.error('获取表列表失败');
+    console.error('获取表列表失败:', error)
+    ElMessage.error('获取表列表失败')
   } finally {
-    tableListLoading.value = false;
+    tableListLoading.value = false
   }
-};
+}
 
 const buildConfiguration = () => {
   return {
@@ -642,80 +672,89 @@ const buildConfiguration = () => {
     timeout: formData.timeout,
     mode: formData.mode,
     driver: formData.driver
-  };
-};
+  }
+}
 
 const checkDatasourceName = async () => {
   try {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`/datasource/check-name`, {
-      name: formData.name,
-      id: props.datasource?.id
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    const exists = response.data?.exists || false;
-    
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      `/datasource/check-name`,
+      {
+        name: formData.name,
+        id: props.datasource?.id
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
+
+    const exists = response.data?.exists || false
+
     if (exists) {
-      ElMessage.error('数据源名称已存在');
-      return false;
+      ElMessage.error('数据源名称已存在')
+      return false
     }
-    return true;
+    return true
   } catch (error) {
-    console.error('检查数据源名称失败:', error);
-    ElMessage.error('检查数据源名称失败');
-    return false;
+    console.error('检查数据源名称失败:', error)
+    ElMessage.error('检查数据源名称失败')
+    return false
   }
-};
+}
 
 const handleNext = async () => {
-  if (!formRef.value) return;
-  
+  if (!formRef.value) return
+
   if (props.isBatchImport) {
     if (currentStep.value === 1) {
       // 第一步：验证连接并获取数据库列表
-      await formRef.value.validate(async (valid) => {
-        if (!valid) return;
-        
-        testing.value = true;
+      await formRef.value.validate(async valid => {
+        if (!valid) return
+
+        testing.value = true
         try {
-          const config = buildConfiguration();
-          const token = localStorage.getItem('token');
-          const response = await axios.post(`/datasource/test-connection`, {
-            name: 'test',
-            type: formData.type,
-            type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
-            host: config.host,
-            port: String(config.port),
-            database: config.database || '',
-            username: config.username,
-            password: config.password
-          }, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const config = buildConfiguration()
+          const token = localStorage.getItem('token')
+          const response = await axios.post(
+            `/datasource/test-connection`,
+            {
+              name: 'test',
+              type: formData.type,
+              type_name:
+                datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
+              host: config.host,
+              port: String(config.port),
+              database: config.database || '',
+              username: config.username,
+              password: config.password
+            },
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          )
 
           if (response.data.status === 'Success') {
-            ElMessage.success('连接成功');
-            await fetchDatabaseList();
+            ElMessage.success('连接成功')
+            await fetchDatabaseList()
             if (databaseList.value.length > 0) {
-              currentStep.value = 2;
+              currentStep.value = 2
             }
           } else {
-            ElMessage.error(response.data.message || '连接失败');
+            ElMessage.error(response.data.message || '连接失败')
           }
         } catch (error) {
-          console.error('测试连接失败:', error);
-          ElMessage.error('测试连接失败');
+          console.error('测试连接失败:', error)
+          ElMessage.error('测试连接失败')
         } finally {
-          testing.value = false;
+          testing.value = false
         }
-      });
+      })
     } else if (currentStep.value === 2) {
       // 第二步：检查是否选择了数据库，然后进入第三步配置
       if (selectedDatabases.value.length === 0) {
-        ElMessage.warning('请至少选择一个数据库');
-        return;
+        ElMessage.warning('请至少选择一个数据库')
+        return
       }
       // 初始化数据库配置
       databaseConfigs.value = selectedDatabases.value.map(dbName => ({
@@ -723,146 +762,147 @@ const handleNext = async () => {
         name: dbName,
         description: '',
         tables: null
-      }));
-      currentStep.value = 3;
+      }))
+      currentStep.value = 3
     }
   } else {
     // 原有单个创建流程
-    await formRef.value.validate(async (valid) => {
-      if (!valid) return;
-      
+    await formRef.value.validate(async valid => {
+      if (!valid) return
+
       // 检查数据源名称是否已存在
-      const nameValid = await checkDatasourceName();
-      if (!nameValid) return;
-      
-      await testConnection();
+      const nameValid = await checkDatasourceName()
+      if (!nameValid) return
+
+      await testConnection()
       if (tableList.value.length > 0) {
-        currentStep.value = 2;
+        currentStep.value = 2
       }
-    });
+    })
   }
-};
+}
 
 const handlePrev = () => {
   if (props.isBatchImport) {
     if (currentStep.value > 1) {
-      currentStep.value--;
+      currentStep.value--
     }
   } else {
-    currentStep.value = 1;
+    currentStep.value = 1
   }
-};
-
+}
 
 const handleSelectDisplayed = () => {
   if (isDisplayedAllSelected.value) {
-    const displayedTableNames = displayedTableList.value.map(t => t.tableName);
-    selectedTables.value = selectedTables.value.filter(name => !displayedTableNames.includes(name));
-    isSelectAll.value = false;
+    const displayedTableNames = displayedTableList.value.map(t => t.tableName)
+    selectedTables.value = selectedTables.value.filter(name => !displayedTableNames.includes(name))
+    isSelectAll.value = false
   } else {
-    const displayedTableNames = displayedTableList.value.map(t => t.tableName);
-    const newSelected = new Set([...selectedTables.value, ...displayedTableNames]);
-    selectedTables.value = Array.from(newSelected);
-    isSelectAll.value = selectedTables.value.length >= tableList.value.length;
+    const displayedTableNames = displayedTableList.value.map(t => t.tableName)
+    const newSelected = new Set([...selectedTables.value, ...displayedTableNames])
+    selectedTables.value = Array.from(newSelected)
+    isSelectAll.value = selectedTables.value.length >= tableList.value.length
   }
-};
+}
 
 const handleSelectAll = async () => {
   if (isAllSelected.value) {
-    selectedTables.value = [];
-    isSelectAll.value = false;
-    return;
+    selectedTables.value = []
+    isSelectAll.value = false
+    return
   }
 
-  const totalCount = tableList.value.length;
-  const displayedCount = displayedTableList.value.length;
-  const notAllDisplayed = displayedCount < totalCount;
+  const totalCount = tableList.value.length
+  const displayedCount = displayedTableList.value.length
+  const notAllDisplayed = displayedCount < totalCount
 
-  let content = `您将选择 ${totalCount} 张表进行同步。`;
+  let content = `您将选择 ${totalCount} 张表进行同步。`
   if (notAllDisplayed) {
-    content += `\n（当前仅显示 ${displayedCount} 张，将自动选择全部 ${totalCount} 张表）`;
+    content += `\n（当前仅显示 ${displayedCount} 张，将自动选择全部 ${totalCount} 张表）`
   }
-  content += `\n\n是否继续？`;
+  content += `\n\n是否继续？`
 
   if (totalCount > displayedCount || totalCount > 100) {
-    await ElMessageBox.confirm(
-      content,
-      '确认全选',
-      {
-        confirmButtonText: '确认全选',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    ).then(() => {
-      selectedTables.value = tableList.value.map(t => t.tableName);
-      isSelectAll.value = true;
-      ElMessage.success(`已选择 ${totalCount} 张表`);
-    }).catch(() => {});
+    await ElMessageBox.confirm(content, '确认全选', {
+      confirmButtonText: '确认全选',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+      .then(() => {
+        selectedTables.value = tableList.value.map(t => t.tableName)
+        isSelectAll.value = true
+        ElMessage.success(`已选择 ${totalCount} 张表`)
+      })
+      .catch(() => {})
   } else {
-    selectedTables.value = tableList.value.map(t => t.tableName);
-    isSelectAll.value = true;
+    selectedTables.value = tableList.value.map(t => t.tableName)
+    isSelectAll.value = true
     if (totalCount > 0) {
-      ElMessage.success(`已选择 ${totalCount} 张表`);
+      ElMessage.success(`已选择 ${totalCount} 张表`)
     }
   }
-};
+}
 
 const displayedTableList = computed(() => {
-  return tableList.value.slice(0, displayedTableCount.value);
-});
+  return tableList.value.slice(0, displayedTableCount.value)
+})
 
 const canLoadMore = computed(() => {
-  return displayedTableCount.value < tableList.value.length;
-});
+  return displayedTableCount.value < tableList.value.length
+})
 
 const isDisplayedAllSelected = computed(() => {
-  if (displayedTableList.value.length === 0) return false;
-  return displayedTableList.value.every(table => selectedTables.value.includes(table.tableName));
-});
+  if (displayedTableList.value.length === 0) return false
+  return displayedTableList.value.every(table => selectedTables.value.includes(table.tableName))
+})
 
 const isAllSelected = computed(() => {
-  if (tableList.value.length === 0) return false;
-  return tableList.value.every(table => selectedTables.value.includes(table.tableName));
-});
+  if (tableList.value.length === 0) return false
+  return tableList.value.every(table => selectedTables.value.includes(table.tableName))
+})
 
 const isAllDatabasesSelected = computed(() => {
-  if (databaseList.value.length === 0) return false;
-  return databaseList.value.every(db => selectedDatabases.value.includes(db.databaseName));
-});
+  if (databaseList.value.length === 0) return false
+  return databaseList.value.every(db => selectedDatabases.value.includes(db.databaseName))
+})
 
 const handleSelectAllDatabases = () => {
   if (isAllDatabasesSelected.value) {
-    selectedDatabases.value = [];
+    selectedDatabases.value = []
   } else {
-    selectedDatabases.value = databaseList.value.map(db => db.databaseName);
+    selectedDatabases.value = databaseList.value.map(db => db.databaseName)
   }
-};
+}
 
-watch(selectedTables, (newSelected) => {
-  isSelectAll.value = newSelected.length === tableList.value.length;
-}, { deep: true });
+watch(
+  selectedTables,
+  newSelected => {
+    isSelectAll.value = newSelected.length === tableList.value.length
+  },
+  { deep: true }
+)
 
 const handleSave = debounce(async () => {
-  if (loading.value) return;
+  if (loading.value) return
 
   if (props.isBatchImport) {
     // 批量导入模式
     if (databaseConfigs.value.length === 0) {
-      ElMessage.warning('请至少配置一个数据源');
-      return;
+      ElMessage.warning('请至少配置一个数据源')
+      return
     }
 
     // 验证每个配置都有名称
     for (const config of databaseConfigs.value) {
       if (!config.name || config.name.trim() === '') {
-        ElMessage.warning('请为每个数据源填写名称');
-        return;
+        ElMessage.warning('请为每个数据源填写名称')
+        return
       }
     }
 
-    loading.value = true;
+    loading.value = true
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token')
       const requestData = {
         type: formData.type,
         type_name: datasourceTypes.find(t => t.value === formData.type)?.label || formData.type,
@@ -871,39 +911,39 @@ const handleSave = debounce(async () => {
         username: formData.username,
         password: formData.password,
         databases: databaseConfigs.value
-      };
+      }
 
       await axios.post(`/datasource/batch-create`, requestData, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+        headers: { Authorization: `Bearer ${token}` }
+      })
 
-      ElMessage.success(`成功批量导入 ${databaseConfigs.value.length} 个数据源`);
-      emit('success');
-      handleClose();
+      ElMessage.success(`成功批量导入 ${databaseConfigs.value.length} 个数据源`)
+      emit('success')
+      handleClose()
     } catch (error) {
-      console.error('批量导入数据源失败:', error);
-      ElMessage.error(error.response?.data?.detail || '批量导入数据源失败');
+      console.error('批量导入数据源失败:', error)
+      ElMessage.error(error.response?.data?.detail || '批量导入数据源失败')
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   } else {
     // 单个创建模式
     if (selectedTables.value.length === 0) {
-      ElMessage.warning('请至少选择一个表');
-      return;
+      ElMessage.warning('请至少选择一个表')
+      return
     }
 
-    loading.value = true;
+    loading.value = true
     try {
-      const config = buildConfiguration();
+      const config = buildConfiguration()
 
       const tables = selectedTables.value.map(tableName => {
-        const table = tableList.value.find(t => t.tableName === tableName);
+        const table = tableList.value.find(t => t.tableName === tableName)
         return {
           table_name: tableName,
           table_comment: table?.tableComment || ''
-        };
-      });
+        }
+      })
 
       const requestData = {
         name: formData.name,
@@ -916,75 +956,85 @@ const handleSave = debounce(async () => {
         username: config.username,
         password: config.password,
         tables
-      };
+      }
 
-      const token = localStorage.getItem('token');
-      let response;
-      let dsId = props.datasource?.id;
+      const token = localStorage.getItem('token')
+      let response
+      let dsId = props.datasource?.id
 
       if (props.datasource?.id) {
         response = await axios.put(`/datasource/update/${props.datasource.id}`, requestData, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+          headers: { Authorization: `Bearer ${token}` }
+        })
       } else {
         response = await axios.post(`/datasource/create`, requestData, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+          headers: { Authorization: `Bearer ${token}` }
+        })
       }
 
-      dsId = response.data?.id || dsId;
+      dsId = response.data?.id || dsId
 
       try {
-        await axios.post(`/datasource/${dsId}/sync-tables`, {
-          tables,
-          selectAll: isSelectAll.value
-        }, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await axios.post(
+          `/datasource/${dsId}/sync-tables`,
+          {
+            tables,
+            selectAll: isSelectAll.value
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        )
       } catch (syncErr) {
-        console.error('同步表列表失败:', syncErr);
-        ElMessage.warning('数据源已保存，但同步表列表时出现错误，请稍后手动同步');
+        console.error('同步表列表失败:', syncErr)
+        ElMessage.warning('数据源已保存，但同步表列表时出现错误，请稍后手动同步')
       }
 
-      ElMessage.success(props.datasource?.id ? '更新成功' : '创建成功');
-      emit('success');
-      handleClose();
+      ElMessage.success(props.datasource?.id ? '更新成功' : '创建成功')
+      emit('success')
+      handleClose()
     } catch (error) {
-      console.error('保存数据源失败:', error);
-      ElMessage.error('保存数据源失败');
+      console.error('保存数据源失败:', error)
+      ElMessage.error('保存数据源失败')
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   }
-}, 1000);
+}, 1000)
 
 const handleScroll = () => {
-  if (!tableListWrapper.value) return;
-  
-  const { scrollTop, scrollHeight, clientHeight } = tableListWrapper.value;
-  
+  if (!tableListWrapper.value) return
+
+  const { scrollTop, scrollHeight, clientHeight } = tableListWrapper.value
+
   // 当滚动到距离底部100px以内时，加载更多
   if (scrollHeight - scrollTop - clientHeight < 100 && canLoadMore.value && !isLoadingMore.value) {
-    isLoadingMore.value = true;
-    
+    isLoadingMore.value = true
+
     // 模拟加载延迟
     setTimeout(() => {
-      displayedTableCount.value = Math.min(displayedTableCount.value + pageSize.value, tableList.value.length);
-      isLoadingMore.value = false;
-    }, 300);
+      displayedTableCount.value = Math.min(
+        displayedTableCount.value + pageSize.value,
+        tableList.value.length
+      )
+      isLoadingMore.value = false
+    }, 300)
   }
-};
+}
 
 const handleClose = () => {
-  emit('update:show', false);
-  initForm();
-};
+  emit('update:show', false)
+  initForm()
+}
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    initForm();
+watch(
+  () => props.show,
+  newVal => {
+    if (newVal) {
+      initForm()
+    }
   }
-});
+)
 </script>
 
 <style scoped>

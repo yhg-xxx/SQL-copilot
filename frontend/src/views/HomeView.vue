@@ -36,7 +36,9 @@
     <div class="home-content">
       <div class="welcome-section">
         <h2 class="fade-in">欢迎使用多智能体数据库查询系统</h2>
-        <p class="slide-up">基于多智能体协作的复杂数据库自然语言查询系统，通过智能体分工协作自动完成SQL生成、验证、执行与结果解释，实现数据要素的平民化访问与价值释放。</p>
+        <p class="slide-up">
+          基于多智能体协作的复杂数据库自然语言查询系统，通过智能体分工协作自动完成SQL生成、验证、执行与结果解释，实现数据要素的平民化访问与价值释放。
+        </p>
       </div>
 
       <div class="feature-cards">
@@ -77,91 +79,99 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { DataAnalysis, Document, User, ArrowDown, Lock, SwitchButton } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import axios from 'axios';
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  DataAnalysis,
+  Document,
+  User,
+  ArrowDown,
+  Lock,
+  SwitchButton
+} from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 
-const router = useRouter();
-const username = ref('用户');
+const router = useRouter()
+const username = ref('用户')
 
 const goToDatasource = () => {
-  router.push('/datasource');
-};
+  router.push('/datasource')
+}
 
 const goToMultiAgent = () => {
-  router.push('/multi-agent');
-};
+  router.push('/multi-agent')
+}
 
 const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  router.push('/login');
-  ElMessage.success('已退出登录');
-};
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  router.push('/login')
+  ElMessage.success('已退出登录')
+}
 
-const handleCommand = (command) => {
+const handleCommand = command => {
   if (command === 'logout') {
-    logout();
+    logout()
   } else if (command === 'changePassword') {
-    showChangePasswordDialog();
+    showChangePasswordDialog()
   }
-};
+}
 
 const showChangePasswordDialog = async () => {
   try {
     const { value } = await ElMessageBox.prompt('请输入新密码', '修改密码', {
       confirmButtonText: '确认修改',
       cancelButtonText: '取消',
-      inputType: 'password',
-    });
+      inputType: 'password'
+    })
 
     if (value) {
-      await changePassword(value);
+      await changePassword(value)
     }
   } catch (error) {
     // 用户取消操作
   }
-};
+}
 
-const changePassword = async (newPassword) => {
+const changePassword = async newPassword => {
   try {
-    const token = localStorage.getItem('token');
-    await axios.post(`/user/change-password`, 
+    const token = localStorage.getItem('token')
+    await axios.post(
+      `/user/change-password`,
       { new_password: newPassword },
       {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       }
-    );
-    ElMessage.success('密码修改成功');
+    )
+    ElMessage.success('密码修改成功')
   } catch (error) {
-    console.error('修改密码失败:', error);
-    ElMessage.error('修改密码失败，请重试');
+    console.error('修改密码失败:', error)
+    ElMessage.error('修改密码失败，请重试')
   }
-};
+}
 
 onMounted(() => {
-  const userInfo = localStorage.getItem('user');
+  const userInfo = localStorage.getItem('user')
   if (userInfo) {
     try {
-      const user = JSON.parse(userInfo);
-      username.value = user.username || user.name || '用户';
+      const user = JSON.parse(userInfo)
+      username.value = user.username || user.name || '用户'
     } catch (error) {
-      console.error('解析用户信息失败:', error);
+      console.error('解析用户信息失败:', error)
     }
   }
-});
+})
 </script>
 
 <style scoped>
 /* 全局科技感变量（蓝色系） */
 :root {
-  --primary-glow: #4a89dc;        /* 蓝色主色调 */
+  --primary-glow: #4a89dc; /* 蓝色主色调 */
   --secondary-glow: #6b9fde;
-  --bg-deep: #f8f9fa;              /* 整体背景基础色（实际被渐变覆盖） */
+  --bg-deep: #f8f9fa; /* 整体背景基础色（实际被渐变覆盖） */
   --bg-card: rgba(255, 255, 255, 0.8); /* 半透明白色卡片背景 */
   --border-glow: rgba(74, 137, 220, 0.3);
   --text-primary: #1a2639;
@@ -266,8 +276,6 @@ onMounted(() => {
   position: relative;
 }
 
-
-
 .user-info {
   display: flex;
   align-items: center;
@@ -357,7 +365,7 @@ onMounted(() => {
   margin: 0 auto;
   line-height: 1.7;
   animation: slideUp 1s ease-out;
-  text-shadow: 0 2px 5px rgba(255,255,255,0.5);
+  text-shadow: 0 2px 5px rgba(255, 255, 255, 0.5);
 }
 
 .feature-cards {
@@ -386,7 +394,9 @@ onMounted(() => {
 .glass-card:hover {
   transform: translateY(-8px) scale(1.02);
   border-color: rgba(74, 137, 220, 0.8);
-  box-shadow: 0 20px 40px rgba(74, 137, 220, 0.25), 0 0 30px rgba(74, 137, 220, 0.3);
+  box-shadow:
+    0 20px 40px rgba(74, 137, 220, 0.25),
+    0 0 30px rgba(74, 137, 220, 0.3);
 }
 
 .card-glow {

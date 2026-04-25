@@ -1,23 +1,38 @@
 <template>
-  <div class="conversation-list" :class="{ 'collapsed': sidebarCollapsed }">
+  <div class="conversation-list" :class="{ collapsed: sidebarCollapsed }">
     <!-- 顶部搜索和新对话按钮 -->
     <div class="conversation-header">
       <div class="brand-logo" v-if="!sidebarCollapsed">
         <span class="brand-text">数据灵犀</span>
       </div>
-      <el-button @click="toggleSidebar" type="text" class="sidebar-toggle-btn" v-if="!sidebarCollapsed">
-        <div class="ds-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.67272 0.522827C10.8339 0.522827 11.76 0.522701 12.4963 0.60248C13.2453 0.683644 13.8789 0.854235 14.4264 1.25196C14.7504 1.48738 15.0355 1.77246 15.2709 2.09648C15.6686 2.64392 15.8392 3.27756 15.9204 4.02653C16.0002 4.76289 16 5.68894 16 6.85013V9.14985C16 10.311 16.0002 11.2371 15.9204 11.9734C15.8392 12.7224 15.6686 13.3561 15.2709 13.9035C15.0355 14.2275 14.7504 14.5126 14.4264 14.748C13.8789 15.1457 13.2453 15.3163 12.4963 15.3975C11.76 15.4773 10.8339 15.4772 9.67272 15.4772H6.3273C5.16611 15.4772 4.24006 15.4773 3.50371 15.3975C2.75474 15.3163 2.1211 15.1457 1.57366 14.748C1.24963 14.5126 0.964549 14.2275 0.729131 13.9035C0.331407 13.3561 0.160817 12.7224 0.0796529 11.9734C-0.000126137 11.2371 1.25338e-09 10.311 1.25338e-09 9.14985V6.85013C1.25329e-09 5.68894 -0.000126137 4.76289 0.0796529 4.02653C0.160817 3.27756 0.331407 2.64392 0.729131 2.09648C0.964549 1.77246 1.24963 1.48738 1.57366 1.25196C2.1211 0.854235 2.75474 0.683644 3.50371 0.60248C4.24006 0.522701 5.16611 0.522827 6.3273 0.522827H9.67272ZM5.54303 1.88714V14.1118C5.78636 14.1128 6.04709 14.1169 6.3273 14.1169H9.67272C10.8639 14.1169 11.7032 14.1164 12.3493 14.0465C12.9824 13.9779 13.3497 13.8494 13.6268 13.6482C13.8354 13.4966 14.0195 13.3125 14.1711 13.1039C14.3723 12.8268 14.5007 12.4595 14.5693 11.8264C14.6393 11.1803 14.6398 10.341 14.6398 9.14985V6.85013C14.6398 5.65895 14.6393 4.81965 14.5693 4.17359C14.5007 3.54047 14.3723 3.17317 14.1711 2.89608C14.0195 2.68746 13.8354 2.50335 13.6268 2.35178C13.3497 2.15059 12.9824 2.02211 12.3493 1.95352C11.7032 1.88356 10.8639 1.88305 9.67272 1.88305H6.3273C6.04709 1.88305 5.78636 1.88618 5.54303 1.88714ZM4.1828 1.91165C3.99125 1.92158 3.8148 1.93575 3.65076 1.95352C3.01764 2.02211 2.65034 2.15059 2.37325 2.35178C2.16463 2.50335 1.98052 2.68746 1.82895 2.89608C1.62776 3.17317 1.4993 3.54047 1.43071 4.17359C1.36075 4.81965 1.36024 5.65895 1.36024 6.85013V9.14985C1.36024 10.341 1.36075 11.1803 1.43071 11.8264C1.4993 12.4595 1.62776 12.8268 1.82895 13.1039C1.98052 13.3125 2.16463 13.4966 2.37325 13.6482C2.65034 13.8494 3.01764 13.9779 3.65076 14.0465C3.8148 14.0643 3.99125 14.0785 4.1828 14.0884V1.91165Z" fill="currentColor"></path></svg></div>
+      <el-button
+        @click="toggleSidebar"
+        type="text"
+        class="sidebar-toggle-btn"
+        v-if="!sidebarCollapsed"
+      >
+        <div class="ds-icon">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              d="M9.67272 0.522827C10.8339 0.522827 11.76 0.522701 12.4963 0.60248C13.2453 0.683644 13.8789 0.854235 14.4264 1.25196C14.7504 1.48738 15.0355 1.77246 15.2709 2.09648C15.6686 2.64392 15.8392 3.27756 15.9204 4.02653C16.0002 4.76289 16 5.68894 16 6.85013V9.14985C16 10.311 16.0002 11.2371 15.9204 11.9734C15.8392 12.7224 15.6686 13.3561 15.2709 13.9035C15.0355 14.2275 14.7504 14.5126 14.4264 14.748C13.8789 15.1457 13.2453 15.3163 12.4963 15.3975C11.76 15.4773 10.8339 15.4772 9.67272 15.4772H6.3273C5.16611 15.4772 4.24006 15.4773 3.50371 15.3975C2.75474 15.3163 2.1211 15.1457 1.57366 14.748C1.24963 14.5126 0.964549 14.2275 0.729131 13.9035C0.331407 13.3561 0.160817 12.7224 0.0796529 11.9734C-0.000126137 11.2371 1.25338e-09 10.311 1.25338e-09 9.14985V6.85013C1.25329e-09 5.68894 -0.000126137 4.76289 0.0796529 4.02653C0.160817 3.27756 0.331407 2.64392 0.729131 2.09648C0.964549 1.77246 1.24963 1.48738 1.57366 1.25196C2.1211 0.854235 2.75474 0.683644 3.50371 0.60248C4.24006 0.522701 5.16611 0.522827 6.3273 0.522827H9.67272ZM5.54303 1.88714V14.1118C5.78636 14.1128 6.04709 14.1169 6.3273 14.1169H9.67272C10.8639 14.1169 11.7032 14.1164 12.3493 14.0465C12.9824 13.9779 13.3497 13.8494 13.6268 13.6482C13.8354 13.4966 14.0195 13.3125 14.1711 13.1039C14.3723 12.8268 14.5007 12.4595 14.5693 11.8264C14.6393 11.1803 14.6398 10.341 14.6398 9.14985V6.85013C14.6398 5.65895 14.6393 4.81965 14.5693 4.17359C14.5007 3.54047 14.3723 3.17317 14.1711 2.89608C14.0195 2.68746 13.8354 2.50335 13.6268 2.35178C13.3497 2.15059 12.9824 2.02211 12.3493 1.95352C11.7032 1.88356 10.8639 1.88305 9.67272 1.88305H6.3273C6.04709 1.88305 5.78636 1.88618 5.54303 1.88714ZM4.1828 1.91165C3.99125 1.92158 3.8148 1.93575 3.65076 1.95352C3.01764 2.02211 2.65034 2.15059 2.37325 2.35178C2.16463 2.50335 1.98052 2.68746 1.82895 2.89608C1.62776 3.17317 1.4993 3.54047 1.43071 4.17359C1.36075 4.81965 1.36024 5.65895 1.36024 6.85013V9.14985C1.36024 10.341 1.36075 11.1803 1.43071 11.8264C1.4993 12.4595 1.62776 12.8268 1.82895 13.1039C1.98052 13.3125 2.16463 13.4966 2.37325 13.6482C2.65034 13.8494 3.01764 13.9779 3.65076 14.0465C3.8148 14.0643 3.99125 14.0785 4.1828 14.0884V1.91165Z"
+              fill="currentColor"
+            ></path>
+          </svg>
+        </div>
       </el-button>
     </div>
 
     <!-- 搜索框 -->
     <div class="search-container">
-      <el-input
-        v-model="searchQuery"
-        placeholder="搜索对话"
-        size="small"
-        class="search-input"
-      >
+      <el-input v-model="searchQuery" placeholder="搜索对话" size="small" class="search-input">
         <template #prefix>
           <el-icon class="search-icon"><Search /></el-icon>
         </template>
@@ -45,7 +60,14 @@
           >
             <div class="conversation-content">
               <!-- 非编辑模式 -->
-              <div v-if="!editingConversationId || editingConversationId !== conversation.conversation_id" class="conversation-title">{{ conversation.title }}</div>
+              <div
+                v-if="
+                  !editingConversationId || editingConversationId !== conversation.conversation_id
+                "
+                class="conversation-title"
+              >
+                {{ conversation.title }}
+              </div>
               <!-- 编辑模式 -->
               <div v-else class="conversation-title-edit">
                 <el-input
@@ -57,25 +79,57 @@
                   class="title-input"
                 />
               </div>
-              <div v-if="conversation.last_message" class="conversation-last-message">{{ truncateMessage(conversation.last_message) }}</div>
+              <div v-if="conversation.last_message" class="conversation-last-message">
+                {{ truncateMessage(conversation.last_message) }}
+              </div>
               <div v-else class="conversation-last-message empty">暂无消息</div>
             </div>
             <div class="conversation-menu" @click.stop>
-              <el-dropdown trigger="click" @command="(command) => handleConversationMenu(command, conversation.conversation_id)" @click.stop>
+              <el-dropdown
+                trigger="click"
+                @command="command => handleConversationMenu(command, conversation.conversation_id)"
+                @click.stop
+              >
                 <el-button type="text" class="menu-btn" @click.stop>
-                  <div class="ds-icon" style="font-size: 16px; width: 16px; height: 16px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5514 8C4.5514 8.63513 4.03653 9.15 3.4014 9.15C2.76628 9.15 2.2514 8.63513 2.2514 8C2.2514 7.36487 2.76628 6.85 3.4014 6.85C4.03653 6.85 4.5514 7.36487 4.5514 8Z" fill="currentColor"></path><path d="M9.14754 8C9.14754 8.63513 8.63267 9.15 7.99754 9.15C7.36242 9.15 6.84754 8.63513 6.84754 8C6.84754 7.36487 7.36242 6.85 7.99754 6.85C8.63267 6.85 9.14754 7.36487 9.14754 8Z" fill="currentColor"></path><path d="M13.7486 8C13.7486 8.63513 13.2337 9.15 12.5986 9.15C11.9634 9.15 11.4486 8.63513 11.4486 8C11.4486 7.36487 11.9634 6.85 12.5986 6.85C13.2337 6.85 13.7486 7.36487 13.7486 8Z" fill="currentColor"></path></svg></div>
+                  <div class="ds-icon" style="font-size: 16px; width: 16px; height: 16px">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M4.5514 8C4.5514 8.63513 4.03653 9.15 3.4014 9.15C2.76628 9.15 2.2514 8.63513 2.2514 8C2.2514 7.36487 2.76628 6.85 3.4014 6.85C4.03653 6.85 4.5514 7.36487 4.5514 8Z"
+                        fill="currentColor"
+                      ></path>
+                      <path
+                        d="M9.14754 8C9.14754 8.63513 8.63267 9.15 7.99754 9.15C7.36242 9.15 6.84754 8.63513 6.84754 8C6.84754 7.36487 7.36242 6.85 7.99754 6.85C8.63267 6.85 9.14754 7.36487 9.14754 8Z"
+                        fill="currentColor"
+                      ></path>
+                      <path
+                        d="M13.7486 8C13.7486 8.63513 13.2337 9.15 12.5986 9.15C11.9634 9.15 11.4486 8.63513 11.4486 8C11.4486 7.36487 11.9634 6.85 12.5986 6.85C13.2337 6.85 13.7486 7.36487 13.7486 8Z"
+                        fill="currentColor"
+                      ></path>
+                    </svg>
+                  </div>
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu class="custom-dropdown-menu">
-                  <el-dropdown-item command="rename" @click.stop class="custom-dropdown-item">
-                    <el-icon class="menu-icon"><Edit /></el-icon>
-                    重命名
-                  </el-dropdown-item>
-                  <el-dropdown-item command="delete" type="danger" @click.stop class="custom-dropdown-item">
-                    <el-icon class="menu-icon"><Delete /></el-icon>
-                    删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+                    <el-dropdown-item command="rename" @click.stop class="custom-dropdown-item">
+                      <el-icon class="menu-icon"><Edit /></el-icon>
+                      重命名
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      command="delete"
+                      type="danger"
+                      @click.stop
+                      class="custom-dropdown-item"
+                    >
+                      <el-icon class="menu-icon"><Delete /></el-icon>
+                      删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
               </el-dropdown>
             </div>
@@ -93,9 +147,9 @@
 
     <!-- 底部设置区域 -->
     <div class="settings-section">
-      <el-popover 
-        placement="right" 
-        :width="340" 
+      <el-popover
+        placement="right"
+        :width="340"
         trigger="click"
         popper-class="custom-settings-popover"
       >
@@ -104,7 +158,7 @@
             <el-icon class="settings-icon"><Setting /></el-icon>
           </el-button>
         </template>
-        
+
         <div class="settings-content">
           <!-- 用户信息区域 -->
           <div class="user-section">
@@ -118,28 +172,19 @@
               </div>
             </div>
             <div class="user-actions">
-              <el-button 
-                size="small" 
-                @click="showChangePasswordDialog"
-                class="action-button"
-              >
+              <el-button size="small" @click="showChangePasswordDialog" class="action-button">
                 <el-icon class="button-icon"><Lock /></el-icon>
                 <span>修改密码</span>
               </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="logout"
-                class="action-button"
-              >
+              <el-button size="small" type="danger" @click="logout" class="action-button">
                 <el-icon class="button-icon"><SwitchButton /></el-icon>
                 <span>退出登录</span>
               </el-button>
             </div>
           </div>
-          
+
           <el-divider class="custom-divider" />
-          
+
           <!-- 数据源配置区域 -->
           <div class="datasource-section">
             <div class="section-header">
@@ -147,27 +192,17 @@
               <span>数据源管理</span>
             </div>
             <div class="datasource-actions">
-              <el-button 
-                size="small" 
-                @click="goToDatasource"
-                class="action-button"
-              >
+              <el-button size="small" @click="goToDatasource" class="action-button">
                 <el-icon class="button-icon"><Management /></el-icon>
                 <span>管理数据源</span>
               </el-button>
-              <el-button 
-                size="small" 
-                @click="refreshDatasources"
-                class="action-button"
-              >
+              <el-button size="small" @click="refreshDatasources" class="action-button">
                 <el-icon class="button-icon"><Refresh /></el-icon>
                 <span>刷新列表</span>
               </el-button>
             </div>
             <div class="datasource-info" v-if="datasources.length > 0">
-              <div class="datasource-count">
-                已配置 {{ datasources.length }} 个数据源
-              </div>
+              <div class="datasource-count">已配置 {{ datasources.length }} 个数据源</div>
               <div class="current-datasource" v-if="selectedDatasource">
                 当前选择: {{ getCurrentDatasourceName() }}
               </div>
@@ -182,7 +217,20 @@
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
-import { Delete, Plus, ChatLineSquare, Search, Edit, Setting, User, Lock, SwitchButton, DataAnalysis, Management, Refresh } from '@element-plus/icons-vue'
+import {
+  Delete,
+  Plus,
+  ChatLineSquare,
+  Search,
+  Edit,
+  Setting,
+  User,
+  Lock,
+  SwitchButton,
+  DataAnalysis,
+  Management,
+  Refresh
+} from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
@@ -227,9 +275,11 @@ const datasources = ref([])
 // 分组后的对话列表
 const groupedConversations = computed(() => {
   // 过滤搜索结果
-  const filteredConversations = conversations.value.filter(conv =>
-    conv.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    (conv.last_message && conv.last_message.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  const filteredConversations = conversations.value.filter(
+    conv =>
+      conv.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (conv.last_message &&
+        conv.last_message.toLowerCase().includes(searchQuery.value.toLowerCase()))
   )
 
   // 按日期分组
@@ -255,7 +305,7 @@ const groupedConversations = computed(() => {
 })
 
 // 格式化日期分组
-const formatDateGroup = (timeString) => {
+const formatDateGroup = timeString => {
   const date = new Date(timeString)
   const now = new Date()
   const diffTime = now - date
@@ -283,7 +333,7 @@ const createNewConversation = () => {
 }
 
 // 选择对话
-const selectConversation = (conversation) => {
+const selectConversation = conversation => {
   emit('select-conversation', conversation)
   emit('update:selectedConversationId', conversation.conversation_id)
 }
@@ -298,53 +348,51 @@ const handleConversationMenu = (command, conversationId) => {
 }
 
 // 确认删除对话
-const confirmDeleteConversation = (conversationId) => {
-  ElMessageBox.confirm(
-    '确定要删除这个对话吗？删除后将无法恢复',
-    '确认删除',
-    {
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-      confirmButtonClass: 'el-button--danger',
-      customClass: 'delete-dialog'
-    }
-  ).then(async () => {
-    try {
-      const token = localStorage.getItem('token')
-      await axios.delete(`/conversations/${conversationId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      
-      // 从列表中移除对话
-      conversations.value = conversations.value.filter(
-        conv => conv.conversation_id !== conversationId
-      )
-      
-      // 如果删除的是当前选中的对话，清空消息并选择第一个对话
-      if (props.selectedConversationId === conversationId) {
-        if (conversations.value.length > 0) {
-          emit('select-conversation', conversations.value[0])
-          emit('update:selectedConversationId', conversations.value[0].conversation_id)
-        } else {
-          emit('update:selectedConversationId', null)
-          // 从localStorage中移除selectedConversationId
-          localStorage.removeItem('selectedConversationId')
-        }
-      }
-      
-      ElMessage.success('对话删除成功')
-    } catch (error) {
-      console.error('删除对话失败:', error)
-      ElMessage.error('删除对话失败，请重试')
-    }
-  }).catch(() => {
-    // 取消删除
+const confirmDeleteConversation = conversationId => {
+  ElMessageBox.confirm('确定要删除这个对话吗？删除后将无法恢复', '确认删除', {
+    confirmButtonText: '确认删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+    confirmButtonClass: 'el-button--danger',
+    customClass: 'delete-dialog'
   })
+    .then(async () => {
+      try {
+        const token = localStorage.getItem('token')
+        await axios.delete(`/conversations/${conversationId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        // 从列表中移除对话
+        conversations.value = conversations.value.filter(
+          conv => conv.conversation_id !== conversationId
+        )
+
+        // 如果删除的是当前选中的对话，清空消息并选择第一个对话
+        if (props.selectedConversationId === conversationId) {
+          if (conversations.value.length > 0) {
+            emit('select-conversation', conversations.value[0])
+            emit('update:selectedConversationId', conversations.value[0].conversation_id)
+          } else {
+            emit('update:selectedConversationId', null)
+            // 从localStorage中移除selectedConversationId
+            localStorage.removeItem('selectedConversationId')
+          }
+        }
+
+        ElMessage.success('对话删除成功')
+      } catch (error) {
+        console.error('删除对话失败:', error)
+        ElMessage.error('删除对话失败，请重试')
+      }
+    })
+    .catch(() => {
+      // 取消删除
+    })
 }
 
 // 开始重命名
-const startRename = (conversationId) => {
+const startRename = conversationId => {
   const conversation = conversations.value.find(c => c.conversation_id === conversationId)
   if (conversation) {
     editingTitle.value = conversation.title
@@ -359,22 +407,26 @@ const startRename = (conversationId) => {
 }
 
 // 保存重命名
-const saveRename = async (conversationId) => {
+const saveRename = async conversationId => {
   if (editingTitle.value.trim()) {
     try {
       const token = localStorage.getItem('token')
-      await axios.put(`/conversations/${conversationId}`, {
-        title: editingTitle.value
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      
+      await axios.put(
+        `/conversations/${conversationId}`,
+        {
+          title: editingTitle.value
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+
       // 更新本地对话列表
       const conversation = conversations.value.find(c => c.conversation_id === conversationId)
       if (conversation) {
         conversation.title = editingTitle.value.trim()
       }
-      
+
       ElMessage.success('对话重命名成功')
     } catch (error) {
       console.error('重命名对话失败:', error)
@@ -396,7 +448,7 @@ const loadConversations = async () => {
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get(`/conversations`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     conversations.value = response.data.conversations
   } catch (error) {
@@ -419,41 +471,46 @@ const showChangePasswordDialog = async () => {
     const { value } = await ElMessageBox.prompt('请输入新密码', '修改密码', {
       confirmButtonText: '确认修改',
       cancelButtonText: '取消',
-      inputType: 'password',
-    });
+      inputType: 'password'
+    })
 
     if (value) {
-      await changePassword(value);
+      await changePassword(value)
     }
   } catch (error) {
     // 用户取消操作
   }
 }
 
-const changePassword = async (newPassword) => {
+const changePassword = async newPassword => {
   try {
-    const token = localStorage.getItem('token');
-    await axios.post(`/user/change-password`, 
+    const token = localStorage.getItem('token')
+    await axios.post(
+      `/user/change-password`,
       { new_password: newPassword },
       {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       }
-    );
-    ElMessage.success('密码修改成功');
+    )
+    ElMessage.success('密码修改成功')
   } catch (error) {
-    console.error('修改密码失败:', error);
-    ElMessage.error('修改密码失败，请重试');
+    console.error('修改密码失败:', error)
+    ElMessage.error('修改密码失败，请重试')
   }
 }
 
 const logout = async () => {
   try {
     const token = localStorage.getItem('token')
-    await axios.post('/auth/logout', {}, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    await axios.post(
+      '/auth/logout',
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
     localStorage.removeItem('token')
     localStorage.removeItem('selectedConversationId')
     await router.push('/login')
@@ -475,7 +532,7 @@ const refreshDatasources = async () => {
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get('/datasource/list', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     datasources.value = response.data
     ElMessage.success('数据源刷新成功')
@@ -499,7 +556,7 @@ const loadDatasources = async () => {
       return
     }
     const response = await axios.get('/datasource/list', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     datasources.value = response.data
   } catch (error) {
@@ -515,7 +572,7 @@ const loadUserInfo = async () => {
       return
     }
     const response = await axios.get('/user/me', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
     })
     username.value = response.data.username || '用户'
   } catch (error) {
@@ -901,17 +958,17 @@ defineExpose({
   font-weight: 500 !important;
 }
 
-.action-button[type="danger"] .el-icon {
+.action-button[type='danger'] .el-icon {
   color: #ef4444 !important;
 }
 
-.action-button[type="danger"]:hover {
+.action-button[type='danger']:hover {
   background-color: #fef2f2 !important;
   border-color: #ef4444 !important;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
 }
 
-.action-button[type="danger"]::before {
+.action-button[type='danger']::before {
   background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
 }
 
@@ -980,20 +1037,20 @@ defineExpose({
     width: 300px;
     padding: 16px;
   }
-  
+
   .user-avatar {
     width: 40px;
     height: 40px;
   }
-  
+
   .user-icon {
     font-size: 20px;
   }
-  
+
   .username {
     font-size: 14px;
   }
-  
+
   .action-button {
     padding: 10px 14px !important;
   }
@@ -1254,15 +1311,15 @@ defineExpose({
     gap: 10px;
     text-align: center;
   }
-  
+
   .conversation-items {
     padding: 8px;
   }
-  
+
   .new-chat-button {
     padding: 12px 16px;
   }
-  
+
   .conversation-item {
     padding: 12px 14px;
   }
