@@ -43,7 +43,20 @@
     <div class="conversation-items">
       <!-- 新对话按钮 -->
       <div class="new-chat-button" @click="createNewConversation">
-        <el-icon class="new-chat-icon"><Plus /></el-icon>
+        <div class="new-chat-icon">
+         <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                >
+                  <path
+                    d="M8 0.599609C3.91309 0.599609 0.599609 3.91309 0.599609 8C0.599609 9.13376 0.855461 10.2098 1.3125 11.1719L1.5918 11.7588L2.76562 11.2012L2.48633 10.6143C2.11034 9.82278 1.90039 8.93675 1.90039 8C1.90039 4.63106 4.63106 1.90039 8 1.90039C11.3689 1.90039 14.0996 4.63106 14.0996 8C14.0996 11.3689 11.3689 14.0996 8 14.0996C7.31041 14.0996 6.80528 14.0514 6.35742 13.9277C5.91623 13.8059 5.49768 13.6021 4.99707 13.2529C4.26492 12.7422 3.21611 12.5616 2.35156 13.1074L2.33789 13.1162L2.32422 13.126L1.58789 13.6436L2.01953 14.9297L3.0459 14.207C3.36351 14.0065 3.83838 14.0294 4.25293 14.3184C4.84547 14.7317 5.39743 15.011 6.01172 15.1807C6.61947 15.3485 7.25549 15.4004 8 15.4004C12.0869 15.4004 15.4004 12.0869 15.4004 8C15.4004 3.91309 12.0869 0.599609 8 0.599609ZM7.34473 4.93945V7.34961H4.93945V8.65039H7.34473V11.0605H8.64551V8.65039H11.0605V7.34961H8.64551V4.93945H7.34473Z"
+                    fill="currentColor"
+                  ></path>
+                </svg>
+        </div>
         <span>开启新对话</span>
       </div>
 
@@ -185,7 +198,7 @@
 
           <el-divider class="custom-divider" />
 
-          <!-- 数据源配置区域 -->
+          <!-- 数据源管理区域 -->
           <div class="datasource-section">
             <div class="section-header">
               <el-icon class="section-icon"><DataAnalysis /></el-icon>
@@ -219,7 +232,6 @@ import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Delete,
-  Plus,
   ChatLineSquare,
   Search,
   Edit,
@@ -746,29 +758,38 @@ defineExpose({
 .new-chat-button {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 14px 18px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 20px;
   margin: 8px 0 16px 0;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-  border: 1px dashed #e0e6ff;
+  transition: all 0.2s ease;
+  background: #f3f5f6;
+  border: 1px solid transparent;
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
 .new-chat-button:hover {
-  background: #f0f4ff;
-  border-color: #4f46e5;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+  background: #e8eaeb;
+  border-color: transparent;
 }
 
 .new-chat-icon {
-  font-size: 18px;
-  color: #4a89dc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.new-chat-button span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222222;
+  font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif;
 }
 
 /* 底部设置区域 */
@@ -1031,46 +1052,6 @@ defineExpose({
   width: 100%;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .settings-content {
-    width: 300px;
-    padding: 16px;
-  }
-
-  .user-avatar {
-    width: 40px;
-    height: 40px;
-  }
-
-  .user-icon {
-    font-size: 20px;
-  }
-
-  .username {
-    font-size: 14px;
-  }
-
-  .action-button {
-    padding: 10px 14px !important;
-  }
-}
-
-.new-chat-icon {
-  font-size: 18px;
-  color: #4f46e5;
-  flex-shrink: 0;
-}
-
-.new-chat-button span {
-  font-size: 14px;
-  font-weight: 500;
-  color: #4f46e5;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
 /* 侧边栏收起时隐藏对话列表内容 */
 .conversation-list.collapsed .conversation-items {
   display: none;
@@ -1248,7 +1229,6 @@ defineExpose({
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease;
-  /* 确保滚动条独立显示，不显示背景内容 */
   background-clip: padding-box;
 }
 
@@ -1265,7 +1245,6 @@ defineExpose({
   background: transparent;
   border-radius: 3px;
   transition: background 0.3s ease;
-  /* 确保轨道不显示背景内容 */
   background-clip: padding-box;
 }
 
@@ -1273,7 +1252,6 @@ defineExpose({
   background: transparent;
   border-radius: 3px;
   transition: background 0.3s ease;
-  /* 确保滑块不显示背景内容 */
   background-clip: padding-box;
   border: 1px solid transparent;
 }

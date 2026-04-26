@@ -154,7 +154,7 @@ import { useRouter } from 'vue-router'
 
 import axios from 'axios'
 
-import { ElMessage, ElNotification, ElMessageBox } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 
 import { ChatDotRound } from '@element-plus/icons-vue'
 
@@ -799,8 +799,7 @@ const handleRegenerate = async index => {
     }
 
     // 重新发送用户消息
-
-    handleSendMessage(userMessage.content)
+    await handleSendMessage(userMessage.content)
   }
 }
 
